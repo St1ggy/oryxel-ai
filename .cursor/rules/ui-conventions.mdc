@@ -1,0 +1,56 @@
+---
+description: UI conventions — Tailwind, optional shadcn-style components
+globs: src/**/*.svelte
+alwaysApply: false
+---
+
+# UI — conventions
+
+> **oryxel-ai** is a starter: `$lib/components/ui` may not exist yet. When you add shadcn-svelte (or similar), follow these patterns.
+
+## Select — prefer shadcn Select over native `<select>`
+
+```svelte
+import * as Select from '$lib/components/ui/select'
+
+<Select.Root type="single" value={value} onValueChange={(v) => (value = v)}>
+  <Select.Trigger class="h-9 text-sm">
+    {value ? labelFor(value) : 'Placeholder'}
+  </Select.Trigger>
+  <Select.Content>
+    <Select.Item value="opt1" label="Option 1" />
+  </Select.Content>
+</Select.Root>
+```
+
+For a filter “all / none” option, use a sentinel such as `'__all__'`, not an ambiguous empty string:
+
+```svelte
+value={value || '__all__'}
+onValueChange={(v) => (value = v === '__all__' ? '' : v)}
+```
+
+## Buttons — include hover states
+
+```svelte
+<!-- outline -->
+<button class="rounded-md border px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground">
+
+<!-- primary -->
+<button class="rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground hover:bg-primary/90">
+
+<!-- destructive -->
+<button class="rounded-md border border-destructive text-destructive hover:bg-destructive/10">
+```
+
+## Dynamic colours
+
+Use `style="background-color: ..."` (or CSS variables) when the colour comes from data, not a dynamic Tailwind class string.
+
+## Cards and links
+
+For media-style cards: prefer a single interactive root (`<a>` or `<button>`) with `group`, predictable hover/focus styles, and accessible labels.
+
+## Global CSS
+
+Keep shared motion and focus styles in `src/routes/layout.css` (or your global stylesheet): short transitions on interactive elements, visible `:focus-visible` outlines.

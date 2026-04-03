@@ -1,0 +1,77 @@
+---
+description: Svelte 5 (runes) and SvelteKit patterns — conventions for .svelte files
+globs: src/**/*.svelte
+alwaysApply: false
+---
+
+# Svelte 5 — patterns and restrictions
+
+## Runes — mandatory
+
+```svelte
+<script lang="ts">
+  // ✅ Svelte 5 runes
+  let count = $state(0)
+  const double = $derived(count * 2)
+  const { title, items = [] }: Props = $props()
+
+  // ❌ Do NOT use Svelte 4 store syntax
+  // import { writable } from 'svelte/store'
+</script>
+```
+
+## Page data
+
+```svelte
+<script lang="ts">
+  import { page } from '$app/state'
+  import type { PageData } from './$types'
+
+  const data = page.data as PageData
+</script>
+```
+
+Use the correct relative import to `$types` for each route file (e.g. `../$types` from a nested component only if that file’s relative path resolves to the route’s generated types).
+
+## {@const} — only inside block tags
+
+```svelte
+<!-- ✅ Correct — first child of {#each} -->
+{#each items as item (item.id)}
+  {@const label = item.title.toUpperCase()}
+  <div>{label}</div>
+{/each}
+
+<!-- ❌ Wrong — inside an arbitrary element -->
+<div>
+  {@const label = item.title}
+</div>
+```
+
+## Dynamic CSS classes — prefer inline style for variable colours
+
+Tailwind JIT may omit dynamically built class names. Use `style=` when the value comes from a variable.
+
+```svelte
+<!-- ❌ Risky — dynamic fragment may be purged -->
+<div class="rounded-full {dynamicClass}">
+
+<!-- ✅ Inline style for variable colour -->
+<div class="rounded-full" style="background-color: {bg}">
+```
+
+## Lucide icons (if using `@lucide/svelte`)
+
+Prefer current icon paths (e.g. `circle-check`, `circle-play`) over deprecated names that lack proper typings.
+
+## Navigation
+
+```svelte
+import { onNavigate, beforeNavigate, afterNavigate } from '$app/navigation'
+```
+
+Use the View Transitions API only if the app layout enables it.
+
+## HTML from untrusted sources
+
+If you render HTML from users or external APIs, sanitize before `{@html ...}` (e.g. DOMPurify in a shared utility) and strip tags for plain previews.

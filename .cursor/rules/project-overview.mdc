@@ -1,0 +1,32 @@
+---
+description: oryxel-ai — stack, layout, key dependencies
+alwaysApply: true
+---
+
+# oryxel-ai — project overview
+
+## Stack
+
+| Layer | Technology |
+|-------|------------|
+| Framework | SvelteKit 2 + Svelte 5 (runes) |
+| Language | TypeScript |
+| CSS | Tailwind CSS v4 |
+| ORM | Drizzle ORM |
+| Database | PostgreSQL via `@neondatabase/serverless` |
+| Auth | Better Auth + `drizzleAdapter` (GitHub + email/password in demo config) |
+| i18n | Paraglide.js (inlang) |
+| Tests | Vitest, Playwright |
+| Adapter | Vercel |
+| Package manager | bun |
+
+## Repository layout
+
+- **Routes & pages:** `src/routes/` (`+page.svelte`, `+page.server.ts`, layouts, `+server.ts`).
+- **Server:** `src/lib/server/auth.ts`, `src/lib/server/db/` (`index.ts`, `schema.ts`, `auth.schema.ts`).
+- **Hooks:** `src/hooks.server.ts` (Paraglide + Better Auth), `src/hooks.ts` (URL de-localization).
+- **Messages:** `messages/{en,es,fr,jp,ru,zh}.json` — see `project.inlang/settings.json` for locale list.
+
+## Scripts (prefer bun)
+
+See `package.json`: `dev`, `build`, `check`, `lint`, `format`, `test`, `db:push` / `db:generate` / `db:migrate` / `db:studio`, `auth:schema`.

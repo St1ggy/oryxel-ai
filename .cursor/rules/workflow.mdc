@@ -1,0 +1,70 @@
+---
+description: Workflow — mandatory checks after every code change
+alwaysApply: true
+---
+
+# Workflow — mandatory steps
+
+## Before ANY code change
+
+**Always pull first** so you work against the latest remote state:
+
+```bash
+git pull --rebase
+```
+
+Run this at the start of a session or before editing files. Avoids conflicts and ensures pushes don't get rejected.
+
+---
+
+## After EVERY code change
+
+Execute **in this exact order**:
+
+### 1. ESLint autofix
+
+```bash
+bunx eslint --fix <changed files>
+```
+
+Run only on changed files (not the whole project — too slow):
+
+```bash
+# Example
+bunx eslint --fix src/routes/+page.svelte src/lib/server/db/schema.ts
+```
+
+### 2. Type-check
+
+```bash
+bun run check
+# Equivalent: svelte-kit sync && svelte-check --tsconfig ./tsconfig.json
+```
+
+Catches TypeScript errors in `.svelte` files that `tsc` alone cannot see.
+
+## Fixing found errors
+
+| Error type | Action |
+|-----------|--------|
+| Prettier / formatting | `bunx eslint --fix` will auto-fix |
+| Import order | `bunx eslint --fix` will auto-fix |
+| TypeScript type error | Fix manually, then re-run `bun run check` |
+| Svelte `{@const}` outside block | Move inside `{#each}` / `{#if}` |
+| Tailwind dynamic class purge | Replace with `style="..."` using a CSS variable |
+
+## Project commands
+
+```bash
+bun run dev          # dev server
+bun run check        # svelte-check
+bun run lint         # prettier + eslint
+bun run build        # production build
+
+bun run db:push      # Drizzle — push schema (dev)
+bun run db:generate  # generate SQL migrations
+bun run db:migrate   # apply migrations
+bun run db:studio    # Drizzle Studio
+
+bun run auth:schema  # regenerate Better Auth Drizzle schema
+```

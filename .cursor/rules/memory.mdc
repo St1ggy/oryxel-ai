@@ -1,0 +1,49 @@
+---
+description: oryxel-ai — living memory; dated decisions and conventions
+alwaysApply: true
+---
+
+# oryxel-ai — project memory
+
+> **For AI:** After a new architectural decision or convention change, add a dated entry. Keep **`context.mdc`** aligned for stack-wide facts.
+
+---
+
+## 2026-03-30 — Rules aligned with oryxel-ai
+
+### What changed
+
+- `.cursor/rules/` describe **oryxel-ai**: SvelteKit, Drizzle, Better Auth, Paraglide, `src/routes/`, `src/lib/server/db/` (not a Prisma/media `src/pages/` FSD app).
+
+### Why
+
+- Single source of truth matches the repository the agents actually edit.
+
+---
+
+## 2026-03-31 — AI router and mandatory social auth baseline
+
+### What changed
+
+- Added a provider-agnostic AI router skeleton (OpenAI, Anthropic, Gemini), strict Zod contracts, critical-confirm flow, pending patch/audit DB tables, and apply pipeline.
+- Added mandatory auth gate for diary/profile routes and login route with Google/Apple/Yandex social flow.
+- Expanded environment variable contract for social providers and AI router settings.
+
+### Why
+
+- Product now relies on AI-generated structured updates and explicit confirmation for critical changes.
+- Diary/profile access must be protected behind authentication for MVP requirements.
+
+---
+
+## Template for new entries
+
+```
+## YYYY-MM-DD — Short title
+
+### What changed
+- ...
+
+### Why
+- ...
+```

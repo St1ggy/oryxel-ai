@@ -1,0 +1,53 @@
+---
+description: Backend patterns — Drizzle, API routes, Better Auth, validation
+globs: src/lib/server/**,src/routes/**
+alwaysApply: false
+---
+
+# Backend — patterns
+
+## Database (Drizzle)
+
+Use the shared client and schema:
+
+```typescript
+import { db } from '$lib/server/db';
+import { task } from '$lib/server/db/schema';
+```
+
+Prefer typed queries. If routes grow, add modules under `src/lib/server/` (e.g. `repositories/`) and keep `+server.ts` / `+page.server.ts` thin.
+
+## API routes — structure
+
+```typescript
+import { json, error } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
+import { z } from 'zod';
+
+const bodySchema = z.object({
+	title: z.string().min(1)
+});
+
+export const POST: RequestHandler = async ({ request, locals }) => {
+	if (!locals.user) throw error(401, 'Unauthorized');
+
+	const body = bodySchema.parse(await request.json());
+	// use db ...
+	return json({ ok: true });
+};
+```
+
+## Zod — validation
+
+Validate request bodies and search params where inputs are non-trivial. In Zod v4, `z.record` needs key and value schemas, e.g. `z.record(z.string(), z.string())`.
+
+## Auth
+
+Rely on `event.locals.user` / `event.locals.session` populated in `hooks.server.ts`. Do not skip session checks on protected endpoints.
+
+## Schema and migrations
+
+1. Edit `src/lib/server/db/schema.ts` (and run `bun run auth:schema` when Better Auth tables change).
+2. `bun run db:generate` then `bun run db:migrate`, or `bun run db:push` during early prototyping.
+
+Drizzle config: `drizzle.config.ts`. Connection: `DATABASE_URL`.

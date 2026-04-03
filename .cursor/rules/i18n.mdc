@@ -1,0 +1,51 @@
+---
+description: Localisation via Paraglide.js — rules for working with translations
+globs: src/**,messages/**
+alwaysApply: false
+---
+
+# Localisation (Paraglide.js)
+
+## Supported languages (oryxel-ai)
+
+Per `project.inlang/settings.json`: **`en`**, **`es`**, **`fr`**, **`jp`**, **`ru`**, **`zh`**.
+
+## Rule: user-facing strings go through Paraglide
+
+```svelte
+<!-- ❌ Never hardcode user-visible copy -->
+<p>Welcome</p>
+
+<!-- ✅ Use generated message functions (path/name from your Paraglide build) -->
+<script lang="ts">
+  import * as m from '$lib/paraglide/messages.js'
+</script>
+<p>{m.hello_world({ name: 'Ada' })}</p>
+```
+
+Adjust the import path if your compiler outputs a different module id (see `$lib/paraglide` after `bun run dev` / build).
+
+## Adding a new key
+
+Add the key to **all six** locale files at once:
+
+```
+messages/en.json
+messages/es.json
+messages/fr.json
+messages/jp.json
+messages/ru.json
+messages/zh.json
+```
+
+`en` is the base locale. Keys are typically `snake_case`.
+
+## Parameterised messages
+
+```json
+"greeting": "Hello, {name}!"
+```
+
+```svelte
+{m.greeting({ name: userName })}
+```
