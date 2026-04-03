@@ -1,0 +1,734 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,600&family=Inter:wght@400;500;600&display=swap');
+
+@import 'tailwindcss';
+
+@plugin '@tailwindcss/forms';
+@plugin '@tailwindcss/typography';
+
+/* -------------------------------------------------------------------------- */
+/* Semantic tokens — mapped per [data-theme]                                  */
+/* -------------------------------------------------------------------------- */
+:root {
+  /* Oryxel AI — Inter body, Cormorant Garamond headings */
+  --font-heading: 'Cormorant Garamond', Georgia, serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --oryx-radius-base: 0.75rem;
+  --oryx-radius-sm: calc(var(--oryx-radius-base) - 4px);
+  --oryx-radius-md: calc(var(--oryx-radius-base) - 2px);
+  --oryx-radius-lg: var(--oryx-radius-base);
+  --oryx-radius-xl: calc(var(--oryx-radius-base) + 4px);
+  --oryx-motion-fast: 190ms;
+  --oryx-motion-normal: 260ms;
+  --oryx-motion-slow: 360ms;
+  --oryx-motion-theme: 340ms;
+  --oryx-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --oryx-ease-in-out: cubic-bezier(0.45, 0, 0.55, 1);
+  --oryx-shadow-sm: 0px 1px 3px 0px rgba(0, 0, 0, 0.1), 0px 1px 2px 0px rgba(0, 0, 0, 0.1);
+  --oryx-shadow-md: 0 4px 12px rgb(0 0 0 / 0.08);
+  --oryx-shadow-lg: 0 12px 40px rgb(0 0 0 / 0.12);
+}
+
+html {
+  transition:
+    background-color var(--oryx-motion-theme) ease,
+    color var(--oryx-motion-theme) ease;
+}
+
+[data-theme='light-aura'] {
+  /* Light Aura — Figma theme.css */
+  --oryx-bg-page: #fafafa;
+  --oryx-bg-surface: #ffffff;
+  --oryx-bg-surface-elevated: #ffffff;
+  --oryx-bg-muted: #f0f0f0;
+  --oryx-bg-subtle: #eaeaea;
+  --oryx-bg-chat-user: linear-gradient(135deg, #e6d3a7 0%, #c4a982 100%);
+  --oryx-bg-chat-ai: #f0f0f0;
+  --oryx-border: #eaeaea;
+  --oryx-border-strong: #d4d4d4;
+  --oryx-fg: #1a1a1a;
+  --oryx-fg-muted: #666666;
+  --oryx-fg-on-accent: #1a1a1a;
+  --oryx-accent-a: #e6d3a7;
+  --oryx-accent-b: #c4a982;
+  --oryx-accent-solid: #c4a982;
+  --oryx-ring: #c4a982;
+  --oryx-success: #2d6a4f;
+  --oryx-online: #00c950;
+  --oryx-warning: #b45309;
+  --oryx-destructive: #b91c1c;
+  --oryx-btn-primary-bg: linear-gradient(135deg, #e6d3a7 0%, #c4a982 100%);
+  --oryx-btn-primary-bg-hover: linear-gradient(135deg, #dcc995 0%, #b89a72 100%);
+  --oryx-btn-primary-bg-active: linear-gradient(135deg, #d2bf88 0%, #a88962 100%);
+  --oryx-btn-primary-fg: #1a1a1a;
+  --oryx-btn-secondary-bg: transparent;
+  --oryx-btn-secondary-border: #d4d4d4;
+  --oryx-btn-secondary-hover: #eaeaea;
+  --oryx-input-bg: #f3f3f5;
+  --oryx-input-border: #eaeaea;
+  --oryx-table-hover: #f7f7f7;
+  --oryx-badge-neutral-bg: #ececec;
+  --oryx-badge-neutral-fg: #404040;
+  --oryx-star-empty: #d4d4d4;
+  --oryx-star-filled: #c4a982;
+  --oryx-owned-icon: #2d6a4f;
+  /* Landing page palette */
+  --landing-hero-bg: linear-gradient(135deg, #fdf6ee 0%, #fcf0e8 100%);
+  --landing-accent-gold: #c4a982;
+  --landing-accent-rose: #e8c2d1;
+  --landing-gradient-cta: linear-gradient(135deg, #e6d3a7 0%, #c4a982 100%);
+  --landing-card-bg: #ffffff;
+  --landing-section-alt: #fdf6ee;
+  --landing-privacy-bg: #1a1814;
+  --landing-privacy-fg: #f5f0e8;
+  --landing-gold-text: #a07848;
+  --landing-nav-bg: rgba(250, 250, 250, 0.88);
+  --landing-page-gradient: linear-gradient(
+    180deg,
+    #fdf6ee 0%,
+    #f8e8d8 18%,
+    #fdf6ee 36%,
+    #f5ede2 54%,
+    #f8e8d8 72%,
+    #fdf6ee 88%,
+    #f4ece0 100%
+  );
+}
+
+[data-theme='midnight-scent'] {
+  /* Midnight Scent — Figma theme.css */
+  --oryx-bg-page: #0f0f11;
+  --oryx-bg-surface: #1a1a1c;
+  --oryx-bg-surface-elevated: #1a1a1c;
+  --oryx-bg-muted: #222224;
+  --oryx-bg-subtle: #2a2a2c;
+  --oryx-bg-chat-user: linear-gradient(135deg, #2d5a4a 0%, #1a3a2f 100%);
+  --oryx-bg-chat-ai: #222224;
+  --oryx-border: #2a2a2c;
+  --oryx-border-strong: #3a3a44;
+  --oryx-fg: #f0f0f0;
+  --oryx-fg-muted: #999999;
+  --oryx-fg-on-accent: #ffffff;
+  --oryx-accent-a: #2d5a4a;
+  --oryx-accent-b: #1a3a2f;
+  --oryx-accent-solid: #2d5a4a;
+  --oryx-ring: #2d5a4a;
+  --oryx-success: #4ade80;
+  --oryx-online: #00c950;
+  --oryx-warning: #fbbf24;
+  --oryx-destructive: #f87171;
+  --oryx-btn-primary-bg: linear-gradient(135deg, #2d5a4a 0%, #1a3a2f 100%);
+  --oryx-btn-primary-bg-hover: linear-gradient(135deg, #356a58 0%, #224a3d 100%);
+  --oryx-btn-primary-bg-active: linear-gradient(135deg, #2b5244 0%, #153228 100%);
+  --oryx-btn-primary-fg: #ffffff;
+  --oryx-btn-secondary-bg: transparent;
+  --oryx-btn-secondary-border: #3a3a44;
+  --oryx-btn-secondary-hover: #222224;
+  --oryx-input-bg: #222224;
+  --oryx-input-border: #2a2a2c;
+  --oryx-table-hover: #222224;
+  --oryx-badge-neutral-bg: #2a2a2c;
+  --oryx-badge-neutral-fg: #d4d4d8;
+  --oryx-star-empty: #3f3f46;
+  --oryx-star-filled: #2d5a4a;
+  --oryx-owned-icon: #4ade80;
+  /* Landing page palette — dark */
+  --landing-hero-bg: linear-gradient(135deg, #141214 0%, #1a1620 100%);
+  --landing-accent-gold: #c9a96e;
+  --landing-accent-rose: #7a4060;
+  --landing-gradient-cta: linear-gradient(135deg, #c9a96e 0%, #a07848 100%);
+  --landing-card-bg: #1a1a1c;
+  --landing-section-alt: #111013;
+  --landing-privacy-bg: #0c0b0e;
+  --landing-privacy-fg: #f0ece4;
+  --landing-gold-text: #c9a96e;
+  --landing-nav-bg: rgba(15, 15, 17, 0.92);
+  --landing-page-gradient: linear-gradient(
+    180deg,
+    #141214 0%,
+    #1a1628 18%,
+    #131116 36%,
+    #181420 54%,
+    #1c1730 72%,
+    #141214 88%,
+    #100f18 100%
+  );
+}
+
+[data-theme='botanical'] {
+  /* Botanical — Figma theme.css */
+  --oryx-bg-page: #f8f9f5;
+  --oryx-bg-surface: #ffffff;
+  --oryx-bg-surface-elevated: #ffffff;
+  --oryx-bg-muted: #edeeea;
+  --oryx-bg-subtle: #e2e5df;
+  --oryx-bg-chat-user: #8a9a8b;
+  --oryx-bg-chat-ai: #edeeea;
+  --oryx-border: #e2e5df;
+  --oryx-border-strong: #c5ccc0;
+  --oryx-fg: #2c332e;
+  --oryx-fg-muted: #6b7a6f;
+  --oryx-fg-on-accent: #ffffff;
+  --oryx-accent-a: #8a9a8b;
+  --oryx-accent-b: #6b7a6f;
+  --oryx-accent-solid: #8a9a8b;
+  --oryx-ring: #8a9a8b;
+  --oryx-success: #3f6b52;
+  --oryx-online: #00c950;
+  --oryx-warning: #a16207;
+  --oryx-destructive: #b91c1c;
+  --oryx-btn-primary-bg: #8a9a8b;
+  --oryx-btn-primary-bg-hover: #7a8a7b;
+  --oryx-btn-primary-bg-active: #6a7a6b;
+  --oryx-btn-primary-fg: #ffffff;
+  --oryx-btn-secondary-bg: transparent;
+  --oryx-btn-secondary-border: #c5ccc0;
+  --oryx-btn-secondary-hover: #edeeea;
+  --oryx-input-bg: #edeeea;
+  --oryx-input-border: #e2e5df;
+  --oryx-table-hover: #edeeea;
+  --oryx-badge-neutral-bg: #e2e5df;
+  --oryx-badge-neutral-fg: #3d4a42;
+  --oryx-star-empty: #c5ccc0;
+  --oryx-star-filled: #8a9a8b;
+  --oryx-owned-icon: #3f6b52;
+  /* Landing page palette — botanical */
+  --landing-hero-bg: linear-gradient(135deg, #f4f6f1 0%, #eef1ea 100%);
+  --landing-accent-gold: #8a9a8b;
+  --landing-accent-rose: #c5d4c5;
+  --landing-gradient-cta: linear-gradient(135deg, #8a9a8b 0%, #6b7a6f 100%);
+  --landing-card-bg: #ffffff;
+  --landing-section-alt: #f4f6f1;
+  --landing-privacy-bg: #1e2620;
+  --landing-privacy-fg: #eef2ee;
+  --landing-gold-text: #5a7060;
+  --landing-nav-bg: rgba(248, 249, 245, 0.88);
+  --landing-page-gradient: linear-gradient(
+    180deg,
+    #f4f6f1 0%,
+    #e8ede2 18%,
+    #f4f6f1 36%,
+    #edf1e8 54%,
+    #e6ecdf 72%,
+    #f4f6f1 88%,
+    #eaefe4 100%
+  );
+}
+
+[data-theme='rose-blush'] {
+  --oryx-bg-page: #fcf7f8;
+  --oryx-bg-surface: #ffffff;
+  --oryx-bg-surface-elevated: #ffffff;
+  --oryx-bg-muted: #f6edef;
+  --oryx-bg-subtle: #f1e3e7;
+  --oryx-bg-chat-user: linear-gradient(135deg, #eecfda 0%, #d6abbc 100%);
+  --oryx-bg-chat-ai: #f6edef;
+  --oryx-border: #efdee3;
+  --oryx-border-strong: #ddc2cc;
+  --oryx-fg: #3c2e35;
+  --oryx-fg-muted: #7f6a74;
+  --oryx-fg-on-accent: #ffffff;
+  --oryx-accent-a: #e8c2d1;
+  --oryx-accent-b: #cfa0b3;
+  --oryx-accent-solid: #cf9fb3;
+  --oryx-ring: #cf9fb3;
+  --oryx-success: #4f7b66;
+  --oryx-online: #00c950;
+  --oryx-warning: #b67938;
+  --oryx-destructive: #c44757;
+  --oryx-btn-primary-bg: linear-gradient(135deg, #e8c2d1 0%, #cfa0b3 100%);
+  --oryx-btn-primary-bg-hover: linear-gradient(135deg, #dfb6c7 0%, #c393a8 100%);
+  --oryx-btn-primary-bg-active: linear-gradient(135deg, #d5a8bb 0%, #b7879a 100%);
+  --oryx-btn-primary-fg: #ffffff;
+  --oryx-btn-secondary-bg: transparent;
+  --oryx-btn-secondary-border: #ddc2cc;
+  --oryx-btn-secondary-hover: #f5e8ec;
+  --oryx-input-bg: #f7f0f2;
+  --oryx-input-border: #efdee3;
+  --oryx-table-hover: #f8f0f3;
+  --oryx-badge-neutral-bg: #f1e3e7;
+  --oryx-badge-neutral-fg: #6f5560;
+  --oryx-star-empty: #dec8d1;
+  --oryx-star-filled: #cf9fb3;
+  --oryx-owned-icon: #4f7b66;
+  /* Landing page palette — rose-blush */
+  --landing-hero-bg: linear-gradient(135deg, #fdf5f7 0%, #fbeef3 100%);
+  --landing-accent-gold: #cf9fb3;
+  --landing-accent-rose: #e8c2d1;
+  --landing-gradient-cta: linear-gradient(135deg, #e8c2d1 0%, #cfa0b3 100%);
+  --landing-card-bg: #ffffff;
+  --landing-section-alt: #fdf5f7;
+  --landing-privacy-bg: #1e1419;
+  --landing-privacy-fg: #f8f0f4;
+  --landing-gold-text: #9f6f84;
+  --landing-nav-bg: rgba(252, 247, 248, 0.88);
+  --landing-page-gradient: linear-gradient(
+    180deg,
+    #fdf5f7 0%,
+    #f7e4ed 18%,
+    #fdf5f7 36%,
+    #f8e8ef 54%,
+    #f5dfe9 72%,
+    #fdf5f7 88%,
+    #f6e2eb 100%
+  );
+}
+
+[data-theme='lavender-mist'] {
+  --oryx-bg-page: #f7f7fc;
+  --oryx-bg-surface: #ffffff;
+  --oryx-bg-surface-elevated: #ffffff;
+  --oryx-bg-muted: #eeecf7;
+  --oryx-bg-subtle: #e6e3f2;
+  --oryx-bg-chat-user: linear-gradient(135deg, #d8d4ee 0%, #b7afd9 100%);
+  --oryx-bg-chat-ai: #eeecf7;
+  --oryx-border: #e2deef;
+  --oryx-border-strong: #cbc3e1;
+  --oryx-fg: #2f2f43;
+  --oryx-fg-muted: #70708b;
+  --oryx-fg-on-accent: #ffffff;
+  --oryx-accent-a: #cec9e8;
+  --oryx-accent-b: #aba2d3;
+  --oryx-accent-solid: #aaa0d1;
+  --oryx-ring: #aaa0d1;
+  --oryx-success: #4b7466;
+  --oryx-online: #00c950;
+  --oryx-warning: #a97a3f;
+  --oryx-destructive: #c85166;
+  --oryx-btn-primary-bg: linear-gradient(135deg, #cec9e8 0%, #aba2d3 100%);
+  --oryx-btn-primary-bg-hover: linear-gradient(135deg, #c2bce1 0%, #9f95cb 100%);
+  --oryx-btn-primary-bg-active: linear-gradient(135deg, #b7b0d9 0%, #9389c2 100%);
+  --oryx-btn-primary-fg: #ffffff;
+  --oryx-btn-secondary-bg: transparent;
+  --oryx-btn-secondary-border: #cbc3e1;
+  --oryx-btn-secondary-hover: #efedf8;
+  --oryx-input-bg: #f1eff9;
+  --oryx-input-border: #e2deef;
+  --oryx-table-hover: #f1eff8;
+  --oryx-badge-neutral-bg: #e6e3f2;
+  --oryx-badge-neutral-fg: #585677;
+  --oryx-star-empty: #cec9e2;
+  --oryx-star-filled: #aaa0d1;
+  --oryx-owned-icon: #4b7466;
+  /* Landing page palette — lavender-mist */
+  --landing-hero-bg: linear-gradient(135deg, #f5f4fc 0%, #efedf8 100%);
+  --landing-accent-gold: #aaa0d1;
+  --landing-accent-rose: #d0ccee;
+  --landing-gradient-cta: linear-gradient(135deg, #cec9e8 0%, #aba2d3 100%);
+  --landing-card-bg: #ffffff;
+  --landing-section-alt: #f5f4fc;
+  --landing-privacy-bg: #16152a;
+  --landing-privacy-fg: #f0eef8;
+  --landing-gold-text: #7a72a8;
+  --landing-nav-bg: rgba(247, 247, 252, 0.88);
+  --landing-page-gradient: linear-gradient(
+    180deg,
+    #f5f4fc 0%,
+    #e8e5f8 18%,
+    #f5f4fc 36%,
+    #edeaf8 54%,
+    #e5e1f5 72%,
+    #f5f4fc 88%,
+    #eae7f7 100%
+  );
+}
+
+/* Custom accent override (Settings picker) */
+[data-accent-custom='true'] {
+  --oryx-accent-solid: var(--oryx-custom-accent, var(--oryx-accent-solid));
+  --oryx-ring: var(--oryx-custom-accent, var(--oryx-ring));
+  --oryx-star-filled: var(--oryx-custom-accent, var(--oryx-star-filled));
+}
+
+@theme inline {
+  --color-background: var(--oryx-bg-page);
+  --color-surface: var(--oryx-bg-surface);
+  --color-surface-elevated: var(--oryx-bg-surface-elevated);
+  --color-muted: var(--oryx-bg-muted);
+  --color-subtle: var(--oryx-bg-subtle);
+  --color-border: var(--oryx-border);
+  --color-border-strong: var(--oryx-border-strong);
+  --color-foreground: var(--oryx-fg);
+  --color-foreground-muted: var(--oryx-fg-muted);
+  --color-on-accent: var(--oryx-fg-on-accent);
+  --color-accent: var(--oryx-accent-solid);
+  --color-ring: var(--oryx-ring);
+  --color-success: var(--oryx-success);
+  --color-warning: var(--oryx-warning);
+  --color-destructive: var(--oryx-destructive);
+  --font-sans: var(--font-body);
+  --font-heading-token: var(--font-heading);
+  --radius-sm: var(--oryx-radius-sm);
+  --radius-md: var(--oryx-radius-md);
+  --radius-lg: var(--oryx-radius-lg);
+  --radius-xl: var(--oryx-radius-xl);
+  --shadow-card: var(--oryx-shadow-md);
+  --shadow-card-hover: var(--oryx-shadow-lg);
+}
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    border-color: var(--oryx-border);
+  }
+
+  body {
+    background-color: var(--oryx-bg-page);
+    color: var(--oryx-fg);
+    font-family: var(--font-body);
+    font-feature-settings:
+      'rlig' 1,
+      'calt' 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--oryx-ring);
+    outline-offset: 2px;
+  }
+
+  svg[stroke='currentColor'] {
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+  }
+
+  a,
+  button,
+  [role='button'],
+  input,
+  textarea,
+  select {
+    transition:
+      color var(--oryx-motion-fast) var(--oryx-ease-out),
+      background-color var(--oryx-motion-fast) var(--oryx-ease-out),
+      border-color var(--oryx-motion-fast) var(--oryx-ease-out),
+      box-shadow var(--oryx-motion-normal) var(--oryx-ease-out),
+      transform var(--oryx-motion-fast) var(--oryx-ease-out),
+      opacity var(--oryx-motion-fast) var(--oryx-ease-out);
+  }
+
+  /**
+   * Named transition target for route changes (`onNavigate` + `startViewTransition` in +layout.svelte).
+   * Header stays outside this subtree so it does not cross-fade.
+   */
+  .oryx-view-transition-main {
+    view-transition-name: oryx-main;
+  }
+}
+
+/* View Transitions API — timing aligned with app motion tokens */
+
+/* Landing nav is fixed and only present on the home page — skip animation */
+::view-transition-old(landing-nav),
+::view-transition-new(landing-nav) {
+  animation: none;
+}
+
+::view-transition-group(oryx-main) {
+  animation-duration: var(--oryx-motion-slow);
+  animation-timing-function: var(--oryx-ease-out);
+}
+
+::view-transition-old(oryx-main),
+::view-transition-new(oryx-main) {
+  animation-duration: var(--oryx-motion-slow);
+  animation-timing-function: var(--oryx-ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+@layer utilities {
+  .oryx-heading {
+    font-family: var(--font-heading);
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .oryx-transition {
+    transition-duration: var(--oryx-motion-fast);
+    transition-property: color, background-color, border-color, box-shadow, opacity, transform, filter;
+    transition-timing-function: var(--oryx-ease-out);
+  }
+
+  .oryx-transition-slow {
+    transition-duration: var(--oryx-motion-normal);
+    transition-property: color, background-color, border-color, box-shadow, opacity, transform, filter;
+    transition-timing-function: var(--oryx-ease-out);
+  }
+
+  .oryx-card-hover:hover {
+    box-shadow: var(--oryx-shadow-md);
+  }
+
+  /* Tab panels: enter when becoming active */
+  .oryx-tab-panel[data-state='active'] {
+    animation: oryx-tab-panel-in var(--oryx-motion-normal) var(--oryx-ease-out) both;
+  }
+
+  @keyframes oryx-tab-panel-in {
+    from {
+      opacity: 0;
+      transform: translateY(0.375rem);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Dialog overlay + surface (used with data-state + child snippet) */
+  .oryx-dialog-overlay {
+    transition:
+      opacity var(--oryx-motion-normal) var(--oryx-ease-out),
+      backdrop-filter var(--oryx-motion-normal) var(--oryx-ease-out);
+    opacity: 0;
+  }
+
+  .oryx-dialog-overlay[data-state='open'] {
+    opacity: 1;
+  }
+
+  @starting-style {
+    .oryx-dialog-overlay[data-state='open'] {
+      opacity: 0;
+    }
+  }
+
+  .oryx-dialog-surface {
+    transition:
+      opacity var(--oryx-motion-normal) var(--oryx-ease-out),
+      transform var(--oryx-motion-normal) var(--oryx-ease-out);
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.97) translateY(0.375rem);
+  }
+
+  .oryx-dialog-surface[data-state='open'] {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1) translateY(0);
+  }
+
+  @starting-style {
+    .oryx-dialog-surface[data-state='open'] {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.97) translateY(0.375rem);
+    }
+  }
+
+  .oryx-dropdown-content {
+    transform-origin: var(--oryx-dropdown-origin, top right);
+    animation: oryx-dropdown-in var(--oryx-motion-normal) var(--oryx-ease-out) both;
+  }
+
+  @keyframes oryx-dropdown-in {
+    from {
+      opacity: 0;
+      transform: scale(0.96) translateY(-0.25rem);
+    }
+
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --oryx-motion-fast: 0.01ms;
+    --oryx-motion-normal: 0.01ms;
+    --oryx-motion-slow: 0.01ms;
+    --oryx-motion-theme: 0.01ms;
+  }
+
+  .oryx-transition,
+  .oryx-transition-slow {
+    transition-duration: 0.01ms !important;
+  }
+
+  .oryx-tab-panel[data-state='active'],
+  .oryx-dropdown-content {
+    animation: none !important;
+  }
+
+  .oryx-dialog-overlay,
+  .oryx-dialog-surface {
+    transition-duration: 0.01ms !important;
+  }
+
+  @starting-style {
+    .oryx-dialog-overlay[data-state='open'],
+    .oryx-dialog-surface[data-state='open'] {
+      opacity: 1 !important;
+      transform: translate(-50%, -50%) scale(1) translateY(0) !important;
+    }
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Landing page animations                                                    */
+/* -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes landing-float {
+    0%,
+    100% {
+      transform: translateY(0px);
+    }
+
+    50% {
+      transform: translateY(-12px);
+    }
+  }
+
+  @keyframes landing-fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(24px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .landing-float {
+    animation: landing-float 4s ease-in-out infinite;
+  }
+
+  .landing-fade-in-up {
+    animation: landing-fade-in-up 0.6s var(--oryx-ease-out) both;
+  }
+
+  .landing-fade-in-up-delay-1 {
+    animation: landing-fade-in-up 0.6s 0.1s var(--oryx-ease-out) both;
+  }
+
+  .landing-fade-in-up-delay-2 {
+    animation: landing-fade-in-up 0.6s 0.2s var(--oryx-ease-out) both;
+  }
+
+  .landing-fade-in-up-delay-3 {
+    animation: landing-fade-in-up 0.6s 0.3s var(--oryx-ease-out) both;
+  }
+}
+
+.landing-card-hover {
+  transition:
+    transform var(--oryx-motion-fast) var(--oryx-ease-out),
+    box-shadow var(--oryx-motion-normal) var(--oryx-ease-out);
+}
+
+.landing-card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--oryx-shadow-lg);
+}
+
+/* Scroll-reveal: hidden until IntersectionObserver adds .is-visible */
+.landing-reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity 0.6s var(--oryx-ease-out),
+    transform 0.6s var(--oryx-ease-out);
+}
+
+.landing-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-reveal,
+  .landing-reveal.is-visible {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+
+  .landing-float {
+    animation: none !important;
+  }
+}
+
+@layer components {
+  .oryx-btn-primary {
+    background: var(--oryx-btn-primary-bg);
+    color: var(--oryx-btn-primary-fg);
+  }
+
+  .oryx-btn-primary:hover:not(:disabled) {
+    background: var(--oryx-btn-primary-bg-hover);
+  }
+
+  .oryx-btn-primary:active:not(:disabled) {
+    background: var(--oryx-btn-primary-bg-active);
+  }
+
+  .oryx-btn-secondary {
+    border-width: 1px;
+    background: var(--oryx-btn-secondary-bg);
+    border-color: var(--oryx-btn-secondary-border);
+    color: var(--oryx-fg);
+  }
+
+  .oryx-btn-secondary:hover:not(:disabled) {
+    background: var(--oryx-btn-secondary-hover);
+  }
+
+  .oryx-input {
+    width: 100%;
+    border-radius: var(--oryx-radius-md);
+    border-width: 1px;
+    background-color: var(--oryx-input-bg);
+    border-color: var(--oryx-input-border);
+    color: var(--oryx-fg);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    transition:
+      border-color var(--oryx-motion-fast) ease,
+      box-shadow var(--oryx-motion-fast) ease;
+  }
+
+  .oryx-input::placeholder {
+    color: var(--oryx-fg-muted);
+  }
+
+  .oryx-input:focus-visible {
+    border-color: var(--oryx-ring);
+    outline: none;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--oryx-ring) 35%, transparent);
+  }
+
+  .oryx-input:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}

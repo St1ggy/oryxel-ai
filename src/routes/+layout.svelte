@@ -1,0 +1,76 @@
+<script lang="ts">
+  import { browser } from '$app/environment'
+  import { onNavigate } from '$app/navigation'
+  import { page } from '$app/state'
+  import favicon from '$lib/assets/favicon.svg'
+  import SecondaryHeader from '$lib/components/app/secondary-header.svelte'
+  import ThemeRoot from '$lib/components/app/theme-root.svelte'
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  import { localeStore } from '$lib/locale.svelte'
+  import * as m from '$lib/paraglide/messages.js'
+  import { deLocalizeHref, getLocale, locales, localizeHref } from '$lib/paraglide/runtime'
+
+  import './layout.css'
+
+  const { children } = $props()
+
+  const path = $derived(deLocalizeHref(page.url.pathname))
+  const isDiary = $derived(path === '/diary')
+  const showSecondaryHeader = $derived(!isDiary && path !== '/')
+
+  const secondaryTitle = $derived.by((): string => {
+    if (path.startsWith('/login')) return m.oryxel_login_title_signin()
+
+    if (path.startsWith('/settings')) return m.oryxel_settings_title()
+
+    if (path.startsWith('/profile/edit')) return m.oryxel_edit_title()
+
+    if (path.startsWith('/profile')) return m.oryxel_nav_profile()
+
+    return ''
+  })
+  const secondaryBackHref = $derived(path.startsWith('/login') ? '/' : '/diary')
+
+  onNavigate((navigation) => {
+    if (!browser) {
+      return
+    }
+
+    if (typeof document === 'undefined' || !document.startViewTransition) {
+      return
+    }
+
+    if (globalThis.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      return
+    }
+
+    return new Promise<void>((resolve) => {
+      document.startViewTransition(async () => {
+        resolve()
+        await navigation.complete
+      })
+    })
+  })
+</script>
+
+<svelte:head>
+  <link rel="icon" href={favicon} />
+  {#each locales as locale (locale)}
+    <link rel="alternate" hrefLang={locale} href={localizeHref(page.url.pathname + page.url.search, { locale })} />
+  {/each}
+</svelte:head>
+
+<ThemeRoot>
+  <div
+    class={isDiary
+      ? 'flex h-dvh flex-col overflow-hidden bg-background text-foreground'
+      : 'flex min-h-svh flex-col bg-background text-foreground'}
+  >
+    {#if showSecondaryHeader}
+      <SecondaryHeader title={secondaryTitle} backHref={secondaryBackHref} />
+    {/if}
+    <main class="oryx-view-transition-main flex min-h-0 flex-1 flex-col overflow-hidden">
+      {@render children()}
+    </main>
+  </div>
+</ThemeRoot>
