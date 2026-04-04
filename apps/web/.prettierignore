@@ -10,4 +10,5 @@ bun.lockb
 /drizzle/
 
 # Generated
+.svelte-kit/
 src/lib/paraglide/

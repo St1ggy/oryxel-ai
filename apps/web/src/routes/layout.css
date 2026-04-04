@@ -23,7 +23,7 @@
   --oryx-motion-theme: 340ms;
   --oryx-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --oryx-ease-in-out: cubic-bezier(0.45, 0, 0.55, 1);
-  --oryx-shadow-sm: 0px 1px 3px 0px rgba(0, 0, 0, 0.1), 0px 1px 2px 0px rgba(0, 0, 0, 0.1);
+  --oryx-shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.1);
   --oryx-shadow-md: 0 4px 12px rgb(0 0 0 / 0.08);
   --oryx-shadow-lg: 0 12px 40px rgb(0 0 0 / 0.12);
 }
@@ -397,6 +397,7 @@ html {
     outline-offset: 2px;
   }
 
+  /* stylelint-disable-next-line selector-no-qualifying-type */
   svg[stroke='currentColor'] {
     stroke-width: 1.7;
     stroke-linecap: round;
@@ -598,7 +599,7 @@ html {
   @keyframes landing-float {
     0%,
     100% {
-      transform: translateY(0px);
+      transform: translateY(0);
     }
 
     50% {

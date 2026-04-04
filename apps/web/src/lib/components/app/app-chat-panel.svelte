@@ -124,7 +124,10 @@
     <div
       class="shrink-0 space-y-2 border-t border-border bg-[color-mix(in_srgb,var(--oryx-bg-page)_58%,transparent)] px-4 pt-3 pb-3 backdrop-blur-sm"
     >
-      <div class="scrollbar-hide flex gap-2 overflow-x-auto">
+      <div
+        class="scrollbar-hide flex gap-2 overflow-x-auto"
+        style="mask-image: linear-gradient(to right, transparent 0, black 12px, black calc(100% - 28px), transparent 100%)"
+      >
         {#each displayChips as chip, index (chip)}
           <div in:fade={{ duration: 200, delay: index * 40 }} out:fade={{ duration: 150 }}>
             <Chip
