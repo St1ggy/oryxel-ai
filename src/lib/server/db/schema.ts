@@ -183,6 +183,20 @@ export const aiPatchAuditLogRelations = relations(aiPatchAuditLog, ({ one }) => 
   }),
 }))
 
+export const backgroundJob = pgTable('background_job', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  /** 'profile_sync' | 'agent_chat' */
+  type: text('type').notNull(),
+  /** 'pending' | 'processing' | 'done' | 'failed' */
+  status: text('status').notNull().default('pending'),
+  progress: jsonb('progress').$type<{ step: number; total: number; phase: string }[]>().default([]),
+  result: jsonb('result').$type<Record<string, unknown>>(),
+  errorMessage: text('error_message'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+})
+
 // Generic translation cache (content-addressable).
 // key    = canonical English text stored in the fragrance / profile tables
 // locale = target locale code (es, fr, jp, ru, zh)

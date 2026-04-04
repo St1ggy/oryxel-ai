@@ -1,8 +1,9 @@
-import { error } from '@sveltejs/kit'
+import { error, json } from '@sveltejs/kit'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { applyPatchToDatabase } from '$lib/server/ai/apply'
+import { completeJob, createJob, failJob, pushJobProgress } from '$lib/server/ai/jobs'
 import { getUserDefaultProvider } from '$lib/server/ai/keys/service'
 import { analyzePreferences } from '$lib/server/ai/router'
 import { db } from '$lib/server/db'
@@ -23,7 +24,6 @@ const BATCH_SIZE = 10
 
 type DiaryEntry = { id: number; brand: string; fragrance: string }
 type SyncPhase = 'owned' | 'liked' | 'neutral' | 'disliked' | 'profile' | 'recommendations' | 'to_try'
-type SyncEvent = { step: number; total: number; phase: SyncPhase } | { done: true }
 
 type StepContext = {
   userId: string
@@ -32,6 +32,7 @@ type StepContext = {
   provider: AnalyzePreferencesRequest['preferredProvider']
   minRecommendations: number | undefined
   maxRecommendations: number | undefined
+  maxPyramidNotes: number | undefined
   profileContext: NonNullable<AnalyzePreferencesRequest['context']>['profile']
   likedEntries: DiaryEntry[]
   neutralEntries: DiaryEntry[]
@@ -53,17 +54,17 @@ function chunk<T>(array: T[], size: number): T[][] {
 }
 
 async function fillListBatches(
+  jobId: number,
   context: StepContext,
   entries: DiaryEntry[],
   phase: Exclude<SyncPhase, 'profile' | 'recommendations' | 'to_try'>,
   startStep: number,
   total: number,
-  send: (event: SyncEvent) => void,
 ): Promise<void> {
   const batches = chunk(entries, BATCH_SIZE)
 
   for (const [index, batch] of batches.entries()) {
-    send({ step: startStep + index, total, phase })
+    await pushJobProgress(jobId, { step: startStep + index, total, phase })
 
     try {
       const batchRouter = await analyzePreferences({
@@ -72,6 +73,7 @@ async function fillListBatches(
         locale: context.locale,
         scenario: 'command',
         preferredProvider: context.provider,
+        maxPyramidNotes: context.maxPyramidNotes,
         context: {
           profile: context.profileContext,
           diary: {
@@ -176,6 +178,7 @@ async function runToTryFillStep(context: StepContext): Promise<void> {
           locale: context.locale,
           scenario: 'command',
           preferredProvider: context.provider,
+          maxPyramidNotes: context.maxPyramidNotes,
           context: {
             profile: context.profileContext,
             diary: {
@@ -201,6 +204,64 @@ async function runToTryFillStep(context: StepContext): Promise<void> {
   }
 }
 
+async function runSync(jobId: number, context: StepContext, total: number, hasPreferences: boolean): Promise<void> {
+  try {
+    let step = 1
+
+    const ownedBatches = chunk(context.ownedEntries, BATCH_SIZE).length
+    const likedBatches = chunk(context.likedEntries, BATCH_SIZE).length
+    const neutralBatches = chunk(context.neutralEntries, BATCH_SIZE).length
+    const dislikedBatches = chunk(context.dislikedEntries, BATCH_SIZE).length
+
+    if (context.ownedEntries.length > 0) {
+      await fillListBatches(jobId, context, context.ownedEntries, 'owned', step, total)
+      step += ownedBatches
+    }
+
+    if (context.likedEntries.length > 0) {
+      await fillListBatches(jobId, context, context.likedEntries, 'liked', step, total)
+      step += likedBatches
+    }
+
+    if (context.neutralEntries.length > 0) {
+      await fillListBatches(jobId, context, context.neutralEntries, 'neutral', step, total)
+      step += neutralBatches
+    }
+
+    if (context.dislikedEntries.length > 0) {
+      await fillListBatches(jobId, context, context.dislikedEntries, 'disliked', step, total)
+      step += dislikedBatches
+    }
+
+    await pushJobProgress(jobId, { step, total, phase: 'profile' })
+    await runProfileStep(context)
+    step++
+
+    if (hasPreferences) {
+      await pushJobProgress(jobId, { step, total, phase: 'recommendations' })
+      await runRecommendationsStep(context)
+      step++
+
+      await pushJobProgress(jobId, { step, total, phase: 'to_try' })
+      await runToTryFillStep(context)
+    }
+
+    await generateMissingTranslations(context.userId, context.locale)
+
+    void recordActivity({
+      userId: context.userId,
+      action: 'profile_synced',
+      actor: 'agent',
+      provider: context.provider,
+      summary: `Profile synced (${context.ownedEntries.length + context.likedEntries.length + context.neutralEntries.length + context.dislikedEntries.length} entries)`,
+    })
+
+    await completeJob(jobId, { triggerSync: true })
+  } catch (error_) {
+    await failJob(jobId, error_ instanceof Error ? error_.message : 'Unknown error')
+  }
+}
+
 export const POST: RequestHandler = async ({ request, locals }) => {
   if (!locals.user) {
     throw error(401, 'AUTH_REQUIRED')
@@ -208,18 +269,20 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
   const body = bodySchema.parse(await request.json())
   const locale = body.locale ?? 'en'
+  const userId = locals.user.id
 
   const [profile, diary, defaultProvider, aiPrefs] = await Promise.all([
-    loadProfileForUser(locals.user.id, locals.user.name || 'User', locale),
-    loadDiaryForUser(locals.user.id, locale),
-    getUserDefaultProvider(locals.user.id),
+    loadProfileForUser(userId, locals.user.name || 'User', locale),
+    loadDiaryForUser(userId, locale),
+    getUserDefaultProvider(userId),
     db
       .select({
         minRecommendations: userAiPreferences.minRecommendations,
         maxRecommendations: userAiPreferences.maxRecommendations,
+        maxPyramidNotes: userAiPreferences.maxPyramidNotes,
       })
       .from(userAiPreferences)
-      .where(eq(userAiPreferences.userId, locals.user.id))
+      .where(eq(userAiPreferences.userId, userId))
       .limit(1)
       .then((rows) => rows[0]),
   ])
@@ -228,15 +291,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     diary.owned.length + diary.liked.length + diary.neutral.length + diary.disliked.length + diary.to_try.length
 
   if (totalEntries === 0) {
-    const encoder = new TextEncoder()
-    const stream = new ReadableStream<Uint8Array>({
-      start(controller) {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`))
-        controller.close()
-      },
-    })
+    const jobId = await createJob(userId, 'profile_sync')
 
-    return new Response(stream, { headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' } })
+    await completeJob(jobId, { triggerSync: false })
+
+    return json({ jobId })
   }
 
   const ownedEntries = diary.owned.map(({ id, brand, fragrance }) => ({ id, brand, fragrance }))
@@ -250,17 +309,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   const dislikedBatches = chunk(dislikedEntries, BATCH_SIZE).length
 
   const hasPreferences = ownedEntries.length + likedEntries.length + neutralEntries.length + dislikedEntries.length > 0
-
-  // Total steps: one per batch per list + profile step + recommendations + to_try fill
   const total = ownedBatches + likedBatches + neutralBatches + dislikedBatches + 1 + (hasPreferences ? 2 : 0)
 
-  const context: StepContext = {
-    userId: locals.user.id,
+  const syncContext: StepContext = {
+    userId,
     userName: locals.user.name || 'User',
     locale,
     provider: defaultProvider ?? undefined,
     minRecommendations: aiPrefs?.minRecommendations,
     maxRecommendations: aiPrefs?.maxRecommendations,
+    maxPyramidNotes: aiPrefs?.maxPyramidNotes,
     profileContext: {
       archetype: profile.archetype ?? undefined,
       favoriteNote: profile.favoriteNote ?? undefined,
@@ -278,69 +336,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     ownedEntries,
   }
 
-  const encoder = new TextEncoder()
+  const jobId = await createJob(userId, 'profile_sync')
 
-  const stream = new ReadableStream<Uint8Array>({
-    async start(controller) {
-      const send = (event: SyncEvent) => {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
-      }
+  // Fire-and-forget: Vercel serverless keeps the event loop alive after response
+  void runSync(jobId, syncContext, total, hasPreferences)
 
-      let step = 1
-
-      if (ownedEntries.length > 0) {
-        await fillListBatches(context, ownedEntries, 'owned', step, total, send)
-        step += ownedBatches
-      }
-
-      if (likedEntries.length > 0) {
-        await fillListBatches(context, likedEntries, 'liked', step, total, send)
-        step += likedBatches
-      }
-
-      if (neutralEntries.length > 0) {
-        await fillListBatches(context, neutralEntries, 'neutral', step, total, send)
-        step += neutralBatches
-      }
-
-      if (dislikedEntries.length > 0) {
-        await fillListBatches(context, dislikedEntries, 'disliked', step, total, send)
-        step += dislikedBatches
-      }
-
-      send({ step, total, phase: 'profile' })
-      await runProfileStep(context)
-      step++
-
-      if (hasPreferences) {
-        send({ step, total, phase: 'recommendations' })
-        await runRecommendationsStep(context)
-        step++
-
-        send({ step, total, phase: 'to_try' })
-        await runToTryFillStep(context)
-      }
-
-      await generateMissingTranslations(locals.user!.id, locale)
-
-      void recordActivity({
-        userId: locals.user!.id,
-        action: 'profile_synced',
-        actor: 'agent',
-        provider: defaultProvider ?? undefined,
-        summary: `Profile synced (${totalEntries} entries)`,
-      })
-
-      send({ done: true })
-      controller.close()
-    },
-  })
-
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
-    },
-  })
+  return json({ jobId })
 }
