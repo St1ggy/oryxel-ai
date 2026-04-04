@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { PanelLeftOpen, PanelRightOpen } from '@lucide/svelte'
   import { untrack } from 'svelte'
   import { fade } from 'svelte/transition'
 
@@ -10,14 +11,12 @@
   import DiaryProfileTab from '$lib/components/app/diary-profile-tab.svelte'
   import FragranceDetailModal from '$lib/components/app/fragrance-detail-modal.svelte'
   import MobilePrimaryNav from '$lib/components/app/mobile-primary-nav.svelte'
-  import ChevronPanelLeftIcon from '$lib/components/icons/ChevronPanelLeftIcon.svelte'
-  import ChevronPanelRightIcon from '$lib/components/icons/ChevronPanelRightIcon.svelte'
   import Button from '$lib/components/ui/button.svelte'
   import * as m from '$lib/paraglide/messages.js'
   import { cn } from '$lib/utils/cn'
 
   import type { DiaryListTabValue } from '$lib/diary/diary-tab-items'
-  import type { ChatMessage, DiaryMobileTab, DiaryRow, FragranceListType } from '$lib/types/diary'
+  import type { ChatMessage, DiaryData, DiaryMobileTab, DiaryRow, FragranceListType } from '$lib/types/diary'
   import type { PageData } from './$types'
 
   import { goto, invalidateAll } from '$app/navigation'
@@ -42,15 +41,38 @@
   /** Local rating edits keyed by fragranceId; reset when fresh server data arrives. */
   let ratingOverrides = $state<Record<number, number>>({})
 
-  let lastDiaryRef: PageData['diary'] | null = null
+  // ── Streamed data bridges ─────────────────────────────────────────────────
+  // diary / profile / recentActivity arrive as Promises from the server load.
+  // We resolve them here so the shell renders immediately with skeletons.
+  const EMPTY_DIARY: DiaryData = { to_try: [], liked: [], neutral: [], disliked: [], owned: [] }
+
+  let resolvedDiary = $state<DiaryData>(EMPTY_DIARY)
+  let resolvedProfile = $state<Awaited<PageData['profile']> | null>(null)
+  let resolvedRecentActivity = $state<Awaited<PageData['recentActivity']>>([])
+  let diaryLoading = $state(true)
+
+  let _diarySeq = 0
 
   $effect(() => {
-    const diary = data.diary
+    const seq = ++_diarySeq
 
-    if (diary !== lastDiaryRef) {
-      lastDiaryRef = diary
+    diaryLoading = true
+
+    void Promise.resolve(data.diary).then((d) => {
+      if (_diarySeq !== seq) return
+
+      resolvedDiary = d
+      diaryLoading = false
       ratingOverrides = {}
-    }
+    })
+
+    void Promise.resolve(data.profile).then((p) => {
+      resolvedProfile = p
+    })
+
+    void Promise.resolve(data.recentActivity).then((ra) => {
+      resolvedRecentActivity = ra
+    })
   })
 
   function rowsWithOverrides(rows: DiaryRow[]): DiaryRow[] {
@@ -60,14 +82,14 @@
   }
 
   const diaryState = $derived({
-    to_try: rowsWithOverrides(data.diary.to_try),
-    liked: rowsWithOverrides(data.diary.liked),
-    neutral: rowsWithOverrides(data.diary.neutral),
-    disliked: rowsWithOverrides(data.diary.disliked),
-    owned: rowsWithOverrides(data.diary.owned),
+    to_try: rowsWithOverrides(resolvedDiary.to_try),
+    liked: rowsWithOverrides(resolvedDiary.liked),
+    neutral: rowsWithOverrides(resolvedDiary.neutral),
+    disliked: rowsWithOverrides(resolvedDiary.disliked),
+    owned: rowsWithOverrides(resolvedDiary.owned),
   })
   const profileData = $derived(
-    data.profile ?? {
+    resolvedProfile ?? {
       displayName: m.oryxel_profile_default_user(),
       totalCount: 0,
       favoriteNote: null,
@@ -433,21 +455,22 @@
       <DiaryListTabs
         bind:listTab
         {diaryState}
+        loading={diaryLoading}
         {onRatingChange}
         onOpenDetail={openDetail}
         onProfileSync={triggerProfileSync}
         profile={profileData}
-        recentActivity={data.recentActivity}
-        noteRelationships={data.profile?.noteRelationships}
+        recentActivity={resolvedRecentActivity}
+        noteRelationships={resolvedProfile?.noteRelationships}
         layout="desktop"
         contentWidthClass={desktopContentWidthClass}
       >
         {#snippet headerStart()}
           <Button variant="ghost" size="sm" class="shrink-0 p-2" onclick={() => (chatOpen = !chatOpen)}>
             {#if chatOpen}
-              <ChevronPanelRightIcon class="size-5" />
+              <PanelRightOpen class="size-5" />
             {:else}
-              <ChevronPanelLeftIcon class="size-5" />
+              <PanelLeftOpen class="size-5" />
             {/if}
             <span class="sr-only">{chatOpen ? m.oryxel_chat_hide() : m.oryxel_chat_show()}</span>
           </Button>
@@ -485,7 +508,7 @@
             variant="mobile"
             profile={profileData}
             onProfileSync={triggerProfileSync}
-            recentActivity={data.recentActivity}
+            recentActivity={resolvedRecentActivity}
           />
         </div>
       {:else}
@@ -493,6 +516,7 @@
           <DiaryListTabs
             bind:listTab
             {diaryState}
+            loading={diaryLoading}
             {onRatingChange}
             onOpenDetail={openDetail}
             onProfileSync={triggerProfileSync}

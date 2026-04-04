@@ -50,18 +50,18 @@ export const load: PageServerLoad = async ({ locals, url, cookies }) => {
   const userId = locals.user.id
   const locale = cookies.get(cookieName) ?? 'en'
 
-  // Auto-apply patches confirmed by user but not yet applied
+  // Auto-apply patches confirmed by user but not yet applied (must finish before diary loads)
   await applyConfirmedPatches(userId)
 
-  const [diary, profile, pendingPatches, recentActivity, activeJobs] = await Promise.all([
-    loadDiaryForUser(userId, locale),
-    loadProfileForUser(userId, locals.user.name || 'User', locale),
-    getLatestPendingPatches(userId, 3),
-    loadRecentActivity(userId, 30),
-    getActiveJobsForUser(userId),
-  ])
+  // Slow queries — returned as un-awaited Promises so SvelteKit streams them to the client
+  const diary = loadDiaryForUser(userId, locale)
+  const profile = loadProfileForUser(userId, locals.user.name || 'User', locale)
+  const recentActivity = loadRecentActivity(userId, 30)
 
-  const [configuredProviders, providerRows, defaultProvider] = await Promise.all([
+  // Fast queries — resolved before the shell renders
+  const [pendingPatches, activeJobs, configuredProviders, providerRows, defaultProvider] = await Promise.all([
+    getLatestPendingPatches(userId, 3),
+    getActiveJobsForUser(userId),
     listConfiguredProviders(userId),
     listUserProviderKeys(userId),
     getUserDefaultProvider(userId),
