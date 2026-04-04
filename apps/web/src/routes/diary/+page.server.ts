@@ -76,8 +76,8 @@ export const load: PageServerLoad = async ({ locals, url, cookies }) => {
   }))
   const hasChatAccess = await hasEffectiveProviderAccess(userId)
   const latestChatRows = await listLatestChatMessages(userId, 40)
-  const chatHistory = latestChatRows
-    .toReversed()
+  const chatHistory = [...latestChatRows]
+    .reverse()
     .map((row) => ({ id: `db-${row.id}`, role: row.role as 'user' | 'assistant', content: row.content }))
 
   const rawTab = url.searchParams.get('tab') ?? ''

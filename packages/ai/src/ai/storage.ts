@@ -160,7 +160,7 @@ export async function loadRecentChatMessages(userId: string, limit = 6) {
     .orderBy(desc(userChatMessage.createdAt))
     .limit(limit)
 
-  return rows.toReversed().map((row) => {
+  return [...rows].reverse().map((row) => {
     const content = decryptContent(row)
 
     return {
