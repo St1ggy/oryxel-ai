@@ -23,9 +23,9 @@
   "oryxel_chat_show": "显示聊天",
   "oryxel_chat_thinking": "{model} 正在回复…",
   "oryxel_chat_preparing": "正在准备回答…",
-  "oryxel_chip_analog": "Baccarat Rouge 平替",
-  "oryxel_chip_summer": "夏日清新",
-  "oryxel_chip_evening": "清爽柑橘",
+  "oryxel_chip_analog": "推荐Baccarat Rouge的平替",
+  "oryxel_chip_summer": "找一款清新的夏日香水",
+  "oryxel_chip_evening": "推荐一款温暖的晚间香",
   "oryxel_table_brand": "品牌",
   "oryxel_table_fragrance": "香水",
   "oryxel_table_notes": "香调",
@@ -277,5 +277,6 @@
   "oryxel_meta_night": "夜晚",
   "oryxel_meta_female": "女士",
   "oryxel_meta_male": "男士",
-  "oryxel_meta_unisex": "中性"
+  "oryxel_meta_unisex": "中性",
+  "oryxel_patch_applying": "正在应用更改…"
 }

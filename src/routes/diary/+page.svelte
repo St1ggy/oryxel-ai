@@ -124,7 +124,10 @@
     phase: 'owned' | 'liked' | 'disliked' | 'profile' | 'recommendations' | 'to_try'
   } | null
 
+  type PatchProgress = { step: number; total: number } | null
+
   let syncProgress = $state<SyncProgress>(null)
+  let patchProgress = $state<PatchProgress>(null)
   let thinking = $state(false)
   const hasChatAccess = $derived(data.hasChatAccess)
   const providerOptions = $derived(data.chatProviders ?? [])
@@ -192,57 +195,78 @@
     }
   }
 
-  function onSend(text: string) {
-    const userMessage: ChatMessage = { id: crypto.randomUUID(), role: 'user', content: text }
+  async function* parsePatchStream(response: Response): AsyncGenerator<Record<string, unknown>> {
+    const reader = response.body!.getReader()
+    const decoder = new TextDecoder()
 
-    messages = [...messages, userMessage]
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+
+        if (done) break
+
+        for (const line of decoder.decode(value, { stream: true }).split('\n')) {
+          if (!line.startsWith('data: ')) continue
+
+          try {
+            yield JSON.parse(line.slice(6)) as Record<string, unknown>
+          } catch {
+            // ignore malformed line
+          }
+        }
+      }
+    } finally {
+      reader.cancel()
+    }
+  }
+
+  async function onSend(text: string) {
+    messages = [...messages, { id: crypto.randomUUID(), role: 'user', content: text }]
     thinking = true
 
-    void fetch('/api/agent/preferences', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ message: text, locale: data.locale, provider: selectedProvider || undefined }),
-    })
-      .then(async (response) => {
-        if (!response.ok) {
-          throw new Error(`Request failed with ${response.status}`)
+    let autoSync = false
+
+    try {
+      const response = await fetch('/api/agent/preferences/stream', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ message: text, locale: data.locale, provider: selectedProvider || undefined }),
+      })
+
+      if (!response.body) throw new Error('No stream body')
+
+      for await (const event of parsePatchStream(response)) {
+        if (event.phase === 'applying') {
+          thinking = false
+          patchProgress = { step: event.step as number, total: event.total as number }
+        } else if (event.done) {
+          patchProgress = null
+          thinking = false
+          autoSync = event.triggerSync === true
+
+          const summary = (event.summary as string | null) ?? ''
+          const responseText =
+            (event.reply as string | undefined) ??
+            (event.requiresConfirmation
+              ? m.oryxel_chat_critical_pending({ summary })
+              : m.oryxel_chat_patch_applied({ summary }))
+
+          messages = [...messages, { id: crypto.randomUUID(), role: 'assistant', content: responseText }]
+        } else if (event.error) {
+          throw new Error('Stream error')
         }
+      }
+    } catch {
+      messages = [...messages, { id: crypto.randomUUID(), role: 'assistant', content: m.oryxel_chat_error_generic() }]
+    } finally {
+      thinking = false
+      patchProgress = null
+      void invalidateAll()
 
-        const payload = (await response.json()) as {
-          requiresConfirmation: boolean
-          summary: string
-          reply?: string
-        }
-
-        const responseText =
-          payload.reply ??
-          (payload.requiresConfirmation
-            ? m.oryxel_chat_critical_pending({ summary: payload.summary })
-            : m.oryxel_chat_patch_applied({ summary: payload.summary }))
-
-        messages = [
-          ...messages,
-          {
-            id: crypto.randomUUID(),
-            role: 'assistant',
-            content: responseText,
-          },
-        ]
-      })
-      .catch(() => {
-        messages = [
-          ...messages,
-          {
-            id: crypto.randomUUID(),
-            role: 'assistant',
-            content: m.oryxel_chat_error_generic(),
-          },
-        ]
-      })
-      .finally(() => {
-        thinking = false
-        void invalidateAll()
-      })
+      if (autoSync) {
+        void triggerProfileSync()
+      }
+    }
   }
 
   async function onRatingChange(id: number, fragranceId: number, rating: number) {
@@ -398,4 +422,4 @@
   onEdit={detailContext === 'diary' ? onEdit : undefined}
   onTried={detailContext === 'to_try' ? onTriedRecommendation : undefined}
 />
-<AiStatusFloat {thinking} patches={pendingItems} {syncProgress} />
+<AiStatusFloat {thinking} patches={pendingItems} {syncProgress} {patchProgress} />

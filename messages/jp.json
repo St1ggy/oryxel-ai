@@ -23,9 +23,9 @@
   "oryxel_chat_show": "チャットを表示",
   "oryxel_chat_thinking": "{model} が回答中…",
   "oryxel_chat_preparing": "返答を準備中…",
-  "oryxel_chip_analog": "Baccarat Rougeの類似",
-  "oryxel_chip_summer": "夏向けの香り",
-  "oryxel_chip_evening": "爽やかなシトラス",
+  "oryxel_chip_analog": "Baccarat Rougeに似た香水を探して",
+  "oryxel_chip_summer": "夏に合う爽やかな香りを教えて",
+  "oryxel_chip_evening": "夜に合う温かみのある香りを推薦して",
   "oryxel_table_brand": "ブランド",
   "oryxel_table_fragrance": "香水",
   "oryxel_table_notes": "ノート",
@@ -277,5 +277,6 @@
   "oryxel_meta_night": "夜",
   "oryxel_meta_female": "レディース",
   "oryxel_meta_male": "メンズ",
-  "oryxel_meta_unisex": "ユニセックス"
+  "oryxel_meta_unisex": "ユニセックス",
+  "oryxel_patch_applying": "変更を適用中…"
 }

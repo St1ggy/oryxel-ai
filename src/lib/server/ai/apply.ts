@@ -253,3 +253,78 @@ export async function applyPatchToDatabase(userId: string, patch: StructuredPref
     }
   })
 }
+
+/** Apply only the profile/suggestions part of a patch (no transaction needed — simple upsert). */
+export async function applyProfileAndSuggestions(userId: string, patch: StructuredPreferencePatch): Promise<void> {
+  if (patch.profile == null && patch.suggestions == null) return
+
+  await db
+    .insert(userProfile)
+    .values({
+      userId,
+      archetype: patch.profile?.archetype,
+      favoriteNote: patch.profile?.favoriteNote,
+      radar: patch.profile?.radar,
+      radarLabels: patch.profile?.radarLabels,
+      preferences: patch.profile?.preferences,
+      suggestions: patch.suggestions ?? undefined,
+    })
+    .onConflictDoUpdate({
+      target: userProfile.userId,
+      set: {
+        ...(patch.profile?.archetype != null && { archetype: patch.profile.archetype }),
+        ...(patch.profile?.favoriteNote != null && { favoriteNote: patch.profile.favoriteNote }),
+        ...(patch.profile?.radar != null && { radar: patch.profile.radar }),
+        ...(patch.profile?.radarLabels != null && { radarLabels: patch.profile.radarLabels }),
+        ...(patch.profile?.preferences != null && { preferences: patch.profile.preferences }),
+        ...(patch.suggestions != null && { suggestions: patch.suggestions }),
+      },
+    })
+}
+
+/** Apply only the recommendations part of a patch (clears old unreached recs, inserts new). */
+export async function applyRecommendations(userId: string, patch: StructuredPreferencePatch): Promise<void> {
+  const recommendations = patch.recommendations
+
+  if (recommendations == null) return
+
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(userFragrance)
+      .where(
+        and(
+          eq(userFragrance.userId, userId),
+          eq(userFragrance.isRecommendation, true),
+          eq(userFragrance.isTried, false),
+        ),
+      )
+
+    for (const rec of recommendations) {
+      const brandId = await findOrCreateBrand(tx, rec.brand)
+      const fragranceId = await findOrCreateFragrance(tx, brandId, rec.name, lc(rec.notesSummary), {
+        pyramidTop: lc(rec.pyramidTop) ?? null,
+        pyramidMid: lc(rec.pyramidMid) ?? null,
+        pyramidBase: lc(rec.pyramidBase) ?? null,
+      })
+
+      await tx
+        .insert(userFragrance)
+        .values({
+          userId,
+          fragranceId,
+          rating: 0,
+          isOwned: false,
+          isTried: false,
+          isLiked: null,
+          isRecommendation: true,
+          agentComment: rec.tag || null,
+        })
+        .onConflictDoNothing()
+    }
+  })
+}
+
+/** Apply a single table operation (no wrapping transaction). */
+export async function applySingleTableOp(userId: string, op: TableOperation): Promise<void> {
+  await applyTableOp(db, userId, op)
+}

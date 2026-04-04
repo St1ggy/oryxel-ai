@@ -23,9 +23,9 @@
   "oryxel_chat_show": "Show chat",
   "oryxel_chat_thinking": "Answering {model}…",
   "oryxel_chat_preparing": "Preparing response…",
-  "oryxel_chip_analog": "Analog for Santal 33",
-  "oryxel_chip_summer": "Fresh summer citrus",
-  "oryxel_chip_evening": "Evening amber",
+  "oryxel_chip_analog": "Suggest an analog for Santal 33",
+  "oryxel_chip_summer": "Find me a fresh summer citrus",
+  "oryxel_chip_evening": "Recommend a warm amber for evenings",
   "oryxel_table_brand": "Brand",
   "oryxel_table_fragrance": "Fragrance",
   "oryxel_table_notes": "Notes",
@@ -277,5 +277,6 @@
   "oryxel_meta_night": "Night",
   "oryxel_meta_female": "Women's",
   "oryxel_meta_male": "Men's",
-  "oryxel_meta_unisex": "Unisex"
+  "oryxel_meta_unisex": "Unisex",
+  "oryxel_patch_applying": "Applying changes…"
 }

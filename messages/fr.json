@@ -23,9 +23,9 @@
   "oryxel_chat_show": "Afficher le chat",
   "oryxel_chat_thinking": "{model} répond…",
   "oryxel_chat_preparing": "Préparation de la réponse…",
-  "oryxel_chip_analog": "analogue de Baccarat Rouge",
-  "oryxel_chip_summer": "quelque chose pour l’été",
-  "oryxel_chip_evening": "agrumes frais",
+  "oryxel_chip_analog": "Propose un analogue du Baccarat Rouge",
+  "oryxel_chip_summer": "Trouve-moi quelque chose de frais pour l’été",
+  "oryxel_chip_evening": "Recommande un ambré chaud pour le soir",
   "oryxel_table_brand": "Marque",
   "oryxel_table_fragrance": "Parfum",
   "oryxel_table_notes": "Notes",
@@ -277,5 +277,6 @@
   "oryxel_meta_night": "Nuit",
   "oryxel_meta_female": "Femme",
   "oryxel_meta_male": "Homme",
-  "oryxel_meta_unisex": "Unisexe"
+  "oryxel_meta_unisex": "Unisexe",
+  "oryxel_patch_applying": "Application des modifications…"
 }

@@ -23,9 +23,9 @@
   "oryxel_chat_show": "Показать чат",
   "oryxel_chat_thinking": "Отвечает {model}…",
   "oryxel_chat_preparing": "Подготовка ответа…",
-  "oryxel_chip_analog": "аналог Baccarat Rouge",
-  "oryxel_chip_summer": "что-то на лето",
-  "oryxel_chip_evening": "свежие цитрусы",
+  "oryxel_chip_analog": "Подбери аналог Baccarat Rouge",
+  "oryxel_chip_summer": "Что-нибудь свежее и летнее",
+  "oryxel_chip_evening": "Посоветуй тёплый вечерний аромат",
   "oryxel_table_brand": "Бренд",
   "oryxel_table_fragrance": "Аромат",
   "oryxel_table_notes": "Ноты",
@@ -277,5 +277,6 @@
   "oryxel_meta_night": "Ночь",
   "oryxel_meta_female": "Женский",
   "oryxel_meta_male": "Мужской",
-  "oryxel_meta_unisex": "Унисекс"
+  "oryxel_meta_unisex": "Унисекс",
+  "oryxel_patch_applying": "Применяю изменения…"
 }
