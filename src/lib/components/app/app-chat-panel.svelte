@@ -21,7 +21,7 @@
     hasApiKey?: boolean
     addKeyHref?: string
     selectedProvider?: string
-    providerOptions?: { value: string; label: string }[]
+    providerOptions?: { value: string; label: string; source?: 'user' | 'platform' }[]
     suggestions?: string[]
     onSend?: (text: string) => void
   }
@@ -67,6 +67,8 @@
     providerOptions.map((provider) => ({
       value: provider.value,
       label: provider.label,
+      meta: provider.source === 'platform' ? m.oryxel_provider_source_platform() : m.oryxel_provider_source_own(),
+      tone: provider.source === 'platform' ? ('free' as const) : ('neutral' as const),
     })),
   )
 

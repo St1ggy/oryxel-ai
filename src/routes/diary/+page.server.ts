@@ -5,9 +5,10 @@ import { DIARY_LIST_TAB_VALUES } from '$lib/diary/diary-tab-items'
 import { cookieName } from '$lib/paraglide/runtime'
 import { applyPatchToDatabase } from '$lib/server/ai/apply'
 import {
+  PROVIDER_DISPLAY_NAME,
   getUserDefaultProvider,
   hasEffectiveProviderAccess,
-  listConfiguredProviderIds,
+  listConfiguredProviders,
   listUserProviderKeys,
 } from '$lib/server/ai/keys/service'
 import { getLatestPendingPatches, listLatestChatMessages, updatePatchStatus } from '$lib/server/ai/storage'
@@ -56,17 +57,18 @@ export const load: PageServerLoad = async ({ locals, url, cookies }) => {
     getLatestPendingPatches(userId, 3),
   ])
 
-  const [configuredIds, providerRows, defaultProvider] = await Promise.all([
-    listConfiguredProviderIds(userId),
+  const [configuredProviders, providerRows, defaultProvider] = await Promise.all([
+    listConfiguredProviders(userId),
     listUserProviderKeys(userId),
     getUserDefaultProvider(userId),
   ])
 
   const labelMap = new Map(providerRows.map((r) => [r.provider, r.label]))
-  const chatProviders = configuredIds.map((id, index) => ({
-    value: id,
-    label: labelMap.get(id) || id,
-    active: defaultProvider ? id === defaultProvider : index === 0,
+  const chatProviders = configuredProviders.map((p, index) => ({
+    value: p.id,
+    label: labelMap.get(p.id) ?? PROVIDER_DISPLAY_NAME[p.id],
+    active: defaultProvider ? p.id === defaultProvider : index === 0,
+    source: p.source === 'env' ? ('user' as const) : p.source,
   }))
   const hasChatAccess = await hasEffectiveProviderAccess(userId)
   const latestChatRows = await listLatestChatMessages(userId, 40)

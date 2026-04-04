@@ -4,7 +4,6 @@
   import { onMount } from 'svelte'
 
   import { PROVIDER_GUIDES, type ProviderGuideId, getProviderGuideLocalized } from '$lib/ai/provider-guides'
-  import { providerPlanKind } from '$lib/ai/provider-plans'
   import Button from '$lib/components/ui/button.svelte'
   import Input from '$lib/components/ui/input.svelte'
   import Label from '$lib/components/ui/label.svelte'
@@ -76,6 +75,8 @@
   const providerLabelGemini = $derived(m.oryxel_provider_gemini())
   const providerLabelQwen = $derived(m.oryxel_provider_qwen())
   const providerLabelPerplexity = $derived(m.oryxel_provider_perplexity())
+  const providerLabelGroq = $derived(m.oryxel_provider_groq())
+  const providerLabelDeepSeek = $derived(m.oryxel_provider_deepseek())
 
   function themeTitle(id: OryxelThemeId): string {
     switch (id) {
@@ -151,9 +152,11 @@
       defaultProvider = payload.defaultProvider ?? providers.find((provider) => provider.active)?.provider ?? ''
 
       if (configuredResponse.ok) {
-        const configuredPayload = (await configuredResponse.json()) as { providers: string[] }
+        const configuredPayload = (await configuredResponse.json()) as {
+          providers: { id: string; source: string }[]
+        }
 
-        configuredProviderIds = configuredPayload.providers
+        configuredProviderIds = configuredPayload.providers.map((p) => p.id)
       }
     } catch {
       providerError = loadProvidersErrorLabel
@@ -423,19 +426,13 @@
       }
 
       case 'groq': {
-        return 'Groq'
+        return providerLabelGroq
       }
 
       case 'deepseek': {
-        return 'DeepSeek'
+        return providerLabelDeepSeek
       }
     }
-  }
-
-  function providerPlanLabel(provider: ProviderGuideId): string {
-    return providerPlanKind(provider) === 'free'
-      ? m.oryxel_provider_plan_free_short()
-      : m.oryxel_provider_plan_paid_short()
   }
 
   const allProviderSelectOptions = $derived(
@@ -443,8 +440,6 @@
       (provider) => ({
         value: provider,
         label: providerDisplayName(provider),
-        meta: providerPlanLabel(provider),
-        tone: providerPlanKind(provider),
       }),
     ),
   )

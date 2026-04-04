@@ -381,16 +381,29 @@ export async function setUserDefaultProvider(userId: string, provider: string): 
 
 export const ALL_PROVIDERS: ProviderId[] = ['openai', 'anthropic', 'gemini', 'qwen', 'perplexity', 'groq', 'deepseek']
 
-export async function listConfiguredProviderIds(userId: string): Promise<ProviderId[]> {
+export const PROVIDER_DISPLAY_NAME: Record<ProviderId, string> = DEFAULT_LABEL_BY_PROVIDER
+
+export type ConfiguredProvider = {
+  id: ProviderId
+  source: 'user' | 'env' | 'platform'
+}
+
+export async function listConfiguredProviders(userId: string): Promise<ConfiguredProvider[]> {
   const results = await Promise.all(
     ALL_PROVIDERS.map(async (p) => {
       const [first] = await listProviderApiKeyCandidates(userId, p, 1)
 
-      return first ? p : null
+      return first ? { id: p, source: first.source } : null
     }),
   )
 
-  return results.filter((p): p is ProviderId => p !== null)
+  return results.filter((p): p is ConfiguredProvider => p !== null)
+}
+
+export async function listConfiguredProviderIds(userId: string): Promise<ProviderId[]> {
+  const configured = await listConfiguredProviders(userId)
+
+  return configured.map((p) => p.id)
 }
 
 export async function hasEffectiveProviderAccess(userId: string): Promise<boolean> {
