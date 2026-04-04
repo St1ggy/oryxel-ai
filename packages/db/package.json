@@ -1,0 +1,26 @@
+{
+  "name": "@oryxel/db",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "db:push": "bun --env-file=../../.env.development drizzle-kit push --force",
+    "db:push:prod": "bun --env-file=../../.env.production drizzle-kit push --force",
+    "db:generate": "bun --env-file=../../.env.development drizzle-kit generate",
+    "db:migrate": "bun --env-file=../../.env.development drizzle-kit migrate",
+    "db:studio": "bun --env-file=../../.env.development drizzle-kit studio"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.2",
+    "drizzle-orm": "^0.45.1",
+    "ws": "^8.20.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.1",
+    "drizzle-kit": "^0.31.8",
+    "typescript": "^5.9.3"
+  }
+}
