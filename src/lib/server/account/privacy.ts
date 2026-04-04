@@ -1,5 +1,6 @@
 import { eq, inArray } from 'drizzle-orm'
 
+import { decryptSecret } from '$lib/server/ai/crypto/secret-box'
 import { db } from '$lib/server/db'
 import {
   account,
@@ -37,7 +38,15 @@ export type UserExportPayload = {
     keyHint: string
   }[]
   diary: (typeof userFragrance.$inferSelect)[]
-  chatHistory: (typeof userChatMessage.$inferSelect)[]
+  chatHistory: {
+    id: number
+    userId: string
+    role: string
+    content: string
+    scenario: string | null
+    locale: string
+    createdAt: Date
+  }[]
   pendingPatches: (typeof aiPendingPatch.$inferSelect)[]
   patchAuditLog: (typeof aiPatchAuditLog.$inferSelect)[]
 }
@@ -77,7 +86,20 @@ export async function collectUserExportData(userId: string): Promise<UserExportP
       keyHint: keyHintFromEncrypted(row.encryptedKey),
     })),
     diary: diaryRows,
-    chatHistory: chatRows,
+    chatHistory: chatRows.map((row) => ({
+      id: row.id,
+      userId: row.userId,
+      role: row.role,
+      content: decryptSecret({
+        encryptedKey: row.encryptedContent,
+        keyIv: row.contentIv,
+        keyAuthTag: row.contentAuthTag,
+        keyVersion: row.contentVersion,
+      }),
+      scenario: row.scenario,
+      locale: row.locale,
+      createdAt: row.createdAt,
+    })),
     pendingPatches: pendingRows,
     patchAuditLog: auditRows,
   }

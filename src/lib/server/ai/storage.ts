@@ -1,5 +1,6 @@
 import { desc, eq } from 'drizzle-orm'
 
+import { decryptSecret, encryptSecret } from '$lib/server/ai/crypto/secret-box'
 import { db } from '$lib/server/db'
 import { aiPatchAuditLog, aiPendingPatch, userChatMessage } from '$lib/server/db/schema'
 
@@ -93,6 +94,20 @@ export async function appendPatchAuditLog(input: {
   })
 }
 
+function decryptContent(row: {
+  encryptedContent: string
+  contentIv: string
+  contentAuthTag: string
+  contentVersion: string
+}): string {
+  return decryptSecret({
+    encryptedKey: row.encryptedContent,
+    keyIv: row.contentIv,
+    keyAuthTag: row.contentAuthTag,
+    keyVersion: row.contentVersion,
+  })
+}
+
 export async function createChatMessage(input: {
   userId: string
   role: 'user' | 'assistant'
@@ -100,39 +115,56 @@ export async function createChatMessage(input: {
   locale: string
   scenario?: 'analog' | 'pyramid' | 'recommendation' | 'comparison' | 'command'
 }) {
+  const encrypted = encryptSecret(input.content)
+
   const [row] = await db
     .insert(userChatMessage)
     .values({
       userId: input.userId,
       role: input.role,
-      content: input.content,
+      encryptedContent: encrypted.encryptedKey,
+      contentIv: encrypted.keyIv,
+      contentAuthTag: encrypted.keyAuthTag,
+      contentVersion: encrypted.keyVersion,
       locale: input.locale,
       scenario: input.scenario,
     })
     .returning()
 
-  return row
+  return { ...row, content: input.content }
 }
 
 export async function listLatestChatMessages(userId: string, limit = 50) {
-  return db
+  const rows = await db
     .select()
     .from(userChatMessage)
     .where(eq(userChatMessage.userId, userId))
     .orderBy(desc(userChatMessage.createdAt))
     .limit(limit)
+
+  return rows.map((row) => ({ ...row, content: decryptContent(row) }))
 }
 
 export async function loadRecentChatMessages(userId: string, limit = 6) {
   const rows = await db
-    .select({ role: userChatMessage.role, content: userChatMessage.content })
+    .select({
+      role: userChatMessage.role,
+      encryptedContent: userChatMessage.encryptedContent,
+      contentIv: userChatMessage.contentIv,
+      contentAuthTag: userChatMessage.contentAuthTag,
+      contentVersion: userChatMessage.contentVersion,
+    })
     .from(userChatMessage)
     .where(eq(userChatMessage.userId, userId))
     .orderBy(desc(userChatMessage.createdAt))
     .limit(limit)
 
-  return rows.toReversed().map((row) => ({
-    role: row.role,
-    content: row.content.length > 380 ? `${row.content.slice(0, 380)}…` : row.content,
-  }))
+  return rows.toReversed().map((row) => {
+    const content = decryptContent(row)
+
+    return {
+      role: row.role,
+      content: content.length > 380 ? `${content.slice(0, 380)}…` : content,
+    }
+  })
 }
