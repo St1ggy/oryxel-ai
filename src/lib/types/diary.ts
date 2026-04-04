@@ -1,5 +1,7 @@
 export type FragranceListType = 'to_try' | 'liked' | 'disliked' | 'owned'
 
+export type DiaryData = Record<FragranceListType, DiaryRow[]>
+
 export type DiaryRow = {
   id: number
   fragranceId: number
@@ -7,12 +9,14 @@ export type DiaryRow = {
   fragrance: string
   notes: string[]
   rating: number
-  statusLabel: string
-  statusTone: 'neutral' | 'success' | 'warning' | 'destructive' | 'accent'
+  agentComment: string
+  userComment: string | null
+  season: string | null
+  timeOfDay: string | null
+  gender: string | null
   isOwned: boolean
   isTried: boolean
   isLiked: boolean | null
-  isRecommendation: boolean
   pyramidTop: string | null
   pyramidMid: string | null
   pyramidBase: string | null

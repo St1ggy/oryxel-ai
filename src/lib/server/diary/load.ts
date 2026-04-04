@@ -2,13 +2,12 @@ import { eq } from 'drizzle-orm'
 
 import { db as database } from '../db'
 import { brand, fragrance, userFragrance } from '../db/schema'
+import { extractEnglishKey, lookupTranslations, resolveCommaSeparated } from '../translation/service'
 
-import type { DiaryRow, FragranceListType } from '$lib/types/diary'
+import type { DiaryData, DiaryRow } from '$lib/types/diary'
 
 function parseNotes(raw: string | null): string[] {
-  if (!raw) {
-    return []
-  }
+  if (!raw) return []
 
   return raw
     .split(',')
@@ -16,45 +15,72 @@ function parseNotes(raw: string | null): string[] {
     .filter(Boolean)
 }
 
-function resolveStatusLabel(raw: string | null, locale: string): string {
-  if (!raw) return '—'
+/** Collects all individual term keys (split by comma) from a raw DB row for batch translation lookup. */
+function collectKeys(r: {
+  notesSummary: string | null
+  pyramidTop: string | null
+  pyramidMid: string | null
+  pyramidBase: string | null
+}): string[] {
+  const phrases = [
+    extractEnglishKey(r.notesSummary),
+    extractEnglishKey(r.pyramidTop),
+    extractEnglishKey(r.pyramidMid),
+    extractEnglishKey(r.pyramidBase),
+  ].filter((k): k is string => k !== null && k.length > 0)
 
-  if (raw.startsWith('{')) {
-    try {
-      const map = JSON.parse(raw) as Record<string, string>
-
-      return map[locale] ?? map['en'] ?? Object.values(map)[0] ?? '—'
-    } catch {
-      // not a JSON map, fall through
-    }
-  }
-
-  return raw
+  return phrases.flatMap((p) =>
+    p
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean),
+  )
 }
 
-function toneForStatus(label: string | null): DiaryRow['statusTone'] {
-  const l = (label ?? '').toLowerCase()
-
-  if (l.includes('avoid') || l.includes('dislike')) {
-    return 'destructive'
+function buildDiaryRow(
+  r: {
+    id: number
+    fragranceId: number
+    rating: number
+    isOwned: boolean
+    isTried: boolean
+    isLiked: boolean | null
+    agentComment: string | null
+    userComment: string | null
+    season: string | null
+    timeOfDay: string | null
+    gender: string | null
+    fragName: string
+    brandName: string
+    notesSummary: string | null
+    pyramidTop: string | null
+    pyramidMid: string | null
+    pyramidBase: string | null
+  },
+  translations: Map<string, string>,
+): DiaryRow {
+  return {
+    id: r.id,
+    fragranceId: r.fragranceId,
+    brand: r.brandName,
+    fragrance: r.fragName,
+    notes: parseNotes(resolveCommaSeparated(extractEnglishKey(r.notesSummary), translations)),
+    rating: r.rating,
+    agentComment: r.agentComment ?? '',
+    userComment: r.userComment,
+    season: r.season,
+    timeOfDay: r.timeOfDay,
+    gender: r.gender,
+    isOwned: r.isOwned,
+    isTried: r.isTried,
+    isLiked: r.isLiked,
+    pyramidTop: resolveCommaSeparated(extractEnglishKey(r.pyramidTop), translations),
+    pyramidMid: resolveCommaSeparated(extractEnglishKey(r.pyramidMid), translations),
+    pyramidBase: resolveCommaSeparated(extractEnglishKey(r.pyramidBase), translations),
   }
-
-  if (l.includes('love') || l.includes('signature')) {
-    return 'success'
-  }
-
-  if (l.includes('sample') || l.includes('try')) {
-    return 'accent'
-  }
-
-  if (l.includes('sweet') || l.includes('warn')) {
-    return 'warning'
-  }
-
-  return 'neutral'
 }
 
-export async function loadDiaryForUser(userId: string, locale = 'en'): Promise<Record<FragranceListType, DiaryRow[]>> {
+export async function loadDiaryForUser(userId: string, locale = 'en'): Promise<DiaryData> {
   try {
     const rows = await database
       .select({
@@ -64,8 +90,11 @@ export async function loadDiaryForUser(userId: string, locale = 'en'): Promise<R
         isOwned: userFragrance.isOwned,
         isTried: userFragrance.isTried,
         isLiked: userFragrance.isLiked,
-        isRecommendation: userFragrance.isRecommendation,
-        statusLabel: userFragrance.statusLabel,
+        agentComment: userFragrance.agentComment,
+        userComment: userFragrance.userComment,
+        season: userFragrance.season,
+        timeOfDay: userFragrance.timeOfDay,
+        gender: userFragrance.gender,
         fragName: fragrance.name,
         brandName: brand.name,
         notesSummary: fragrance.notesSummary,
@@ -78,7 +107,11 @@ export async function loadDiaryForUser(userId: string, locale = 'en'): Promise<R
       .innerJoin(brand, eq(fragrance.brandId, brand.id))
       .where(eq(userFragrance.userId, userId))
 
-    const result: Record<FragranceListType, DiaryRow[]> = {
+    // Collect all canonical English keys then batch-lookup translations
+    const allKeys = rows.flatMap((r) => collectKeys(r))
+    const translations = await lookupTranslations(allKeys, locale)
+
+    const result: DiaryData = {
       // eslint-disable-next-line camelcase
       to_try: [],
       liked: [],
@@ -87,25 +120,9 @@ export async function loadDiaryForUser(userId: string, locale = 'en'): Promise<R
     }
 
     for (const r of rows) {
-      const row: DiaryRow = {
-        id: r.id,
-        fragranceId: r.fragranceId,
-        brand: r.brandName,
-        fragrance: r.fragName,
-        notes: parseNotes(r.notesSummary),
-        rating: r.rating,
-        statusLabel: resolveStatusLabel(r.statusLabel, locale),
-        statusTone: toneForStatus(r.statusLabel),
-        isOwned: r.isOwned,
-        isTried: r.isTried,
-        isLiked: r.isLiked,
-        isRecommendation: r.isRecommendation,
-        pyramidTop: r.pyramidTop,
-        pyramidMid: r.pyramidMid,
-        pyramidBase: r.pyramidBase,
-      }
+      const row = buildDiaryRow(r, translations)
 
-      if (!r.isTried) result['to_try'].push(row)
+      if (!r.isTried && !r.isOwned) result['to_try'].push(row)
 
       if (r.isTried && r.isLiked === true) result.liked.push(row)
 

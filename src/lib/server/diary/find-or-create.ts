@@ -42,13 +42,14 @@ export async function findOrCreateFragrance(
   if (existing) {
     const updates: Partial<typeof fragrance.$inferInsert> = {}
 
+    // Overwrite with canonical English text (plain string, no locale maps)
     if (notesSummary != null) updates.notesSummary = notesSummary
 
-    if (pyramid?.pyramidTop !== undefined) updates.pyramidTop = pyramid.pyramidTop
+    if (pyramid?.pyramidTop != null) updates.pyramidTop = pyramid.pyramidTop
 
-    if (pyramid?.pyramidMid !== undefined) updates.pyramidMid = pyramid.pyramidMid
+    if (pyramid?.pyramidMid != null) updates.pyramidMid = pyramid.pyramidMid
 
-    if (pyramid?.pyramidBase !== undefined) updates.pyramidBase = pyramid.pyramidBase
+    if (pyramid?.pyramidBase != null) updates.pyramidBase = pyramid.pyramidBase
 
     if (Object.keys(updates).length > 0) {
       await tx.update(fragrance).set(updates).where(eq(fragrance.id, existing.id))

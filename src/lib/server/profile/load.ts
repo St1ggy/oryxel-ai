@@ -5,12 +5,31 @@ import { userFragrance, userProfile } from '$lib/server/db/schema'
 
 import type { RadarAxes, RadarAxis } from '$lib/types/diary'
 
-function resolveLocaleValue(map: unknown, locale: string): string | null {
-  if (!map || typeof map !== 'object') return null
+/** Handles both new plain strings and old locale-map JSON (backward compat). */
+function resolveStringOrMap(value: unknown, locale: string): string | null {
+  if (!value) return null
 
-  const m = map as Record<string, string>
+  if (typeof value === 'string') {
+    if (value.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(value) as Record<string, string>
 
-  return m[locale] ?? m['en'] ?? Object.values(m)[0] ?? null
+        return parsed[locale] ?? parsed['en'] ?? Object.values(parsed)[0] ?? value
+      } catch {
+        // not JSON, return as-is
+      }
+    }
+
+    return value
+  }
+
+  if (typeof value === 'object' && !Array.isArray(value)) {
+    const m = value as Record<string, string>
+
+    return m[locale] ?? m['en'] ?? Object.values(m)[0] ?? null
+  }
+
+  return null
 }
 
 function buildRadarAxes(radar: unknown, radarLabels: unknown, locale: string): RadarAxis[] {
@@ -22,7 +41,8 @@ function buildRadarAxes(radar: unknown, radarLabels: unknown, locale: string): R
   return Object.entries(values).map(([key, value]) => ({
     key,
     value: typeof value === 'number' ? value : 0,
-    label: resolveLocaleValue(labelsMap[key], locale) ?? key,
+    // radarLabels is now flat {axisKey: label}, but handle old nested format too
+    label: resolveStringOrMap(labelsMap[key], locale) ?? key,
   }))
 }
 
@@ -34,16 +54,18 @@ export async function loadProfileForUser(userId: string, fallbackName = 'User', 
     .from(userFragrance)
     .where(and(eq(userFragrance.userId, userId), eq(userFragrance.isOwned, true)))
 
-  const suggestions = (profileRow?.suggestions ?? [])
-    .map((s) => resolveLocaleValue(s, locale))
+  const rawSuggestions = profileRow?.suggestions ?? []
+  const suggestions = rawSuggestions
+    .map((s) => (typeof s === 'string' ? s : resolveStringOrMap(s, locale)))
     .filter((s): s is string => s !== null)
 
   return {
     displayName: profileRow?.displayName ?? fallbackName,
     bio: profileRow?.bio ?? '',
+    preferences: profileRow?.preferences ?? '',
     totalCount: countRow?.count ?? 0,
-    favoriteNote: resolveLocaleValue(profileRow?.favoriteNote, locale),
-    archetype: resolveLocaleValue(profileRow?.archetype, locale),
+    favoriteNote: resolveStringOrMap(profileRow?.favoriteNote, locale),
+    archetype: resolveStringOrMap(profileRow?.archetype, locale),
     radarAxes: buildRadarAxes(profileRow?.radar, profileRow?.radarLabels, locale),
     suggestions,
   }
