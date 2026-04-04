@@ -381,7 +381,7 @@ export async function setUserDefaultProvider(userId: string, provider: string): 
 
 export const ALL_PROVIDERS: ProviderId[] = ['openai', 'anthropic', 'gemini', 'qwen', 'perplexity', 'groq', 'deepseek']
 
-export const PROVIDER_DISPLAY_NAME: Record<ProviderId, string> = DEFAULT_LABEL_BY_PROVIDER
+export { PROVIDER_DISPLAY_NAME } from '$lib/ai/provider-guides'
 
 export type ConfiguredProvider = {
   id: ProviderId

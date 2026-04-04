@@ -540,6 +540,16 @@ export const PROVIDER_GUIDES: Record<ProviderGuideId, ProviderGuide> = {
   },
 }
 
+export const PROVIDER_DISPLAY_NAME: Record<ProviderGuideId, string> = {
+  openai: 'OpenAI',
+  anthropic: 'Anthropic',
+  gemini: 'Gemini',
+  qwen: 'Qwen',
+  perplexity: 'Perplexity',
+  groq: 'Groq',
+  deepseek: 'DeepSeek',
+}
+
 export function getProviderGuideLocalized(id: ProviderGuideId, locale: string): { steps: string[]; notes: string[] } {
   const guide = PROVIDER_GUIDES[id]
   const lang = locale in guide.steps ? locale : 'en'
