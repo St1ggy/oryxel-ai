@@ -3,7 +3,7 @@
   import { Accordion } from 'bits-ui'
   import { onMount } from 'svelte'
 
-  import { PROVIDER_GUIDES, type ProviderGuideId } from '$lib/ai/provider-guides'
+  import { PROVIDER_GUIDES, type ProviderGuideId, getProviderGuideLocalized } from '$lib/ai/provider-guides'
   import { providerPlanKind } from '$lib/ai/provider-plans'
   import Button from '$lib/components/ui/button.svelte'
   import Input from '$lib/components/ui/input.svelte'
@@ -15,6 +15,7 @@
   import ThemePreviewCard from '$lib/components/ui/theme-preview-card.svelte'
   import TooltipHint from '$lib/components/ui/tooltip-hint.svelte'
   import * as m from '$lib/paraglide/messages.js'
+  import { getLocale } from '$lib/paraglide/runtime'
   import { ORYXEL_THEMES, type OryxelThemeId } from '$lib/theme/constants'
   import { getThemeContext } from '$lib/theme/context'
 
@@ -454,8 +455,9 @@
     ),
   )
 
-  const providerGuideSteps = $derived(selectedGuide.steps)
-  const providerGuideNotes = $derived(selectedGuide.notes)
+  const localizedGuide = $derived(getProviderGuideLocalized(newProvider, getLocale()))
+  const providerGuideSteps = $derived(localizedGuide.steps)
+  const providerGuideNotes = $derived(localizedGuide.notes)
 
   let accordionValue = $state(['theme', 'providers', 'data', 'privacy'])
 </script>
