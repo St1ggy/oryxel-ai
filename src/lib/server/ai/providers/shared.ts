@@ -71,7 +71,7 @@ function buildBaseInstructions(request: AnalyzePreferencesRequest): string[] {
     `UI list names: to_try="${tableNames.to_try}" (isTried=false, isOwned=false), liked="${tableNames.liked}" (isTried=true, isLiked=true), neutral="${tableNames.neutral}" (isTried=true, isLiked=null, isOwned=false), disliked="${tableNames.disliked}" (isTried=true, isLiked=false), owned="${tableNames.owned}" (isOwned=true). Use these names in your reply.`,
     'For op=add: set brandName and fragranceName (strings). Set isOwned/isTried/isLiked flags. Do NOT use fragranceId for new fragrances.',
     'For op=add: ALWAYS set notesSummary — comma-separated list of up to 5 key fragrance notes in English.',
-    'For op=add or op=status: set pyramidTop, pyramidMid, pyramidBase as comma-separated note names in English. Fill all three tiers if you know the fragrance.',
+    `For op=add or op=status: set pyramidTop, pyramidMid, pyramidBase as comma-separated note names in English. Fill all three tiers if you know the fragrance. Each tier must contain at most ${request.maxPyramidNotes ?? 5} notes.`,
     `For op=add or op=status: ALWAYS set agentComment — a punchy one-line phrase in ${language}, max 80 chars. Capture the scent essence (e.g. "Warm amber with smoky oud"). No sentences, no "because", no user references.`,
     `For op=add or op=status: you MAY set userComment — the user's own words about this fragrance in their language. Only set when the user explicitly shared an opinion. Max 200 chars.`,
     'For op=add or op=status: OPTIONALLY set season — comma-separated applicable seasons from: spring, summer, autumn, winter. E.g. "summer" for fresh aquatics, "autumn,winter" for heavy orientals, "spring,summer" for florals. Omit if unclear.',
