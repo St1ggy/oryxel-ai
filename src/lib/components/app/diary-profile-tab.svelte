@@ -1,16 +1,19 @@
 <script lang="ts">
   import { resolve } from '$app/paths'
 
+  import ActivityLog from '$lib/components/app/activity-log.svelte'
   import DiaryHeaderControls from '$lib/components/app/diary-header-controls.svelte'
   import RadarChart from '$lib/components/app/radar-chart.svelte'
   import ActivityIcon from '$lib/components/icons/ActivityIcon.svelte'
+  import ChevronRightIcon from '$lib/components/icons/ChevronRightIcon.svelte'
   import HeartIcon from '$lib/components/icons/HeartIcon.svelte'
   import SparklesIcon from '$lib/components/icons/SparklesIcon.svelte'
   import Avatar from '$lib/components/ui/avatar.svelte'
   import Button from '$lib/components/ui/button.svelte'
   import * as m from '$lib/paraglide/messages.js'
+  import { cn } from '$lib/utils/cn'
 
-  import type { RadarAxis } from '$lib/types/diary'
+  import type { ActivityEntry, RadarAxis } from '$lib/types/diary'
 
   type ProfileData = {
     displayName: string
@@ -25,9 +28,10 @@
     variant: 'desktop' | 'mobile'
     profile?: ProfileData
     onProfileSync?: () => void
+    recentActivity?: ActivityEntry[]
   }
 
-  const { variant, profile, onProfileSync }: Props = $props()
+  const { variant, profile, onProfileSync, recentActivity = [] }: Props = $props()
   const safeProfile = $derived<ProfileData>(
     profile ?? {
       displayName: m.oryxel_profile_default_user(),
@@ -40,6 +44,7 @@
   )
 
   const isMobile = $derived(variant === 'mobile')
+  let activityOpen = $state(false)
 </script>
 
 <div class="flex flex-col gap-5">
@@ -153,5 +158,33 @@
         >
       </div>
     </div>
+  </div>
+
+  <!-- Activity log (collapsible) -->
+  <div
+    class={isMobile
+      ? 'rounded-[20px] border border-border bg-surface shadow-sm'
+      : 'rounded-[24px] border border-border bg-surface shadow-[0px_1px_3px_0px_rgba(0,0,0,0.1),0px_1px_2px_0px_rgba(0,0,0,0.1)]'}
+  >
+    <button
+      type="button"
+      class="flex w-full items-center justify-between px-5 py-4"
+      onclick={() => (activityOpen = !activityOpen)}
+      aria-expanded={activityOpen}
+    >
+      <h3
+        class={isMobile
+          ? 'oryx-heading text-base font-semibold text-foreground'
+          : 'oryx-heading text-lg font-semibold text-foreground'}
+      >
+        {m.oryxel_activity_title()}
+      </h3>
+      <ChevronRightIcon class={cn('size-4 text-foreground-muted transition-transform', activityOpen && 'rotate-90')} />
+    </button>
+    {#if activityOpen}
+      <div class="px-5 pb-4">
+        <ActivityLog entries={recentActivity} />
+      </div>
+    {/if}
   </div>
 </div>

@@ -357,6 +357,7 @@
         onOpenDetail={openDetail}
         onProfileSync={triggerProfileSync}
         profile={profileData}
+        recentActivity={data.recentActivity}
         layout="desktop"
         contentWidthClass={desktopContentWidthClass}
       >
@@ -393,7 +394,12 @@
         </div>
       {:else if mobileTab === 'profile'}
         <div class="min-h-0 flex-1 overflow-y-auto px-3 py-3" in:fade={{ duration: 180 }} out:fade={{ duration: 120 }}>
-          <DiaryProfileTab variant="mobile" profile={profileData} onProfileSync={triggerProfileSync} />
+          <DiaryProfileTab
+            variant="mobile"
+            profile={profileData}
+            onProfileSync={triggerProfileSync}
+            recentActivity={data.recentActivity}
+          />
         </div>
       {:else}
         <div class="min-h-0 flex-1 overflow-y-auto px-3 py-3" in:fade={{ duration: 180 }} out:fade={{ duration: 120 }}>

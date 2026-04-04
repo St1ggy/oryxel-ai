@@ -14,6 +14,7 @@ import {
 import { getLatestPendingPatches, listLatestChatMessages, updatePatchStatus } from '$lib/server/ai/storage'
 import { db } from '$lib/server/db'
 import { aiPendingPatch } from '$lib/server/db/schema'
+import { loadRecentActivity } from '$lib/server/diary/activity'
 import { loadDiaryForUser } from '$lib/server/diary/load'
 import { loadProfileForUser } from '$lib/server/profile/load'
 
@@ -51,10 +52,11 @@ export const load: PageServerLoad = async ({ locals, url, cookies }) => {
   // Auto-apply patches confirmed by user but not yet applied
   await applyConfirmedPatches(userId)
 
-  const [diary, profile, pendingPatches] = await Promise.all([
+  const [diary, profile, pendingPatches, recentActivity] = await Promise.all([
     loadDiaryForUser(userId, locale),
     loadProfileForUser(userId, locals.user.name || 'User', locale),
     getLatestPendingPatches(userId, 3),
+    loadRecentActivity(userId, 30),
   ])
 
   const [configuredProviders, providerRows, defaultProvider] = await Promise.all([
@@ -81,5 +83,5 @@ export const load: PageServerLoad = async ({ locals, url, cookies }) => {
     ? (rawTab as (typeof DIARY_LIST_TAB_VALUES)[number])
     : 'owned'
 
-  return { diary, userId, profile, pendingPatches, locale, hasChatAccess, chatProviders, chatHistory, initialTab }
+  return { diary, userId, profile, pendingPatches, recentActivity, locale, hasChatAccess, chatProviders, chatHistory, initialTab }
 }

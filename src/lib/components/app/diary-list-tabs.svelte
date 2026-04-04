@@ -9,7 +9,7 @@
   import * as m from '$lib/paraglide/messages.js'
   import { cn } from '$lib/utils/cn'
 
-  import type { DiaryData, DiaryRow, RadarAxis } from '$lib/types/diary'
+  import type { ActivityEntry, DiaryData, DiaryRow, RadarAxis } from '$lib/types/diary'
   import type { Snippet } from 'svelte'
 
   type Props = {
@@ -31,6 +31,7 @@
       radarAxes: RadarAxis[]
       suggestions: string[]
     }
+    recentActivity?: ActivityEntry[]
   }
 
   let {
@@ -45,6 +46,7 @@
     headerEnd,
     statusBanner,
     profile,
+    recentActivity,
   }: Props = $props()
 
   const tabItems = $derived(diaryListTabItems().filter((tab) => !(layout === 'mobile' && tab.value === 'profile')))
@@ -139,7 +141,7 @@
           />
         </Tabs.Content>
         <Tabs.Content value="profile" class={panelClass}>
-          <DiaryProfileTab variant="desktop" {profile} {onProfileSync} />
+          <DiaryProfileTab variant="desktop" {profile} {onProfileSync} {recentActivity} />
         </Tabs.Content>
       </div>
     </div>
@@ -166,7 +168,7 @@
       />
     </Tabs.Content>
     <Tabs.Content value="profile" class={panelClass}>
-      <DiaryProfileTab variant="mobile" {profile} {onProfileSync} />
+      <DiaryProfileTab variant="mobile" {profile} {onProfileSync} {recentActivity} />
     </Tabs.Content>
   {/if}
 </Tabs.Root>
