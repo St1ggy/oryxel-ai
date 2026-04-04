@@ -9,6 +9,8 @@ export function listTypeToFlags(listType: string): FragranceFlags {
 
   if (listType === 'disliked') return { isTried: true, isLiked: false, isOwned: false }
 
+  if (listType === 'neutral') return { isTried: true, isLiked: null, isOwned: false }
+
   if (listType === 'owned') return { isTried: false, isLiked: null, isOwned: true }
 
   return { isTried: false, isLiked: null, isOwned: false } // to_try

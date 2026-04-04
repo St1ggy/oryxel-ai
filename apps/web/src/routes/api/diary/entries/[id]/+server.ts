@@ -43,7 +43,7 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 }
 
 const patchBodySchema = z.object({
-  listType: z.enum(['to_try', 'liked', 'disliked', 'owned']).optional(),
+  listType: z.enum(['to_try', 'liked', 'neutral', 'disliked', 'owned']).optional(),
   userComment: z.string().max(200).optional(),
   isOwned: z.boolean().optional(),
   rating: z.number().int().min(0).max(5).optional(),
