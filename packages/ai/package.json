@@ -1,0 +1,14 @@
+{
+  "name": "@oryxel/ai",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@oryxel/db": "workspace:*",
+    "drizzle-orm": "^0.45.1",
+    "zod": "^4.3.6"
+  }
+}
