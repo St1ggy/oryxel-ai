@@ -31,14 +31,13 @@ export const userProfile = pgTable('user_profile', {
   userId: text('user_id').notNull().unique(),
   displayName: text('display_name'),
   bio: text('bio'),
+  preferences: text('preferences'),
   avatarUrl: text('avatar_url'),
-  archetype: jsonb('archetype').$type<Record<string, string>>(),
-  favoriteNote: jsonb('favorite_note').$type<Record<string, string>>(),
+  archetype: text('archetype'),
+  favoriteNote: text('favorite_note'),
   radar: jsonb('radar').$type<Record<string, number>>(),
-  recommendations:
-    jsonb('recommendations').$type<{ id: string; brand: string; name: string; tag: Record<string, string> }[]>(),
-  radarLabels: jsonb('radar_labels').$type<Record<string, Record<string, string>>>(),
-  suggestions: jsonb('suggestions').$type<Record<string, string>[]>(),
+  radarLabels: jsonb('radar_labels').$type<Record<string, string>>(),
+  suggestions: jsonb('suggestions').$type<string[]>(),
 })
 
 export const userAiPreferences = pgTable('user_ai_preferences', {
@@ -84,7 +83,11 @@ export const userFragrance = pgTable(
     isTried: boolean('is_tried').notNull().default(false),
     isLiked: boolean('is_liked'),
     isRecommendation: boolean('is_recommendation').notNull().default(false),
-    statusLabel: text('status_label'),
+    agentComment: text('agent_comment'),
+    userComment: text('user_comment'),
+    season: text('season'),
+    timeOfDay: text('time_of_day'),
+    gender: text('gender'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [uniqueIndex('user_fragrance_user_fragrance_idx').on(table.userId, table.fragranceId)],
@@ -154,3 +157,18 @@ export const aiPatchAuditLogRelations = relations(aiPatchAuditLog, ({ one }) => 
     references: [aiPendingPatch.id],
   }),
 }))
+
+// Generic translation cache (content-addressable).
+// key    = canonical English text stored in the fragrance / profile tables
+// locale = target locale code (es, fr, jp, ru, zh)
+// value  = translated text
+export const translations = pgTable(
+  'translations',
+  {
+    id: serial('id').primaryKey(),
+    key: text('key').notNull(),
+    locale: text('locale').notNull(),
+    value: text('value').notNull(),
+  },
+  (table) => [uniqueIndex('translations_key_locale_idx').on(table.key, table.locale)],
+)
