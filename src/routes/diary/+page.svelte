@@ -192,6 +192,7 @@
       }
     } finally {
       syncProgress = null
+      void invalidateAll()
     }
   }
 

@@ -46,7 +46,7 @@
   {#if isMobile}
     <!-- Mobile header: stacked layout -->
     <div class="rounded-[20px] border border-border bg-surface px-5 py-5 shadow-sm">
-      <div class="flex items-center gap-4">
+      <div class="flex items-center gap-3">
         <Avatar alt={m.oryxel_profile_default_user()} size="md" class="size-14 shrink-0" />
         <div class="min-w-0 flex-1">
           <h1 class="oryx-heading truncate text-xl font-semibold tracking-tight text-foreground">
@@ -56,6 +56,9 @@
             <span class="inline-block size-2 shrink-0 rounded-full bg-(--oryx-online)"></span>
             {m.oryxel_profile_online()}
           </p>
+        </div>
+        <div class="shrink-0">
+          <DiaryHeaderControls />
         </div>
       </div>
       <div class="mt-4 flex gap-2">
@@ -151,16 +154,4 @@
       </div>
     </div>
   </div>
-
-  {#if isMobile}
-    <!-- Appearance controls: theme, language, settings -->
-    <div class="rounded-[20px] border border-border bg-surface px-5 py-4 shadow-sm">
-      <div class="flex items-center justify-between">
-        <span class="text-sm font-medium text-foreground-muted"
-          >{m.oryxel_settings_theme()} · {m.oryxel_locale_switcher_label()}</span
-        >
-        <DiaryHeaderControls />
-      </div>
-    </div>
-  {/if}
 </div>

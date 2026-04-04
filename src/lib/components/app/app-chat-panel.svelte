@@ -1,7 +1,6 @@
 <script lang="ts">
   import { fade, fly } from 'svelte/transition'
 
-  import { providerPlanKind } from '$lib/ai/provider-plans'
   import AiModelHeader from '$lib/components/app/ai-model-header.svelte'
   import ChatBubble from '$lib/components/app/chat-bubble.svelte'
   import TypingIndicator from '$lib/components/app/typing-indicator.svelte'
@@ -64,18 +63,10 @@
     }
   }
 
-  function providerPlanLabel(provider: string): string {
-    return providerPlanKind(provider) === 'free'
-      ? m.oryxel_provider_plan_free_short()
-      : m.oryxel_provider_plan_paid_short()
-  }
-
   const providerSelectOptions = $derived(
     providerOptions.map((provider) => ({
       value: provider.value,
       label: provider.label,
-      meta: providerPlanLabel(provider.value),
-      tone: providerPlanKind(provider.value),
     })),
   )
 

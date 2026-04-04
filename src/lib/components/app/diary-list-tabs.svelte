@@ -47,7 +47,7 @@
     profile,
   }: Props = $props()
 
-  const tabItems = $derived(diaryListTabItems())
+  const tabItems = $derived(diaryListTabItems().filter((tab) => !(layout === 'mobile' && tab.value === 'profile')))
 
   // Animated indicator state
   let tabsListElement = $state<HTMLElement | null>(null)
