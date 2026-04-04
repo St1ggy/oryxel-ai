@@ -16,7 +16,8 @@ async function callAnthropic(request: AnalyzePreferencesRequest, signal: AbortSi
     },
     body: JSON.stringify({
       model: env.ANTHROPIC_MODEL ?? MODEL,
-      max_tokens: 700,
+
+      max_tokens: 8192,
       system: 'Return JSON only.',
       messages: [{ role: 'user', content: buildPrompt(request) }],
     }),

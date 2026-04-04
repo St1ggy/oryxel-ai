@@ -20,6 +20,8 @@ async function callOpenAI(request: AnalyzePreferencesRequest, signal: AbortSigna
         { role: 'user', content: buildPrompt(request) },
       ],
       response_format: { type: 'json_object' },
+
+      max_tokens: 8192,
     }),
     signal,
   })

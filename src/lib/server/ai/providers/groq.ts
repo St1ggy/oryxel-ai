@@ -21,6 +21,8 @@ async function callGroq(request: AnalyzePreferencesRequest, signal: AbortSignal,
       ],
       // eslint-disable-next-line camelcase
       response_format: { type: 'json_object' },
+      // eslint-disable-next-line camelcase
+      max_tokens: 8192,
     }),
     signal,
   })

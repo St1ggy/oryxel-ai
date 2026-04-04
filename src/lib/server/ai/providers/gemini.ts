@@ -15,6 +15,7 @@ async function callGemini(request: AnalyzePreferencesRequest, signal: AbortSigna
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: `${buildPrompt(request)}\n\nReturn JSON only.` }] }],
+        generationConfig: { maxOutputTokens: 8192 },
       }),
       signal,
     },
