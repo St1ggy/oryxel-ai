@@ -1,0 +1,20 @@
+{
+  "name": "@oryxel/worker",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "dev": "tsx watch src/index.ts"
+  },
+  "dependencies": {
+    "@oryxel/ai": "workspace:*",
+    "@oryxel/db": "workspace:*",
+    "drizzle-orm": "^0.45.1",
+    "tsx": "^4.19.4"
+  },
+  "devDependencies": {
+    "@types/node": "^24",
+    "typescript": "^5.9.3"
+  }
+}
