@@ -1,7 +1,7 @@
 <script lang="ts">
+  import { Globe } from '@lucide/svelte'
   import { DropdownMenu } from 'bits-ui'
 
-  import GlobeIcon from '$lib/components/icons/GlobeIcon.svelte'
   import * as m from '$lib/paraglide/messages.js'
   import { getLocale, locales, setLocale } from '$lib/paraglide/runtime'
   import { cn } from '$lib/utils/cn'
@@ -65,7 +65,7 @@
           aria-label={m.oryxel_locale_switcher_label()}
         >
           <span class="hidden sm:block">{localeLabels[currentLocale] ?? currentLocale.toUpperCase()}</span>
-          <GlobeIcon class="block h-4 w-4 sm:hidden" />
+          <Globe class="block h-4 w-4 sm:hidden" />
         </DropdownMenu.Trigger>
         <DropdownMenu.Content
           class={cn('oryx-dropdown-content z-50 min-w-28 rounded-xl border border-border', 'bg-surface p-1 shadow-xl')}

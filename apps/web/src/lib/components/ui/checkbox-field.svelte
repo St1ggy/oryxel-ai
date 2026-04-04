@@ -1,7 +1,6 @@
 <script lang="ts">
+  import { Check } from '@lucide/svelte'
   import { Checkbox } from 'bits-ui'
-
-  import CheckIcon from '$lib/components/icons/CheckIcon.svelte'
 
   type Props = {
     checked?: boolean
@@ -20,7 +19,7 @@
 >
   {#snippet children({ checked: isOn })}
     {#if isOn}
-      <CheckIcon class="size-3.5 text-foreground" />
+      <Check class="size-3.5 text-foreground" />
     {/if}
   {/snippet}
 </Checkbox.Root>

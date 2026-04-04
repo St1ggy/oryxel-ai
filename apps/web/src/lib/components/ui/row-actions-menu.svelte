@@ -1,7 +1,7 @@
 <script lang="ts">
+  import { EllipsisVertical } from '@lucide/svelte'
   import { DropdownMenu } from 'bits-ui'
 
-  import MoreVerticalIcon from '$lib/components/icons/MoreVerticalIcon.svelte'
   import { cn } from '$lib/utils/cn'
 
   import IconButton from './icon-button.svelte'
@@ -22,7 +22,7 @@
 <DropdownMenu.Root>
   <DropdownMenu.Trigger>
     <IconButton label="Row actions">
-      <MoreVerticalIcon class="size-4" />
+      <EllipsisVertical class="size-4" />
     </IconButton>
   </DropdownMenu.Trigger>
   <DropdownMenu.Portal>

@@ -1,11 +1,10 @@
 <script lang="ts">
   /* eslint-disable import/no-duplicates */
-  import { Ellipsis, Leaf, Moon, Snowflake, Sun, Sunrise, Sunset } from '@lucide/svelte'
+  import { Ellipsis, Leaf, Moon, Snowflake, Sparkles, Sun, Sunrise, Sunset } from '@lucide/svelte'
   import { cubicOut } from 'svelte/easing'
   import { fade, fly } from 'svelte/transition'
   /* eslint-enable import/no-duplicates */
 
-  import SparklesIcon from '$lib/components/icons/SparklesIcon.svelte'
   import RatingStars from '$lib/components/ui/rating-stars.svelte'
   import * as m from '$lib/paraglide/messages.js'
 
@@ -352,7 +351,7 @@
       <!-- AI insight -->
       {#if row.agentComment}
         <div class="flex items-start gap-2.5 px-5 py-4">
-          <SparklesIcon class="mt-0.5 size-3.5 shrink-0 text-accent/60" />
+          <Sparkles class="mt-0.5 size-3.5 shrink-0 text-accent/60" />
           <p class="text-sm leading-relaxed text-foreground-muted italic">{row.agentComment}</p>
         </div>
         <div class="mx-5 h-px bg-border/60"></div>

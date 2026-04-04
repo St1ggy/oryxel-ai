@@ -1,11 +1,9 @@
 <script lang="ts">
+  import { Activity, ChevronRight, Heart, Sparkles } from '@lucide/svelte'
+
   import ActivityLog from '$lib/components/app/activity-log.svelte'
   import DiaryHeaderControls from '$lib/components/app/diary-header-controls.svelte'
   import RadarChart from '$lib/components/app/radar-chart.svelte'
-  import ActivityIcon from '$lib/components/icons/ActivityIcon.svelte'
-  import ChevronRightIcon from '$lib/components/icons/ChevronRightIcon.svelte'
-  import HeartIcon from '$lib/components/icons/HeartIcon.svelte'
-  import SparklesIcon from '$lib/components/icons/SparklesIcon.svelte'
   import Avatar from '$lib/components/ui/avatar.svelte'
   import Button from '$lib/components/ui/button.svelte'
   import * as m from '$lib/paraglide/messages.js'
@@ -139,19 +137,19 @@
     </div>
     <div class="mt-4 mb-2 divide-y divide-border">
       <div class="flex items-center gap-3 py-3">
-        <ActivityIcon class="size-4 shrink-0 text-foreground-muted" />
+        <Activity class="size-4 shrink-0 text-foreground-muted" />
         <span class="text-sm text-foreground-muted">{m.oryxel_stat_total()}</span>
         <span class="ml-auto text-sm font-semibold text-foreground">{safeProfile.totalCount}</span>
       </div>
       <div class="flex items-center gap-3 py-3">
-        <HeartIcon class="size-4 shrink-0 text-foreground-muted" />
+        <Heart class="size-4 shrink-0 text-foreground-muted" />
         <span class="text-sm text-foreground-muted">{m.oryxel_stat_note()}</span>
         <span class="ml-auto text-sm font-semibold text-foreground"
           >{safeProfile.favoriteNote ?? m.oryxel_common_empty()}</span
         >
       </div>
       <div class="flex items-center gap-3 py-3">
-        <SparklesIcon class="size-4 shrink-0 text-foreground-muted" />
+        <Sparkles class="size-4 shrink-0 text-foreground-muted" />
         <span class="text-sm text-foreground-muted">{m.oryxel_stat_archetype()}</span>
         <span class="ml-auto text-sm font-semibold text-foreground"
           >{safeProfile.archetype ?? m.oryxel_common_empty()}</span
@@ -179,7 +177,7 @@
       >
         {m.oryxel_activity_title()}
       </h3>
-      <ChevronRightIcon class={cn('size-4 text-foreground-muted transition-transform', activityOpen && 'rotate-90')} />
+      <ChevronRight class={cn('size-4 text-foreground-muted transition-transform', activityOpen && 'rotate-90')} />
     </button>
     {#if activityOpen}
       <div class="px-5 pb-4">

@@ -1,5 +1,6 @@
 <script lang="ts">
-  import SparklesIcon from '$lib/components/icons/SparklesIcon.svelte'
+  import { Sparkles } from '@lucide/svelte'
+
   import TooltipHint from '$lib/components/ui/tooltip-hint.svelte'
 
   type Props = {
@@ -12,7 +13,7 @@
 {#if comment}
   <TooltipHint content={comment}>
     <span class="inline-flex items-center text-accent/60 hover:text-accent" aria-label={comment}>
-      <SparklesIcon class="size-3" />
+      <Sparkles class="size-3" />
     </span>
   </TooltipHint>
 {/if}

@@ -1,5 +1,6 @@
 <script lang="ts">
-  import CheckIcon from '$lib/components/icons/CheckIcon.svelte'
+  import { Check } from '@lucide/svelte'
+
   import { cn } from '$lib/utils/cn'
 
   type Props = {
@@ -42,7 +43,7 @@
   )}
 >
   {#if selected}
-    <CheckIcon class="size-3.5" />
+    <Check class="size-3.5" />
   {:else}
     <span class="size-2 rounded-full bg-current opacity-45"></span>
   {/if}

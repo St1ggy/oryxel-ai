@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Activity, List, Lock, MessageSquare, Palette, Sparkles } from '@lucide/svelte'
   import { onMount } from 'svelte'
 
   import LandingFeatureCard from '$lib/components/app/landing-feature-card.svelte'
@@ -9,43 +10,37 @@
   import LandingIllustStepRecommend from '$lib/components/app/landing-illust-step-recommend.svelte'
   import LandingNav from '$lib/components/app/landing-nav.svelte'
   import LandingStepCard from '$lib/components/app/landing-step-card.svelte'
-  import ActivityIcon from '$lib/components/icons/ActivityIcon.svelte'
-  import ListIcon from '$lib/components/icons/ListIcon.svelte'
-  import LockIcon from '$lib/components/icons/LockIcon.svelte'
-  import MessageSquareIcon from '$lib/components/icons/MessageSquareIcon.svelte'
-  import PaletteIcon from '$lib/components/icons/PaletteIcon.svelte'
-  import SparklesIcon from '$lib/components/icons/SparklesIcon.svelte'
   import Accordion from '$lib/components/ui/accordion.svelte'
   import * as m from '$lib/paraglide/messages.js'
 
   const features = $derived([
     {
-      icon: MessageSquareIcon,
+      icon: MessageSquare,
       title: m.oryxel_public_feat_chat_title(),
       description: m.oryxel_public_feat_chat_desc(),
     },
     {
-      icon: ListIcon,
+      icon: List,
       title: m.oryxel_public_feat_tables_title(),
       description: m.oryxel_public_feat_tables_desc(),
     },
     {
-      icon: PaletteIcon,
+      icon: Palette,
       title: m.oryxel_public_feat_themes_title(),
       description: m.oryxel_public_feat_themes_desc(),
     },
     {
-      icon: LockIcon,
+      icon: Lock,
       title: m.oryxel_public_feat_privacy_title(),
       description: m.oryxel_public_feat_privacy_desc(),
     },
     {
-      icon: SparklesIcon,
+      icon: Sparkles,
       title: m.oryxel_public_feat_export_title(),
       description: m.oryxel_public_feat_export_desc(),
     },
     {
-      icon: ActivityIcon,
+      icon: Activity,
       title: m.oryxel_public_feat_multi_ai_title(),
       description: m.oryxel_public_feat_multi_ai_desc(),
     },

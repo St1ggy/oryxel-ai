@@ -1,5 +1,5 @@
 <script lang="ts">
-  import StarIcon from '$lib/components/icons/StarIcon.svelte'
+  import { Star } from '@lucide/svelte'
 
   type Props = {
     value?: number
@@ -28,7 +28,7 @@
       disabled={readonly}
       onclick={() => setRating(n)}
     >
-      <StarIcon
+      <Star
         class="size-4"
         fill={n <= value ? 'var(--oryx-star-filled)' : 'transparent'}
         style="color: {n <= value ? 'var(--oryx-star-filled)' : 'var(--oryx-star-empty)'}"

@@ -1,6 +1,6 @@
 <script lang="ts">
-  import InfoIcon from '$lib/components/icons/InfoIcon.svelte'
-  import SparklesIcon from '$lib/components/icons/SparklesIcon.svelte'
+  import { CircleHelp, Sparkles } from '@lucide/svelte'
+
   import TooltipHint from '$lib/components/ui/tooltip-hint.svelte'
   import * as m from '$lib/paraglide/messages.js'
 
@@ -27,7 +27,7 @@
     class="relative flex size-10 shrink-0 items-center justify-center rounded-full text-accent"
     style="background-color: color-mix(in srgb, var(--oryx-accent-solid) 20%, transparent)"
   >
-    <SparklesIcon class="size-5" />
+    <Sparkles class="size-5" />
     <span
       class="absolute right-0 bottom-0 size-3 rounded-full border-2 bg-success"
       style="border-color: var(--oryx-bg-page);"
@@ -43,7 +43,7 @@
       class="oryx-transition inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-foreground-muted hover:bg-muted hover:text-foreground"
       aria-label={networkInfo}
     >
-      <InfoIcon class="size-4.5" />
+      <CircleHelp class="size-4.5" />
     </button>
   </TooltipHint>
 </header>

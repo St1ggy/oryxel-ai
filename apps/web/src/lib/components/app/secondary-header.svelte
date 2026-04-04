@@ -1,5 +1,6 @@
 <script lang="ts">
-  import ArrowLeftIcon from '$lib/components/icons/ArrowLeftIcon.svelte'
+  import { ArrowLeft } from '@lucide/svelte'
+
   import * as m from '$lib/paraglide/messages.js'
 
   import { resolve } from '$app/paths'
@@ -25,7 +26,7 @@
       class="oryx-transition flex size-9 shrink-0 items-center justify-center rounded-lg text-foreground-muted hover:bg-muted hover:text-foreground active:scale-[0.96]"
       aria-label={m.oryxel_back()}
     >
-      <ArrowLeftIcon class="size-5" />
+      <ArrowLeft class="size-5" />
     </a>
     <!-- eslint-enable svelte/no-navigation-without-resolve -->
     {#if title}

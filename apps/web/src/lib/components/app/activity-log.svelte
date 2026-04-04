@@ -1,7 +1,7 @@
 <script lang="ts">
+  import { Sparkles, User } from '@lucide/svelte'
+
   import { PROVIDER_DISPLAY_NAME } from '$lib/ai/provider-guides'
-  import SparklesIcon from '$lib/components/icons/SparklesIcon.svelte'
-  import UserIcon from '$lib/components/icons/UserIcon.svelte'
   import * as m from '$lib/paraglide/messages.js'
 
   import type { ActivityEntry } from '$lib/types/diary'
@@ -51,9 +51,9 @@
       <li class="flex items-start gap-3 py-3">
         <div class="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full border border-border bg-muted">
           {#if entry.actor === 'agent'}
-            <SparklesIcon class="size-3.5 text-accent" />
+            <Sparkles class="size-3.5 text-accent" />
           {:else}
-            <UserIcon class="size-3.5 text-foreground-muted" />
+            <User class="size-3.5 text-foreground-muted" />
           {/if}
         </div>
         <div class="min-w-0 flex-1">

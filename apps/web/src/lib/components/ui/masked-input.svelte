@@ -1,7 +1,6 @@
 <script lang="ts">
-  import EyeIcon from '$lib/components/icons/EyeIcon.svelte'
-  import EyeOffIcon from '$lib/components/icons/EyeOffIcon.svelte'
-  import LockIcon from '$lib/components/icons/LockIcon.svelte'
+  import { Eye, EyeOff, Lock } from '@lucide/svelte'
+
   import * as m from '$lib/paraglide/messages.js'
 
   import IconButton from './icon-button.svelte'
@@ -24,7 +23,7 @@
     class="pointer-events-none absolute top-1/2 left-3 z-10 -translate-y-1/2 text-foreground-muted"
     aria-hidden="true"
   >
-    <LockIcon class="size-4" />
+    <Lock class="size-4" />
   </span>
   <Input
     {id}
@@ -43,9 +42,9 @@
       onclick={() => (visible = !visible)}
     >
       {#if visible}
-        <EyeOffIcon class="size-4" />
+        <EyeOff class="size-4" />
       {:else}
-        <EyeIcon class="size-4" />
+        <Eye class="size-4" />
       {/if}
     </IconButton>
   </div>

@@ -1,7 +1,8 @@
 <script lang="ts">
+  import { Pencil } from '@lucide/svelte'
+
   import ProfileStatCard from '$lib/components/app/profile-stat-card.svelte'
   import RadarChart from '$lib/components/app/radar-chart.svelte'
-  import PencilIcon from '$lib/components/icons/PencilIcon.svelte'
   import Avatar from '$lib/components/ui/avatar.svelte'
   import Button from '$lib/components/ui/button.svelte'
   import Card from '$lib/components/ui/card.svelte'
@@ -22,7 +23,7 @@
       </div>
     </div>
     <Button href="/profile/edit" variant="secondary">
-      <PencilIcon class="size-4" />
+      <Pencil class="size-4" />
       {m.oryxel_profile_edit()}
     </Button>
   </header>

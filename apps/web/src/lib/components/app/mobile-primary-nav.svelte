@@ -1,7 +1,6 @@
 <script lang="ts">
-  import ListIcon from '$lib/components/icons/ListIcon.svelte'
-  import MessageSquareIcon from '$lib/components/icons/MessageSquareIcon.svelte'
-  import UserIcon from '$lib/components/icons/UserIcon.svelte'
+  import { List, MessageSquare, User } from '@lucide/svelte'
+
   import * as m from '$lib/paraglide/messages.js'
   import { cn } from '$lib/utils/cn'
 
@@ -30,7 +29,7 @@
     )}
     onclick={() => onSelect('chat')}
   >
-    <MessageSquareIcon class="size-5" />
+    <MessageSquare class="size-5" />
     {m.oryxel_mobile_chat()}
   </button>
   <button
@@ -44,7 +43,7 @@
     )}
     onclick={() => onSelect('lists')}
   >
-    <ListIcon class="size-5" />
+    <List class="size-5" />
     {m.oryxel_mobile_tables()}
   </button>
   <button
@@ -58,7 +57,7 @@
     )}
     onclick={() => onSelect('profile')}
   >
-    <UserIcon class="size-5" />
+    <User class="size-5" />
     {m.oryxel_mobile_profile()}
   </button>
 </nav>

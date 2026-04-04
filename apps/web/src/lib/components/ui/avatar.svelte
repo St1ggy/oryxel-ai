@@ -1,5 +1,6 @@
 <script lang="ts">
-  import UserIcon from '$lib/components/icons/UserIcon.svelte'
+  import { User } from '@lucide/svelte'
+
   import { cn } from '$lib/utils/cn'
 
   type Props = {
@@ -27,7 +28,7 @@
   {#if src}
     <img {src} {alt} class="size-full object-cover" />
   {:else}
-    <UserIcon
+    <User
       class={cn('text-[var(--oryx-fg-on-accent)]', {
         'size-4': size === 'sm',
         'size-5': size === 'md',

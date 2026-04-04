@@ -1,10 +1,10 @@
 <script lang="ts">
+  import { Send } from '@lucide/svelte'
   import { fade, fly } from 'svelte/transition'
 
   import AiModelHeader from '$lib/components/app/ai-model-header.svelte'
   import ChatBubble from '$lib/components/app/chat-bubble.svelte'
   import TypingIndicator from '$lib/components/app/typing-indicator.svelte'
-  import SendIcon from '$lib/components/icons/SendIcon.svelte'
   import Button from '$lib/components/ui/button.svelte'
   import Chip from '$lib/components/ui/chip.svelte'
   import Select from '$lib/components/ui/select.svelte'
@@ -166,7 +166,7 @@
           onclick={send}
           aria-label={m.oryxel_chat_send()}
         >
-          <SendIcon class="size-5" />
+          <Send class="size-5" />
         </button>
       </div>
       {#if providerOptions.length > 0}

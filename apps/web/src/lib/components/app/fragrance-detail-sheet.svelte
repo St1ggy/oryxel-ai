@@ -1,10 +1,10 @@
 <script lang="ts">
   /* eslint-disable import/no-duplicates */
+  import { Sparkles } from '@lucide/svelte'
   import { cubicOut } from 'svelte/easing'
   import { fade, fly } from 'svelte/transition'
   /* eslint-enable import/no-duplicates */
 
-  import SparklesIcon from '$lib/components/icons/SparklesIcon.svelte'
   import RatingStars from '$lib/components/ui/rating-stars.svelte'
   import * as m from '$lib/paraglide/messages.js'
 
@@ -184,7 +184,7 @@
       <!-- AI insight -->
       {#if row.agentComment}
         <div class="flex items-start gap-3 px-6 py-4">
-          <SparklesIcon class="mt-0.5 size-3.5 shrink-0 text-accent/60" />
+          <Sparkles class="mt-0.5 size-3.5 shrink-0 text-accent/60" />
           <p class="text-sm leading-relaxed text-foreground-muted italic">{row.agentComment}</p>
         </div>
         <div class="mx-6 h-px bg-border/60"></div>

@@ -1,10 +1,7 @@
 <script lang="ts">
+  import { Check, Globe, Palette, Settings } from '@lucide/svelte'
   import { DropdownMenu } from 'bits-ui'
 
-  import CheckIcon from '$lib/components/icons/CheckIcon.svelte'
-  import GlobeIcon from '$lib/components/icons/GlobeIcon.svelte'
-  import PaletteIcon from '$lib/components/icons/PaletteIcon.svelte'
-  import SettingsIcon from '$lib/components/icons/SettingsIcon.svelte'
   import Button from '$lib/components/ui/button.svelte'
   import { localeStore } from '$lib/locale.svelte'
   import * as m from '$lib/paraglide/messages.js'
@@ -87,7 +84,7 @@
   <DropdownMenu.Root>
     <DropdownMenu.Trigger>
       <Button variant="ghost" size="sm" class="size-9 shrink-0 p-0 text-foreground-muted hover:text-accent">
-        <GlobeIcon class="size-5" />
+        <Globe class="size-5" />
         <span class="sr-only">{m.oryxel_locale_switcher_label()}</span>
       </Button>
     </DropdownMenu.Trigger>
@@ -107,7 +104,7 @@
           >
             {localeLabel(locale)}
             {#if activeLocale === locale}
-              <CheckIcon class="size-4" />
+              <Check class="size-4" />
             {/if}
           </DropdownMenu.Item>
         {/each}
@@ -118,7 +115,7 @@
   <DropdownMenu.Root>
     <DropdownMenu.Trigger>
       <Button variant="ghost" size="sm" class="size-9 shrink-0 p-0 text-foreground-muted hover:text-accent">
-        <PaletteIcon class="size-5" />
+        <Palette class="size-5" />
         <span class="sr-only">{m.oryxel_settings_theme()}</span>
       </Button>
     </DropdownMenu.Trigger>
@@ -138,7 +135,7 @@
           >
             {themeLabel(theme)}
             {#if themeContext.theme === theme}
-              <CheckIcon class="size-4" />
+              <Check class="size-4" />
             {/if}
           </DropdownMenu.Item>
         {/each}
@@ -153,7 +150,7 @@
       class="size-9 shrink-0 p-0 text-foreground-muted hover:text-accent"
       href={resolve('/settings')}
     >
-      <SettingsIcon class="size-5" />
+      <Settings class="size-5" />
       <span class="sr-only">{m.oryxel_nav_settings()}</span>
     </Button>
   {/if}
