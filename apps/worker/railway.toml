@@ -3,4 +3,4 @@ builder = "nixpacks"
 buildCommand = "bun install"
 
 [deploy]
-startCommand = "bun run start"
+startCommand = "bun run --cwd apps/worker start"
