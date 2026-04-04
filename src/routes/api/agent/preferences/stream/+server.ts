@@ -12,6 +12,7 @@ import {
   loadRecentChatMessages,
   updatePatchStatus,
 } from '$lib/server/ai/storage'
+import { recordActivity } from '$lib/server/diary/activity'
 import { loadDiaryForUser } from '$lib/server/diary/load'
 import { loadProfileForUser } from '$lib/server/profile/load'
 import { generateMissingTranslations } from '$lib/server/translation/generate'
@@ -366,6 +367,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
           void generateMissingTranslations(userId, locale)
           await updatePatchStatus({ patchId: pendingPatch.id, userId, action: 'applied' })
+          void recordActivity({
+            userId,
+            action: 'patch_applied',
+            actor: 'agent',
+            provider: body.provider ?? defaultProvider ?? undefined,
+            summary: patch.summary ?? '',
+          })
         }
 
         const assistantMessage =

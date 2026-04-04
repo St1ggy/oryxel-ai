@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { applyPatchToDatabase } from '$lib/server/ai/apply'
 import { getUserDefaultProvider } from '$lib/server/ai/keys/service'
 import { analyzePreferences } from '$lib/server/ai/router'
+import { recordActivity } from '$lib/server/diary/activity'
 import { loadDiaryForUser } from '$lib/server/diary/load'
 import { loadProfileForUser } from '$lib/server/profile/load'
 import { generateMissingTranslations } from '$lib/server/translation/generate'
@@ -286,6 +287,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       }
 
       await generateMissingTranslations(locals.user!.id, locale)
+
+      void recordActivity({
+        userId: locals.user!.id,
+        action: 'profile_synced',
+        actor: 'agent',
+        provider: defaultProvider ?? undefined,
+        summary: `Profile synced (${totalEntries} entries)`,
+      })
 
       send({ done: true })
       controller.close()

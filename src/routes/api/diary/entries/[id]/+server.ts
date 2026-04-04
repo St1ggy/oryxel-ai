@@ -3,10 +3,23 @@ import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { db } from '$lib/server/db'
-import { userFragrance } from '$lib/server/db/schema'
+import { brand, fragrance, userFragrance } from '$lib/server/db/schema'
+import { recordActivity } from '$lib/server/diary/activity'
 import { listTypeToFlags } from '$lib/server/diary/flags'
 
 import type { RequestHandler } from './$types'
+
+async function getFragranceLabel(entryId: number, userId: string): Promise<string> {
+  const [row] = await db
+    .select({ brandName: brand.name, fragName: fragrance.name })
+    .from(userFragrance)
+    .innerJoin(fragrance, eq(userFragrance.fragranceId, fragrance.id))
+    .innerJoin(brand, eq(fragrance.brandId, brand.id))
+    .where(and(eq(userFragrance.id, entryId), eq(userFragrance.userId, userId)))
+    .limit(1)
+
+  return row ? `${row.brandName} · ${row.fragName}` : `#${entryId}`
+}
 
 export const DELETE: RequestHandler = async ({ params, locals }) => {
   if (!locals.user) throw error(401, 'AUTH_REQUIRED')
@@ -15,7 +28,16 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 
   if (Number.isNaN(id)) throw error(400, 'INVALID_ID')
 
+  const label = await getFragranceLabel(id, locals.user.id)
+
   await db.delete(userFragrance).where(and(eq(userFragrance.id, id), eq(userFragrance.userId, locals.user.id)))
+
+  void recordActivity({
+    userId: locals.user.id,
+    action: 'entry_deleted',
+    actor: 'user',
+    summary: `Removed: ${label}`,
+  })
 
   return json({ ok: true })
 }
@@ -56,10 +78,27 @@ export const PATCH: RequestHandler = async ({ params, locals, request }) => {
 
   if (Object.keys(updates).length === 0) throw error(400, 'NO_FIELDS')
 
+  const label = await getFragranceLabel(id, locals.user.id)
+
   await db
     .update(userFragrance)
     .set(updates)
     .where(and(eq(userFragrance.id, id), eq(userFragrance.userId, locals.user.id)))
+
+  function buildSummary(): string {
+    if (typeof body.rating === 'number') return `Rated ${label}: ${body.rating}★`
+    if (body.listType) return `Moved ${label} → ${body.listType}`
+    if (typeof body.userComment === 'string') return `Commented on ${label}`
+
+    return `Updated ${label}`
+  }
+
+  void recordActivity({
+    userId: locals.user.id,
+    action: 'entry_updated',
+    actor: 'user',
+    summary: buildSummary(),
+  })
 
   return json({ ok: true })
 }
