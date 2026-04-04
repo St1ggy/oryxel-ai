@@ -14,7 +14,7 @@
 
 <div
   class={cn(
-    'max-w-[85%] text-[15px] leading-[1.625] shadow-[0px_1px_3px_0px_rgba(0,0,0,0.1),0px_1px_2px_0px_rgba(0,0,0,0.1)]',
+    'max-w-[85%] whitespace-pre-wrap text-[15px] leading-relaxed shadow-[0px_1px_3px_0px_rgba(0,0,0,0.1),0px_1px_2px_0px_rgba(0,0,0,0.1)]',
     {
       'ml-auto rounded-tl-[20px] rounded-tr-[8px] rounded-br-[20px] rounded-bl-[20px] px-5 py-3 text-[var(--oryx-fg-on-accent)]':
         role === 'user',

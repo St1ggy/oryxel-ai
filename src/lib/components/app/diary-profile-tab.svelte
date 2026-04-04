@@ -1,7 +1,6 @@
 <script lang="ts">
   import { resolve } from '$app/paths'
 
-  import ProfileStatCard from '$lib/components/app/profile-stat-card.svelte'
   import RadarChart from '$lib/components/app/radar-chart.svelte'
   import ActivityIcon from '$lib/components/icons/ActivityIcon.svelte'
   import HeartIcon from '$lib/components/icons/HeartIcon.svelte'
@@ -27,7 +26,7 @@
     onProfileSync?: () => void
   }
 
-  const { variant, profile, onProfileSync }: Props = $props()
+  const { profile, onProfileSync }: Props = $props()
   const safeProfile = $derived<ProfileData>(
     profile ?? {
       displayName: m.oryxel_profile_default_user(),
@@ -74,30 +73,29 @@
     </div>
   </div>
 
-  <div class={variant === 'desktop' ? 'grid grid-cols-3 gap-6' : 'grid grid-cols-1 gap-4'}>
-    <ProfileStatCard label={m.oryxel_stat_total()} value={String(safeProfile.totalCount)}>
-      {#snippet icon()}
-        <ActivityIcon class="size-6" />
-      {/snippet}
-    </ProfileStatCard>
-    <ProfileStatCard label={m.oryxel_stat_note()} value={safeProfile.favoriteNote ?? m.oryxel_common_empty()}>
-      {#snippet icon()}
-        <HeartIcon class="size-6" />
-      {/snippet}
-    </ProfileStatCard>
-    <ProfileStatCard label={m.oryxel_stat_archetype()} value={safeProfile.archetype ?? m.oryxel_common_empty()}>
-      {#snippet icon()}
-        <SparklesIcon class="size-6" />
-      {/snippet}
-    </ProfileStatCard>
-  </div>
-
   <div
     class="rounded-[24px] border border-border bg-surface px-[33px] pt-[33px] pb-[8px] shadow-[0px_1px_3px_0px_rgba(0,0,0,0.1),0px_1px_2px_0px_rgba(0,0,0,0.1)]"
   >
     <h3 class="oryx-heading mb-6 text-lg font-semibold text-foreground">{m.oryxel_radar_title()}</h3>
     <div class="flex justify-center py-4">
       <RadarChart axes={safeProfile.radarAxes} size={300} />
+    </div>
+    <div class="mt-4 mb-2 divide-y divide-border">
+      <div class="flex items-center gap-3 py-3">
+        <ActivityIcon class="size-4 shrink-0 text-foreground-muted" />
+        <span class="text-sm text-foreground-muted">{m.oryxel_stat_total()}</span>
+        <span class="ml-auto text-sm font-semibold text-foreground">{safeProfile.totalCount}</span>
+      </div>
+      <div class="flex items-center gap-3 py-3">
+        <HeartIcon class="size-4 shrink-0 text-foreground-muted" />
+        <span class="text-sm text-foreground-muted">{m.oryxel_stat_note()}</span>
+        <span class="ml-auto text-sm font-semibold text-foreground">{safeProfile.favoriteNote ?? m.oryxel_common_empty()}</span>
+      </div>
+      <div class="flex items-center gap-3 py-3">
+        <SparklesIcon class="size-4 shrink-0 text-foreground-muted" />
+        <span class="text-sm text-foreground-muted">{m.oryxel_stat_archetype()}</span>
+        <span class="ml-auto text-sm font-semibold text-foreground">{safeProfile.archetype ?? m.oryxel_common_empty()}</span>
+      </div>
     </div>
   </div>
 </div>

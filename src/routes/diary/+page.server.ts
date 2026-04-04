@@ -1,6 +1,7 @@
 import { redirect } from '@sveltejs/kit'
 import { and, eq } from 'drizzle-orm'
 
+import { DIARY_LIST_TAB_VALUES } from '$lib/diary/diary-tab-items'
 import { cookieName } from '$lib/paraglide/runtime'
 import { applyPatchToDatabase } from '$lib/server/ai/apply'
 import {
@@ -73,5 +74,10 @@ export const load: PageServerLoad = async ({ locals, url, cookies }) => {
     .toReversed()
     .map((row) => ({ id: `db-${row.id}`, role: row.role as 'user' | 'assistant', content: row.content }))
 
-  return { diary, userId, profile, pendingPatches, locale, hasChatAccess, chatProviders, chatHistory }
+  const rawTab = url.searchParams.get('tab') ?? ''
+  const initialTab = (DIARY_LIST_TAB_VALUES as readonly string[]).includes(rawTab)
+    ? (rawTab as (typeof DIARY_LIST_TAB_VALUES)[number])
+    : 'owned'
+
+  return { diary, userId, profile, pendingPatches, locale, hasChatAccess, chatProviders, chatHistory, initialTab }
 }

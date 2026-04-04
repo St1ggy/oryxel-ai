@@ -9,7 +9,7 @@
 
   import type { DiaryRow, FragranceListType } from '$lib/types/diary'
 
-  type SaveData = { listType: FragranceListType; statusLabel: string; isOwned: boolean }
+  type SaveData = { listType: FragranceListType; userComment: string; isOwned: boolean }
 
   type Props = {
     row?: DiaryRow | null
@@ -20,22 +20,25 @@
   let { row = null, open = $bindable(false), onSave }: Props = $props()
 
   let listTypeValue = $state<FragranceListType>('to_try')
-  let statusLabelValue = $state('')
+  let userCommentValue = $state('')
   let isOwnedValue = $state(false)
   let saving = $state(false)
   let saveError = $state(false)
 
   function inferListType(r: DiaryRow): FragranceListType {
     if (r.isTried && r.isLiked === true) return 'liked'
+
     if (r.isTried && r.isLiked === false) return 'disliked'
+
     if (r.isOwned) return 'owned'
+
     return 'to_try'
   }
 
   $effect(() => {
     if (row) {
       listTypeValue = inferListType(row)
-      statusLabelValue = row.statusLabel === '—' ? '' : row.statusLabel
+      userCommentValue = row.userComment ?? ''
       isOwnedValue = row.isOwned
       saveError = false
     }
@@ -62,7 +65,7 @@
     try {
       await onSave?.(row.id, {
         listType: listTypeValue,
-        statusLabel: statusLabelValue.trim(),
+        userComment: userCommentValue.trim(),
         isOwned: isOwnedValue,
       })
       close()
@@ -91,8 +94,13 @@
         />
       </div>
       <div>
-        <Label for="edit-status">{m.oryxel_table_status()}</Label>
-        <Input id="edit-status" class="mt-1" bind:value={statusLabelValue} placeholder={m.oryxel_table_status()} />
+        <Label for="edit-status">{m.oryxel_table_user_comment()}</Label>
+        <Input
+          id="edit-status"
+          class="mt-1"
+          bind:value={userCommentValue}
+          placeholder={m.oryxel_table_user_comment_placeholder()}
+        />
       </div>
       <div class="flex items-center gap-2">
         <CheckboxField bind:checked={isOwnedValue} aria-label={m.oryxel_owned_hint()} />

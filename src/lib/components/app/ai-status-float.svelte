@@ -11,15 +11,33 @@
     patchType: string
   }
 
+  type SyncPhase = 'owned' | 'liked' | 'disliked' | 'profile' | 'recommendations' | 'to_try'
+  type SyncProgress = { step: number; total: number; phase: SyncPhase }
+
   type Props = {
     thinking?: boolean
     patches?: PendingPatch[]
+    syncProgress?: SyncProgress | null
   }
 
-  const { thinking = false, patches = [] }: Props = $props()
+  const { thinking = false, patches = [], syncProgress = null }: Props = $props()
 
   const pendingPatches = $derived(patches.filter((p) => p.status === 'created'))
-  const visible = $derived(thinking || pendingPatches.length > 0)
+  const visible = $derived(thinking || pendingPatches.length > 0 || syncProgress !== null)
+
+  function phaseLabel(phase: SyncPhase): string {
+    if (phase === 'owned') return m.oryxel_sync_phase_owned()
+
+    if (phase === 'liked') return m.oryxel_sync_phase_liked()
+
+    if (phase === 'disliked') return m.oryxel_sync_phase_disliked()
+
+    if (phase === 'profile') return m.oryxel_sync_phase_profile()
+
+    if (phase === 'to_try') return m.oryxel_sync_phase_to_try()
+
+    return m.oryxel_sync_phase_recommendations()
+  }
 
   let busyId = $state<number | null>(null)
 
@@ -44,6 +62,26 @@
     in:fly={{ y: 12, duration: 220, opacity: 0 }}
     out:fly={{ y: 12, duration: 180, opacity: 0 }}
   >
+    {#if syncProgress}
+      <div
+        class="pointer-events-auto rounded-2xl border border-border bg-surface/90 px-4 py-3 shadow-lg backdrop-blur-md"
+        in:fly={{ y: 8, duration: 180 }}
+        out:fly={{ y: 8, duration: 140 }}
+      >
+        <div class="mb-2 flex items-center justify-between">
+          <span class="text-sm font-medium text-foreground">{m.oryxel_profile_sync()}</span>
+          <span class="text-xs text-foreground-muted">{syncProgress.step}/{syncProgress.total}</span>
+        </div>
+        <div class="h-1.5 w-full overflow-hidden rounded-full bg-border">
+          <div
+            class="h-full rounded-full bg-accent transition-[width] duration-500 ease-out"
+            style="width: {Math.round((syncProgress.step / syncProgress.total) * 100)}%"
+          ></div>
+        </div>
+        <p class="mt-2 text-xs text-foreground-muted">{phaseLabel(syncProgress.phase)}</p>
+      </div>
+    {/if}
+
     {#if thinking}
       <div
         class="pointer-events-auto flex items-center gap-3 rounded-2xl border border-border bg-surface/90 px-4 py-3 shadow-lg backdrop-blur-md"

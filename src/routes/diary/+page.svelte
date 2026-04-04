@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { invalidateAll } from '$app/navigation'
+  import { goto, invalidateAll } from '$app/navigation'
+  import { untrack } from 'svelte'
   import { fade } from 'svelte/transition'
 
   import AiStatusFloat from '$lib/components/app/ai-status-float.svelte'
@@ -8,6 +9,7 @@
   import DiaryHeaderControls from '$lib/components/app/diary-header-controls.svelte'
   import DiaryListTabs from '$lib/components/app/diary-list-tabs.svelte'
   import DiaryProfileTab from '$lib/components/app/diary-profile-tab.svelte'
+  import FragranceDetailModal from '$lib/components/app/fragrance-detail-modal.svelte'
   import MobilePrimaryNav from '$lib/components/app/mobile-primary-nav.svelte'
   import ChevronPanelLeftIcon from '$lib/components/icons/ChevronPanelLeftIcon.svelte'
   import ChevronPanelRightIcon from '$lib/components/icons/ChevronPanelRightIcon.svelte'
@@ -24,8 +26,16 @@
   let chatOpen = $state(true)
   let chatDraft = $state('')
   let mobileTab = $state<DiaryMobileTab>('lists')
-  let listTab = $state<DiaryListTabValue>('owned')
+  let listTab = $state<DiaryListTabValue>(untrack(() => data.initialTab ?? 'owned'))
   let editRow = $state<DiaryRow | null>(null)
+  let detailOpen = $state(false)
+  let detailRow = $state<DiaryRow | null>(null)
+  let detailContext = $state<'diary' | 'to_try'>('diary')
+
+  $effect(() => {
+    // eslint-disable-next-line svelte/no-navigation-without-resolve
+    void goto(`?tab=${listTab}`, { replaceState: true, noScroll: true, keepFocus: true })
+  })
   let editOpen = $state(false)
 
   /** Local rating edits keyed by fragranceId; reset when fresh server data arrives. */
@@ -108,6 +118,13 @@
     initializedMessages = true
   })
 
+  type SyncProgress = {
+    step: number
+    total: number
+    phase: 'owned' | 'liked' | 'disliked' | 'profile' | 'recommendations' | 'to_try'
+  } | null
+
+  let syncProgress = $state<SyncProgress>(null)
   let thinking = $state(false)
   const hasChatAccess = $derived(data.hasChatAccess)
   const providerOptions = $derived(data.chatProviders ?? [])
@@ -125,12 +142,54 @@
     }
   })
 
-  function triggerProfileSync() {
-    void fetch('/api/agent/profile-sync', {
+  function handleSyncLine(line: string) {
+    if (!line.startsWith('data: ')) return
+
+    try {
+      const event = JSON.parse(line.slice(6)) as
+        | { step: number; total: number; phase: 'owned' | 'liked' | 'disliked' | 'profile' | 'recommendations' }
+        | { done: true }
+
+      if ('done' in event) {
+        syncProgress = null
+        void invalidateAll()
+      } else {
+        syncProgress = event
+      }
+    } catch {
+      // ignore malformed line
+    }
+  }
+
+  async function triggerProfileSync() {
+    const response = await fetch('/api/agent/profile-sync', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ locale: data.locale }),
-    }).finally(() => invalidateAll())
+    })
+
+    if (!response.body) {
+      void invalidateAll()
+
+      return
+    }
+
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+
+        if (done) break
+
+        for (const line of decoder.decode(value, { stream: true }).split('\n')) {
+          handleSyncLine(line)
+        }
+      }
+    } finally {
+      syncProgress = null
+    }
   }
 
   function onSend(text: string) {
@@ -183,7 +242,6 @@
       .finally(() => {
         thinking = false
         void invalidateAll()
-        triggerProfileSync()
       })
   }
 
@@ -194,12 +252,12 @@
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ rating }),
     })
-    triggerProfileSync()
+    void invalidateAll()
   }
 
   async function onDelete(id: number) {
     await fetch(`/api/diary/entries/${id}`, { method: 'DELETE' })
-    triggerProfileSync()
+    void invalidateAll()
   }
 
   function onEdit(row: DiaryRow) {
@@ -207,9 +265,15 @@
     editOpen = true
   }
 
+  function openDetail(row: DiaryRow, context: 'diary' | 'to_try') {
+    detailRow = row
+    detailContext = context
+    detailOpen = true
+  }
+
   async function onSaveEdit(
     id: number,
-    updates: { listType: FragranceListType; statusLabel: string; isOwned: boolean },
+    updates: { listType: FragranceListType; userComment: string; isOwned: boolean },
   ) {
     const response = await fetch(`/api/diary/entries/${id}`, {
       method: 'PATCH',
@@ -219,7 +283,7 @@
 
     if (!response.ok) throw new Error('save failed')
 
-    triggerProfileSync()
+    void invalidateAll()
   }
 
   function onMobileNav(tab: DiaryMobileTab) {
@@ -265,9 +329,7 @@
         bind:listTab
         {diaryState}
         {onRatingChange}
-        {onDelete}
-        {onEdit}
-        {onTriedRecommendation}
+        onOpenDetail={openDetail}
         onProfileSync={triggerProfileSync}
         profile={profileData}
         layout="desktop"
@@ -314,9 +376,7 @@
             bind:listTab
             {diaryState}
             {onRatingChange}
-            {onDelete}
-            {onEdit}
-            {onTriedRecommendation}
+            onOpenDetail={openDetail}
             onProfileSync={triggerProfileSync}
             profile={profileData}
             layout="mobile"
@@ -330,4 +390,12 @@
 </div>
 
 <DiaryEditModal bind:open={editOpen} row={editRow} onSave={onSaveEdit} />
-<AiStatusFloat {thinking} patches={pendingItems} />
+<FragranceDetailModal
+  bind:open={detailOpen}
+  row={detailRow}
+  {onRatingChange}
+  onDelete={detailContext === 'diary' ? onDelete : undefined}
+  onEdit={detailContext === 'diary' ? onEdit : undefined}
+  onTried={detailContext === 'to_try' ? onTriedRecommendation : undefined}
+/>
+<AiStatusFloat {thinking} patches={pendingItems} {syncProgress} />
