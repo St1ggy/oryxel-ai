@@ -81,24 +81,40 @@
 
   const canSend = $derived(draft.trim().length > 0)
 
-  let scrollEl = $state<HTMLDivElement | null>(null)
+  let scrollElement = $state<HTMLDivElement | null>(null)
+  let draftElement = $state<HTMLTextAreaElement | null>(null)
 
-  function scrollToBottom() {
-    if (scrollEl) scrollEl.scrollTop = scrollEl.scrollHeight
+  const MAX_TEXTAREA_HEIGHT = 144 // ~5 lines
+
+  function resizeDraft() {
+    if (!draftElement) return
+
+    draftElement.style.height = 'auto'
+    draftElement.style.height = `${Math.min(draftElement.scrollHeight, MAX_TEXTAREA_HEIGHT)}px`
   }
 
   $effect(() => {
-    // Re-run whenever messages or thinking change
-    messages
-    thinking
-    scrollToBottom()
+    // Track draft changes: typing, chip click, or clear-on-send
+    if (draft.length >= 0 && draftElement) resizeDraft()
+  })
+
+  function scrollToBottom() {
+    if (scrollElement) scrollElement.scrollTop = scrollElement.scrollHeight
+  }
+
+  $effect(() => {
+    // Track messages and thinking to scroll after each update
+    const _length = messages.length
+    const _thinking = thinking
+
+    if (_length >= 0 || !_thinking) scrollToBottom()
   })
 </script>
 
 <div class="flex h-full min-h-0 flex-col bg-[color-mix(in_srgb,var(--oryx-bg-surface)_54%,var(--oryx-bg-page))]">
   <AiModelHeader modelLabel={m.oryxel_chat_model()} />
   {#if hasApiKey}
-    <div bind:this={scrollEl} class="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 pt-5 pb-6">
+    <div bind:this={scrollElement} class="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 pt-5 pb-6">
       {#each messages as message (message.id)}
         <div in:fly={{ y: 8, duration: 280, opacity: 0.9 }}>
           <ChatBubble role={message.role}>
@@ -116,8 +132,8 @@
       class="shrink-0 space-y-2 border-t border-border bg-[color-mix(in_srgb,var(--oryx-bg-page)_58%,transparent)] px-4 pt-3 pb-3 backdrop-blur-sm"
     >
       <div class="scrollbar-hide flex gap-2 overflow-x-auto">
-        {#each displayChips as chip, i (chip)}
-          <div in:fade={{ duration: 200, delay: i * 40 }} out:fade={{ duration: 150 }}>
+        {#each displayChips as chip, index (chip)}
+          <div in:fade={{ duration: 200, delay: index * 40 }} out:fade={{ duration: 150 }}>
             <Chip
               onclick={() => {
                 draft = chip
@@ -135,11 +151,14 @@
         )}
       >
         <textarea
+          bind:this={draftElement}
           bind:value={draft}
           rows={1}
           placeholder={m.oryxel_chat_placeholder()}
-          class="oryx-chat-draft max-h-32 min-h-[44px] flex-1 resize-none border-0 bg-transparent py-3 text-[15px] text-foreground outline-none placeholder:text-foreground-muted"
+          class="oryx-chat-draft min-h-[44px] flex-1 resize-none overflow-y-auto border-0 bg-transparent py-3 text-[15px] text-foreground outline-none placeholder:text-foreground-muted"
+          style="max-height: {MAX_TEXTAREA_HEIGHT}px"
           onkeydown={onDraftKeydown}
+          oninput={resizeDraft}
         ></textarea>
         <button
           type="button"
@@ -154,7 +173,7 @@
           <SendIcon class="size-5" />
         </button>
       </div>
-      {#if providerOptions.length >= 1}
+      {#if providerOptions.length > 0}
         <div class="flex items-center gap-2 px-1 pt-0.5">
           <label for="chat-provider-select" class="shrink-0 text-xs text-foreground-muted">
             {m.oryxel_settings_providers()}:
