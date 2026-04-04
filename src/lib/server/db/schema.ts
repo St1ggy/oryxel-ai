@@ -132,6 +132,20 @@ export const aiPatchAuditLog = pgTable('ai_patch_audit_log', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
+export const userActivityLog = pgTable('user_activity_log', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  /** 'patch_applied' | 'profile_synced' | 'entry_updated' | 'entry_deleted' */
+  action: text('action').notNull(),
+  /** 'user' or 'agent' */
+  actor: text('actor').notNull().default('user'),
+  /** AI provider id when actor='agent', e.g. 'openai', 'groq' */
+  provider: text('provider'),
+  /** Human-readable description in the user's locale */
+  summary: text('summary').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
 export const brandRelations = relations(brand, ({ many }) => ({
   fragrances: many(fragrance),
 }))

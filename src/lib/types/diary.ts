@@ -31,6 +31,15 @@ export type ChatMessage = {
   content: string
 }
 
+export type ActivityEntry = {
+  id: number
+  action: string
+  actor: 'user' | 'agent'
+  provider: string | null
+  summary: string
+  createdAt: Date
+}
+
 /** Axis key → value 0-100. Keys are chosen by AI per user profile. */
 export type RadarAxes = Record<string, number>
 
