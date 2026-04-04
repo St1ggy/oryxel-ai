@@ -83,5 +83,16 @@ export const load: PageServerLoad = async ({ locals, url, cookies }) => {
     ? (rawTab as (typeof DIARY_LIST_TAB_VALUES)[number])
     : 'owned'
 
-  return { diary, userId, profile, pendingPatches, recentActivity, locale, hasChatAccess, chatProviders, chatHistory, initialTab }
+  return {
+    diary,
+    userId,
+    profile,
+    pendingPatches,
+    recentActivity,
+    locale,
+    hasChatAccess,
+    chatProviders,
+    chatHistory,
+    initialTab,
+  }
 }

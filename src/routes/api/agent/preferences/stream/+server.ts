@@ -1,4 +1,5 @@
 import { error } from '@sveltejs/kit'
+import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { applyProfileAndSuggestions, applyRecommendations, applySingleTableOp } from '$lib/server/ai/apply'
@@ -12,6 +13,8 @@ import {
   loadRecentChatMessages,
   updatePatchStatus,
 } from '$lib/server/ai/storage'
+import { db } from '$lib/server/db'
+import { userAiPreferences } from '$lib/server/db/schema'
 import { recordActivity } from '$lib/server/diary/activity'
 import { loadDiaryForUser } from '$lib/server/diary/load'
 import { loadProfileForUser } from '$lib/server/profile/load'
@@ -265,12 +268,33 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       try {
         await createChatMessage({ userId, role: 'user', content: body.message, locale, scenario })
 
-        const [profile, diary, defaultProvider, recentMessages] = await Promise.all([
+        const [profile, diary, defaultProvider, recentMessages, aiPrefs] = await Promise.all([
           loadProfileForUser(userId, locals.user!.name || 'User'),
           loadDiaryForUser(userId, locale),
           getUserDefaultProvider(userId),
           loadRecentChatMessages(userId, 6),
+          db
+            .select({
+              minRecommendations: userAiPreferences.minRecommendations,
+              maxRecommendations: userAiPreferences.maxRecommendations,
+            })
+            .from(userAiPreferences)
+            .where(eq(userAiPreferences.userId, userId))
+            .limit(1)
+            .then((rows) => rows[0]),
         ])
+
+        type DiaryEntry = (typeof diary.to_try)[number]
+
+        const toContextEntry = ({ id, brand, fragrance, notes, pyramidTop, pyramidMid, pyramidBase }: DiaryEntry) => ({
+          id,
+          brand,
+          fragrance,
+          notes: notes.join(', ') || null,
+          pyramidTop,
+          pyramidMid,
+          pyramidBase,
+        })
 
         const context = {
           profile: {
@@ -280,45 +304,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
             archetype: profile.archetype ?? undefined,
             favoriteNote: profile.favoriteNote ?? undefined,
             radar: Object.fromEntries(profile.radarAxes.map(({ key, value }) => [key, value])),
+            gender: (profile.gender as 'male' | 'female' | null | undefined) ?? undefined,
+            noteRelationships: profile.noteRelationships.length > 0 ? profile.noteRelationships : undefined,
           },
           diary: {
             // eslint-disable-next-line camelcase
-            to_try: diary.to_try.map(({ id, brand, fragrance, notes, pyramidTop, pyramidMid, pyramidBase }) => ({
-              id,
-              brand,
-              fragrance,
-              notes: notes.join(', ') || null,
-              pyramidTop,
-              pyramidMid,
-              pyramidBase,
-            })),
-            liked: diary.liked.map(({ id, brand, fragrance, notes, pyramidTop, pyramidMid, pyramidBase }) => ({
-              id,
-              brand,
-              fragrance,
-              notes: notes.join(', ') || null,
-              pyramidTop,
-              pyramidMid,
-              pyramidBase,
-            })),
-            disliked: diary.disliked.map(({ id, brand, fragrance, notes, pyramidTop, pyramidMid, pyramidBase }) => ({
-              id,
-              brand,
-              fragrance,
-              notes: notes.join(', ') || null,
-              pyramidTop,
-              pyramidMid,
-              pyramidBase,
-            })),
-            owned: diary.owned.map(({ id, brand, fragrance, notes, pyramidTop, pyramidMid, pyramidBase }) => ({
-              id,
-              brand,
-              fragrance,
-              notes: notes.join(', ') || null,
-              pyramidTop,
-              pyramidMid,
-              pyramidBase,
-            })),
+            to_try: diary.to_try.map((entry) => toContextEntry(entry)),
+            liked: diary.liked.map((entry) => toContextEntry(entry)),
+            neutral: diary.neutral.map((entry) => toContextEntry(entry)),
+            disliked: diary.disliked.map((entry) => toContextEntry(entry)),
+            owned: diary.owned.map((entry) => toContextEntry(entry)),
           },
           budget: body.context?.budget,
           recentMessages,
@@ -333,6 +328,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
           scenario,
           context,
           preferredProvider: body.provider ?? defaultProvider ?? undefined,
+          minRecommendations: aiPrefs?.minRecommendations,
+          maxRecommendations: aiPrefs?.maxRecommendations,
         })
 
         const patch = router.result.patch

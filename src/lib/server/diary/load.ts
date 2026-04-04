@@ -115,6 +115,7 @@ export async function loadDiaryForUser(userId: string, locale = 'en'): Promise<D
       // eslint-disable-next-line camelcase
       to_try: [],
       liked: [],
+      neutral: [],
       disliked: [],
       owned: [],
     }
@@ -126,6 +127,8 @@ export async function loadDiaryForUser(userId: string, locale = 'en'): Promise<D
 
       if (r.isTried && r.isLiked === true) result.liked.push(row)
 
+      if (r.isTried && r.isLiked === null && !r.isOwned) result.neutral.push(row)
+
       if (r.isTried && r.isLiked === false) result.disliked.push(row)
 
       if (r.isOwned) result.owned.push(row)
@@ -136,6 +139,6 @@ export async function loadDiaryForUser(userId: string, locale = 'en'): Promise<D
     console.error('[diary/load] Failed to load diary from database:', error)
 
     // eslint-disable-next-line camelcase
-    return { to_try: [], liked: [], disliked: [], owned: [] }
+    return { to_try: [], liked: [], neutral: [], disliked: [], owned: [] }
   }
 }

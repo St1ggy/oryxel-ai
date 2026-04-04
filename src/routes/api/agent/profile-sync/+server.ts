@@ -1,9 +1,12 @@
 import { error } from '@sveltejs/kit'
+import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { applyPatchToDatabase } from '$lib/server/ai/apply'
 import { getUserDefaultProvider } from '$lib/server/ai/keys/service'
 import { analyzePreferences } from '$lib/server/ai/router'
+import { db } from '$lib/server/db'
+import { userAiPreferences } from '$lib/server/db/schema'
 import { recordActivity } from '$lib/server/diary/activity'
 import { loadDiaryForUser } from '$lib/server/diary/load'
 import { loadProfileForUser } from '$lib/server/profile/load'
@@ -19,7 +22,7 @@ const bodySchema = z.object({
 const BATCH_SIZE = 10
 
 type DiaryEntry = { id: number; brand: string; fragrance: string }
-type SyncPhase = 'owned' | 'liked' | 'disliked' | 'profile' | 'recommendations' | 'to_try'
+type SyncPhase = 'owned' | 'liked' | 'neutral' | 'disliked' | 'profile' | 'recommendations' | 'to_try'
 type SyncEvent = { step: number; total: number; phase: SyncPhase } | { done: true }
 
 type StepContext = {
@@ -27,14 +30,17 @@ type StepContext = {
   userName: string
   locale: string
   provider: AnalyzePreferencesRequest['preferredProvider']
+  minRecommendations: number | undefined
+  maxRecommendations: number | undefined
   profileContext: NonNullable<AnalyzePreferencesRequest['context']>['profile']
   likedEntries: DiaryEntry[]
+  neutralEntries: DiaryEntry[]
   dislikedEntries: DiaryEntry[]
   ownedEntries: DiaryEntry[]
 }
 
 const FILL_BATCH_MSG =
-  'Fill data for every fragrance in the listed entries. For each entry generate op=status with rowId, setting all of: notesSummary (up to 5 notes, lowercase English), pyramidTop/Mid/Base (lowercase English, all three tiers), agentComment (max 80 chars), season (comma-separated from spring/summer/autumn/winter), timeOfDay (comma-separated from day/evening/night), gender (female/male/unisex). One op=status per entry, no exceptions.'
+  'Fill MISSING data for every fragrance in the listed entries. For each entry generate op=status with rowId. Only set a field if it is currently null/empty — DO NOT overwrite fields that already have values. Fields to fill if missing: notesSummary (up to 5 notes, lowercase English), pyramidTop/Mid/Base (lowercase English, all three tiers), agentComment (max 80 chars), season (comma-separated from spring/summer/autumn/winter), timeOfDay (comma-separated from day/evening/night), gender (female/male/unisex). One op=status per entry, no exceptions.'
 
 function chunk<T>(array: T[], size: number): T[][] {
   const result: T[][] = []
@@ -72,6 +78,7 @@ async function fillListBatches(
             // eslint-disable-next-line camelcase
             to_try: [],
             liked: phase === 'liked' ? batch : [],
+            neutral: phase === 'neutral' ? batch : [],
             disliked: phase === 'disliked' ? batch : [],
             owned: phase === 'owned' ? batch : [],
           },
@@ -102,6 +109,7 @@ async function runProfileStep(context: StepContext): Promise<void> {
           // eslint-disable-next-line camelcase
           to_try: [],
           liked: context.likedEntries,
+          neutral: context.neutralEntries,
           disliked: context.dislikedEntries,
           owned: context.ownedEntries,
         },
@@ -123,6 +131,8 @@ async function runRecommendationsStep(context: StepContext): Promise<void> {
       locale: context.locale,
       scenario: 'recommendation',
       preferredProvider: context.provider,
+      minRecommendations: context.minRecommendations,
+      maxRecommendations: context.maxRecommendations,
       context: {
         profile: {
           archetype: updatedProfile.archetype ?? undefined,
@@ -132,11 +142,14 @@ async function runRecommendationsStep(context: StepContext): Promise<void> {
             updatedProfile.radarAxes.length > 0
               ? Object.fromEntries(updatedProfile.radarAxes.map(({ key, value }) => [key, value]))
               : undefined,
+          gender: updatedProfile.gender ?? undefined,
+          noteRelationships: updatedProfile.noteRelationships.length > 0 ? updatedProfile.noteRelationships : undefined,
         },
         diary: {
           // eslint-disable-next-line camelcase
           to_try: [],
           liked: context.likedEntries,
+          neutral: context.neutralEntries,
           disliked: context.dislikedEntries,
           owned: context.ownedEntries,
         },
@@ -196,13 +209,23 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   const body = bodySchema.parse(await request.json())
   const locale = body.locale ?? 'en'
 
-  const [profile, diary, defaultProvider] = await Promise.all([
+  const [profile, diary, defaultProvider, aiPrefs] = await Promise.all([
     loadProfileForUser(locals.user.id, locals.user.name || 'User', locale),
     loadDiaryForUser(locals.user.id, locale),
     getUserDefaultProvider(locals.user.id),
+    db
+      .select({
+        minRecommendations: userAiPreferences.minRecommendations,
+        maxRecommendations: userAiPreferences.maxRecommendations,
+      })
+      .from(userAiPreferences)
+      .where(eq(userAiPreferences.userId, locals.user.id))
+      .limit(1)
+      .then((rows) => rows[0]),
   ])
 
-  const totalEntries = diary.owned.length + diary.liked.length + diary.disliked.length + diary.to_try.length
+  const totalEntries =
+    diary.owned.length + diary.liked.length + diary.neutral.length + diary.disliked.length + diary.to_try.length
 
   if (totalEntries === 0) {
     const encoder = new TextEncoder()
@@ -218,22 +241,26 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
   const ownedEntries = diary.owned.map(({ id, brand, fragrance }) => ({ id, brand, fragrance }))
   const likedEntries = diary.liked.map(({ id, brand, fragrance }) => ({ id, brand, fragrance }))
+  const neutralEntries = diary.neutral.map(({ id, brand, fragrance }) => ({ id, brand, fragrance }))
   const dislikedEntries = diary.disliked.map(({ id, brand, fragrance }) => ({ id, brand, fragrance }))
 
   const ownedBatches = chunk(ownedEntries, BATCH_SIZE).length
   const likedBatches = chunk(likedEntries, BATCH_SIZE).length
+  const neutralBatches = chunk(neutralEntries, BATCH_SIZE).length
   const dislikedBatches = chunk(dislikedEntries, BATCH_SIZE).length
 
-  const hasPreferences = ownedEntries.length + likedEntries.length + dislikedEntries.length > 0
+  const hasPreferences = ownedEntries.length + likedEntries.length + neutralEntries.length + dislikedEntries.length > 0
 
   // Total steps: one per batch per list + profile step + recommendations + to_try fill
-  const total = ownedBatches + likedBatches + dislikedBatches + 1 + (hasPreferences ? 2 : 0)
+  const total = ownedBatches + likedBatches + neutralBatches + dislikedBatches + 1 + (hasPreferences ? 2 : 0)
 
   const context: StepContext = {
     userId: locals.user.id,
     userName: locals.user.name || 'User',
     locale,
     provider: defaultProvider ?? undefined,
+    minRecommendations: aiPrefs?.minRecommendations,
+    maxRecommendations: aiPrefs?.maxRecommendations,
     profileContext: {
       archetype: profile.archetype ?? undefined,
       favoriteNote: profile.favoriteNote ?? undefined,
@@ -242,8 +269,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         profile.radarAxes.length > 0
           ? Object.fromEntries(profile.radarAxes.map(({ key, value }) => [key, value]))
           : undefined,
+      gender: (profile.gender as 'male' | 'female' | null | undefined) ?? undefined,
+      noteRelationships: profile.noteRelationships.length > 0 ? profile.noteRelationships : undefined,
     },
     likedEntries,
+    neutralEntries,
     dislikedEntries,
     ownedEntries,
   }
@@ -266,6 +296,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       if (likedEntries.length > 0) {
         await fillListBatches(context, likedEntries, 'liked', step, total, send)
         step += likedBatches
+      }
+
+      if (neutralEntries.length > 0) {
+        await fillListBatches(context, neutralEntries, 'neutral', step, total, send)
+        step += neutralBatches
       }
 
       if (dislikedEntries.length > 0) {

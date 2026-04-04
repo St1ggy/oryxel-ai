@@ -3,7 +3,7 @@ import { and, eq, sql } from 'drizzle-orm'
 import { db } from '$lib/server/db'
 import { userFragrance, userProfile } from '$lib/server/db/schema'
 
-import type { RadarAxes, RadarAxis } from '$lib/types/diary'
+import type { NoteRelationship, RadarAxes, RadarAxis } from '$lib/types/diary'
 
 /** Handles both new plain strings and old locale-map JSON (backward compat). */
 function resolveStringOrMap(value: unknown, locale: string): string | null {
@@ -68,5 +68,7 @@ export async function loadProfileForUser(userId: string, fallbackName = 'User', 
     archetype: resolveStringOrMap(profileRow?.archetype, locale),
     radarAxes: buildRadarAxes(profileRow?.radar, profileRow?.radarLabels, locale),
     suggestions,
+    gender: profileRow?.gender ?? null,
+    noteRelationships: (profileRow?.noteRelationships ?? []) as NoteRelationship[],
   }
 }

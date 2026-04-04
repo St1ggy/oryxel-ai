@@ -41,6 +41,7 @@ export const MOCK_DIARY: Record<FragranceListType, DiaryRow[]> = {
       pyramidBase: null,
     },
   ],
+  neutral: [],
   liked: [
     {
       id: 3,

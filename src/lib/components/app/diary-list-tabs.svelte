@@ -133,6 +133,13 @@
             onOpenDetail={(row) => onOpenDetail?.(row, 'diary')}
           />
         </Tabs.Content>
+        <Tabs.Content value="neutral" class={panelClass}>
+          <ScentDiaryTable
+            rows={diaryState.neutral}
+            {onRatingChange}
+            onOpenDetail={(row) => onOpenDetail?.(row, 'diary')}
+          />
+        </Tabs.Content>
         <Tabs.Content value="disliked" class={panelClass}>
           <ScentDiaryTable
             rows={diaryState.disliked}
@@ -159,6 +166,13 @@
     </Tabs.Content>
     <Tabs.Content value="liked" class={panelClass}>
       <ScentDiaryTable rows={diaryState.liked} {onRatingChange} onOpenDetail={(row) => onOpenDetail?.(row, 'diary')} />
+    </Tabs.Content>
+    <Tabs.Content value="neutral" class={panelClass}>
+      <ScentDiaryTable
+        rows={diaryState.neutral}
+        {onRatingChange}
+        onOpenDetail={(row) => onOpenDetail?.(row, 'diary')}
+      />
     </Tabs.Content>
     <Tabs.Content value="disliked" class={panelClass}>
       <ScentDiaryTable

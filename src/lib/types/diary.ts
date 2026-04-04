@@ -1,6 +1,20 @@
-export type FragranceListType = 'to_try' | 'liked' | 'disliked' | 'owned'
+export type FragranceListType = 'to_try' | 'liked' | 'neutral' | 'disliked' | 'owned'
 
-export type DiaryData = Record<FragranceListType, DiaryRow[]>
+export type NoteRelationshipSentiment = 'love' | 'like' | 'neutral' | 'dislike' | 'redflag'
+
+export type NoteRelationship = {
+  note: string
+  sentiment: NoteRelationshipSentiment
+  label: string
+}
+
+export type DiaryData = {
+  to_try: DiaryRow[]
+  liked: DiaryRow[]
+  neutral: DiaryRow[]
+  disliked: DiaryRow[]
+  owned: DiaryRow[]
+}
 
 export type DiaryRow = {
   id: number

@@ -454,7 +454,73 @@
   const providerGuideSteps = $derived(localizedGuide.steps)
   const providerGuideNotes = $derived(localizedGuide.notes)
 
-  let accordionValue = $state(['theme', 'providers', 'data', 'privacy'])
+  let accordionValue = $state(['theme', 'providers', 'display', 'data', 'privacy'])
+
+  let minPyramidNotes = $state('1')
+  let maxPyramidNotes = $state('5')
+  let minRecommendations = $state('5')
+  let maxRecommendations = $state('20')
+  let displayBusy = $state(false)
+
+  const pyramidMinOptions = $derived(
+    Array.from({ length: 5 }, (_, index) => ({ value: String(index + 1), label: String(index + 1) })),
+  )
+  const pyramidMaxOptions = $derived(
+    Array.from({ length: 8 }, (_, index) => ({ value: String(index + 3), label: String(index + 3) })),
+  )
+  const recMinOptions = $derived(
+    Array.from({ length: 10 }, (_, index) => ({ value: String(index + 1), label: String(index + 1) })),
+  )
+  const recMaxOptions = $derived(
+    Array.from({ length: 6 }, (_, index) => ({ value: String((index + 1) * 5), label: String((index + 1) * 5) })),
+  )
+
+  onMount(() => {
+    void loadDisplayPrefs()
+  })
+
+  async function loadDisplayPrefs() {
+    try {
+      const response = await fetch('/api/ai/preferences')
+
+      if (response.ok) {
+        const data = (await response.json()) as {
+          minPyramidNotes: number
+          maxPyramidNotes: number
+          minRecommendations: number
+          maxRecommendations: number
+        }
+
+        minPyramidNotes = String(data.minPyramidNotes)
+        maxPyramidNotes = String(data.maxPyramidNotes)
+        minRecommendations = String(data.minRecommendations)
+        maxRecommendations = String(data.maxRecommendations)
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  async function saveDisplayPrefs() {
+    displayBusy = true
+
+    try {
+      await fetch('/api/ai/preferences', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          minPyramidNotes: Number(minPyramidNotes),
+          maxPyramidNotes: Number(maxPyramidNotes),
+          minRecommendations: Number(minRecommendations),
+          maxRecommendations: Number(maxRecommendations),
+        }),
+      })
+    } catch {
+      /* ignore */
+    } finally {
+      displayBusy = false
+    }
+  }
 </script>
 
 <div class="mx-auto max-w-[720px] space-y-6 bg-background px-4 py-8 md:px-8">
@@ -495,6 +561,45 @@
             </div>
           </div>
         </div>
+      </Accordion.Content>
+    </Accordion.Item>
+
+    <Accordion.Item value="display" class="rounded-xl border border-border bg-surface">
+      <Accordion.Header>
+        <Accordion.Trigger
+          class="oryx-transition flex w-full items-center justify-between rounded-t-xl px-4 py-3 text-left text-sm font-medium hover:bg-muted/30"
+        >
+          {m.oryxel_settings_display()}
+        </Accordion.Trigger>
+      </Accordion.Header>
+      <Accordion.Content class="space-y-4 border-t border-border px-4 py-4">
+        <div class="space-y-2">
+          <Label>{m.oryxel_settings_pyramid_notes()}</Label>
+          <div class="flex flex-wrap items-center gap-3">
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-foreground-muted">{m.oryxel_settings_min_label()}</span>
+              <Select bind:value={minPyramidNotes} options={pyramidMinOptions} class="w-20" />
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-foreground-muted">{m.oryxel_settings_max_label()}</span>
+              <Select bind:value={maxPyramidNotes} options={pyramidMaxOptions} class="w-20" />
+            </div>
+          </div>
+        </div>
+        <div class="space-y-2">
+          <Label>{m.oryxel_settings_recommendations_count()}</Label>
+          <div class="flex flex-wrap items-center gap-3">
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-foreground-muted">{m.oryxel_settings_min_label()}</span>
+              <Select bind:value={minRecommendations} options={recMinOptions} class="w-20" />
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-foreground-muted">{m.oryxel_settings_max_label()}</span>
+              <Select bind:value={maxRecommendations} options={recMaxOptions} class="w-20" />
+            </div>
+          </div>
+        </div>
+        <Button type="button" size="sm" disabled={displayBusy} onclick={saveDisplayPrefs}>{m.oryxel_save()}</Button>
       </Accordion.Content>
     </Accordion.Item>
 

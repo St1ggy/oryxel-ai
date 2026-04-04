@@ -61,6 +61,7 @@
   const diaryState = $derived({
     to_try: rowsWithOverrides(data.diary.to_try),
     liked: rowsWithOverrides(data.diary.liked),
+    neutral: rowsWithOverrides(data.diary.neutral),
     disliked: rowsWithOverrides(data.diary.disliked),
     owned: rowsWithOverrides(data.diary.owned),
   })

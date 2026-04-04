@@ -6,6 +6,7 @@
   import Card from '$lib/components/ui/card.svelte'
   import Input from '$lib/components/ui/input.svelte'
   import Label from '$lib/components/ui/label.svelte'
+  import Select from '$lib/components/ui/select.svelte'
   import SwitchField from '$lib/components/ui/switch-field.svelte'
   import Textarea from '$lib/components/ui/textarea.svelte'
   import * as m from '$lib/paraglide/messages.js'
@@ -17,51 +18,59 @@
   let tone = $state('Warm, concise')
   let depth = $state('Balanced')
   let rememberContext = $state(true)
+  let gender = $state<string>('__none__')
 
-  onMount(() => {
-    if (!browser) {
-      return
-    }
+  const genderOptions = $derived([
+    { value: '__none__', label: m.oryxel_gender_not_specified() },
+    { value: 'male', label: m.oryxel_gender_male() },
+    { value: 'female', label: m.oryxel_gender_female() },
+  ])
+
+  onMount(async () => {
+    if (!browser) return
 
     const raw = localStorage.getItem(AI_KEY)
 
-    if (!raw) {
-      return
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as { tone?: string; depth?: string; rememberContext?: boolean }
+
+        if (parsed.tone) tone = parsed.tone
+
+        if (parsed.depth) depth = parsed.depth
+
+        if (typeof parsed.rememberContext === 'boolean') rememberContext = parsed.rememberContext
+      } catch {
+        /* ignore */
+      }
     }
 
     try {
-      const parsed = JSON.parse(raw) as {
-        tone?: string
-        depth?: string
-        rememberContext?: boolean
-      }
+      const response = await fetch('/api/profile')
 
-      if (parsed.tone) {
-        tone = parsed.tone
-      }
+      if (response.ok) {
+        const data = (await response.json()) as { gender: string | null }
 
-      if (parsed.depth) {
-        depth = parsed.depth
-      }
-
-      if (typeof parsed.rememberContext === 'boolean') {
-        rememberContext = parsed.rememberContext
+        gender = data.gender ?? '__none__'
       }
     } catch {
       /* ignore */
     }
   })
 
-  function save() {
+  async function save() {
     if (browser) {
-      localStorage.setItem(
-        AI_KEY,
-        JSON.stringify({
-          tone,
-          depth,
-          rememberContext,
-        }),
-      )
+      localStorage.setItem(AI_KEY, JSON.stringify({ tone, depth, rememberContext }))
+    }
+
+    try {
+      await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gender: gender === '__none__' ? null : gender }),
+      })
+    } catch {
+      /* ignore */
     }
   }
 </script>
@@ -77,6 +86,10 @@
     <div>
       <Label for="bio">{m.oryxel_bio()}</Label>
       <Textarea id="bio" class="mt-1" bind:value={bio} />
+    </div>
+    <div>
+      <Label for="gender">{m.oryxel_profile_gender()}</Label>
+      <Select id="gender" class="mt-1 w-full" bind:value={gender} options={genderOptions} />
     </div>
   </Card>
 

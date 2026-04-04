@@ -198,6 +198,7 @@ export async function applyPatchToDatabase(userId: string, patch: StructuredPref
           radar: patch.profile?.radar,
           radarLabels: patch.profile?.radarLabels,
           preferences: patch.profile?.preferences,
+          noteRelationships: patch.profile?.noteRelationships as never[] | undefined,
           suggestions: patch.suggestions ?? undefined,
         })
         .onConflictDoUpdate({
@@ -208,6 +209,9 @@ export async function applyPatchToDatabase(userId: string, patch: StructuredPref
             ...(patch.profile?.radar != null && { radar: patch.profile.radar }),
             ...(patch.profile?.radarLabels != null && { radarLabels: patch.profile.radarLabels }),
             ...(patch.profile?.preferences != null && { preferences: patch.profile.preferences }),
+            ...(patch.profile?.noteRelationships != null && {
+              noteRelationships: patch.profile.noteRelationships as never[],
+            }),
             ...(patch.suggestions != null && { suggestions: patch.suggestions }),
           },
         })
@@ -267,6 +271,7 @@ export async function applyProfileAndSuggestions(userId: string, patch: Structur
       radar: patch.profile?.radar,
       radarLabels: patch.profile?.radarLabels,
       preferences: patch.profile?.preferences,
+      noteRelationships: patch.profile?.noteRelationships as never[] | undefined,
       suggestions: patch.suggestions ?? undefined,
     })
     .onConflictDoUpdate({
@@ -277,6 +282,9 @@ export async function applyProfileAndSuggestions(userId: string, patch: Structur
         ...(patch.profile?.radar != null && { radar: patch.profile.radar }),
         ...(patch.profile?.radarLabels != null && { radarLabels: patch.profile.radarLabels }),
         ...(patch.profile?.preferences != null && { preferences: patch.profile.preferences }),
+        ...(patch.profile?.noteRelationships != null && {
+          noteRelationships: patch.profile.noteRelationships as never[],
+        }),
         ...(patch.suggestions != null && { suggestions: patch.suggestions }),
       },
     })

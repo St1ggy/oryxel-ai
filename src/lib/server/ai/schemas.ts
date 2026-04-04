@@ -9,6 +9,16 @@ const profileContextSchema = z.object({
   archetype: z.string().max(120).optional(),
   favoriteNote: z.string().max(120).optional(),
   radar: radarSchema.optional(),
+  gender: z.enum(['male', 'female']).nullable().optional(),
+  noteRelationships: z
+    .array(
+      z.object({
+        note: z.string().max(80),
+        sentiment: z.enum(['love', 'like', 'neutral', 'dislike', 'redflag']),
+        label: z.string().max(200),
+      }),
+    )
+    .optional(),
 })
 
 const diaryEntryContextSchema = z.object({
@@ -25,6 +35,7 @@ const diaryContextSchema = z.object({
   // eslint-disable-next-line camelcase
   to_try: z.array(diaryEntryContextSchema).optional(),
   liked: z.array(diaryEntryContextSchema).optional(),
+  neutral: z.array(diaryEntryContextSchema).optional(),
   disliked: z.array(diaryEntryContextSchema).optional(),
   owned: z.array(diaryEntryContextSchema).optional(),
 })
@@ -50,6 +61,8 @@ export const analyzePreferencesRequestSchema = z.object({
     .default('recommendation'),
   preferredProvider: z.enum(['openai', 'anthropic', 'gemini', 'qwen', 'perplexity', 'groq', 'deepseek']).optional(),
   context: contextSchema.optional(),
+  minRecommendations: z.number().int().min(1).max(30).optional(),
+  maxRecommendations: z.number().int().min(1).max(30).optional(),
 })
 
 export const tableOperationSchema = z.object({
@@ -86,6 +99,16 @@ export const structuredPreferencePatchSchema = z.object({
       radarLabels: z.record(z.string().min(1).max(40), z.string().max(60)).optional(),
       preferences: z.string().max(2000).optional(),
       rationale: z.string().min(1).max(800).optional(),
+      noteRelationships: z
+        .array(
+          z.object({
+            note: z.string().max(80),
+            sentiment: z.enum(['love', 'like', 'neutral', 'dislike', 'redflag']),
+            label: z.string().max(200),
+          }),
+        )
+        .max(30)
+        .optional(),
     })
     .nullish(),
   tableOps: z.array(tableOperationSchema).max(150).default([]),
@@ -102,7 +125,7 @@ export const structuredPreferencePatchSchema = z.object({
         tag: z.string().max(120),
       }),
     )
-    .max(15)
+    .max(30)
     .nullish(),
   suggestions: z.array(z.string().max(200)).max(5).nullish(),
 })

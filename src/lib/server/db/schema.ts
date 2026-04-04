@@ -38,6 +38,9 @@ export const userProfile = pgTable('user_profile', {
   radar: jsonb('radar').$type<Record<string, number>>(),
   radarLabels: jsonb('radar_labels').$type<Record<string, string>>(),
   suggestions: jsonb('suggestions').$type<string[]>(),
+  /** 'male' | 'female' | null — user gender for AI pronoun selection */
+  gender: text('gender'),
+  noteRelationships: jsonb('note_relationships').$type<{ note: string; sentiment: string; label: string }[]>(),
 })
 
 export const userAiPreferences = pgTable('user_ai_preferences', {
@@ -49,6 +52,10 @@ export const userAiPreferences = pgTable('user_ai_preferences', {
   defaultProvider: text('default_provider'),
   defaultModelLabel: text('default_model_label'),
   platformAccess: boolean('platform_access').notNull().default(false),
+  minPyramidNotes: integer('min_pyramid_notes').notNull().default(1),
+  maxPyramidNotes: integer('max_pyramid_notes').notNull().default(5),
+  minRecommendations: integer('min_recommendations').notNull().default(5),
+  maxRecommendations: integer('max_recommendations').notNull().default(20),
 })
 
 export const userAiProviderKey = pgTable(

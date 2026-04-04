@@ -17,23 +17,37 @@ function languageForLocale(locale: string): string {
 }
 
 /* eslint-disable camelcase */
-type TableNames = { to_try: string; liked: string; disliked: string; owned: string }
+type TableNames = { to_try: string; liked: string; neutral: string; disliked: string; owned: string }
 
 function tableNamesForLocale(locale: string): TableNames {
   if (locale === 'ru')
-    return { to_try: 'Хочу попробовать', liked: 'Нравится', disliked: 'Не нравится', owned: 'В наличии' }
+    return {
+      to_try: 'Хочу попробовать',
+      liked: 'Нравится',
+      neutral: 'Нейтральные',
+      disliked: 'Не нравится',
+      owned: 'В наличии',
+    }
 
   if (locale.startsWith('es'))
-    return { to_try: 'Por probar', liked: 'Me gusta', disliked: 'No me gusta', owned: 'En colección' }
+    return {
+      to_try: 'Por probar',
+      liked: 'Me gusta',
+      neutral: 'Neutro',
+      disliked: 'No me gusta',
+      owned: 'En colección',
+    }
 
-  if (locale.startsWith('fr')) return { to_try: 'À essayer', liked: 'Aimé', disliked: 'Pas aimé', owned: 'Possédé' }
+  if (locale.startsWith('fr'))
+    return { to_try: 'À essayer', liked: 'Aimé', neutral: 'Neutre', disliked: 'Pas aimé', owned: 'Possédé' }
 
   if (locale.startsWith('jp') || locale.startsWith('ja'))
-    return { to_try: '試したい', liked: '好き', disliked: '好きじゃない', owned: '所有' }
+    return { to_try: '試したい', liked: '好き', neutral: 'ニュートラル', disliked: '好きじゃない', owned: '所有' }
 
-  if (locale.startsWith('zh')) return { to_try: '想试试', liked: '喜欢', disliked: '不喜欢', owned: '拥有' }
+  if (locale.startsWith('zh'))
+    return { to_try: '想试试', liked: '喜欢', neutral: '普通', disliked: '不喜欢', owned: '拥有' }
 
-  return { to_try: 'To Try', liked: 'Liked', disliked: 'Disliked', owned: 'Collection' }
+  return { to_try: 'To Try', liked: 'Liked', neutral: 'Neutral', disliked: 'Disliked', owned: 'Collection' }
 }
 /* eslint-enable camelcase */
 
@@ -53,8 +67,8 @@ function buildBaseInstructions(request: AnalyzePreferencesRequest): string[] {
     'The "summary" field: a 1-2 sentence human-readable description of what changed.',
     'Table operations — op values: add, move, rate, status, remove.',
     'Fragrance state is stored as flags: isOwned (bool), isTried (bool), isLiked (bool|null).',
-    'Flag combinations: not tried yet → isTried=false, isLiked=null, isOwned=false; liked → isTried=true, isLiked=true; disliked → isTried=true, isLiked=false; in collection → isOwned=true (can combine with liked/disliked).',
-    `UI list names: to_try="${tableNames.to_try}" (isTried=false, isOwned=false), liked="${tableNames.liked}" (isTried=true, isLiked=true), disliked="${tableNames.disliked}" (isTried=true, isLiked=false), owned="${tableNames.owned}" (isOwned=true). Use these names in your reply.`,
+    'Flag combinations: not tried yet → isTried=false, isLiked=null, isOwned=false; liked → isTried=true, isLiked=true; disliked → isTried=true, isLiked=false; neutral (tried, no strong opinion) → isTried=true, isLiked=null, isOwned=false; in collection → isOwned=true (can combine with liked/disliked).',
+    `UI list names: to_try="${tableNames.to_try}" (isTried=false, isOwned=false), liked="${tableNames.liked}" (isTried=true, isLiked=true), neutral="${tableNames.neutral}" (isTried=true, isLiked=null, isOwned=false), disliked="${tableNames.disliked}" (isTried=true, isLiked=false), owned="${tableNames.owned}" (isOwned=true). Use these names in your reply.`,
     'For op=add: set brandName and fragranceName (strings). Set isOwned/isTried/isLiked flags. Do NOT use fragranceId for new fragrances.',
     'For op=add: ALWAYS set notesSummary — comma-separated list of up to 5 key fragrance notes in English.',
     'For op=add or op=status: set pyramidTop, pyramidMid, pyramidBase as comma-separated note names in English. Fill all three tiers if you know the fragrance.',
@@ -105,9 +119,15 @@ function buildContextBlock(request: AnalyzePreferencesRequest): string[] {
   const profile = context.profile ?? {}
   const lines = [
     'Context:',
-    `- profile: ${JSON.stringify({ ...profile, preferences: undefined })}`,
+    `- profile: ${JSON.stringify({ ...profile, preferences: undefined, noteRelationships: undefined })}`,
+    profile.gender !== undefined && profile.gender !== null
+      ? `- user gender: ${profile.gender} (use appropriate pronouns in Russian and other gendered languages)`
+      : `- user gender: not specified`,
     profile.preferences
       ? `- user preferences (verbatim, use when generating recommendations): ${profile.preferences}`
+      : '',
+    profile.noteRelationships && profile.noteRelationships.length > 0
+      ? `- user note relationships (use when generating recommendations and profile): ${JSON.stringify(profile.noteRelationships)}`
       : '',
     `- budget: ${context.budget ?? 'not provided'}`,
   ].filter(Boolean)
@@ -120,6 +140,7 @@ function buildContextBlock(request: AnalyzePreferencesRequest): string[] {
       `- owned: ${formatDiaryList((diary.owned ?? []) as DiaryContextEntry[])}`,
       `- to_try: ${formatDiaryList((diary.to_try ?? []) as DiaryContextEntry[])}`,
       `- liked: ${formatDiaryList((diary.liked ?? []) as DiaryContextEntry[])}`,
+      `- neutral: ${formatDiaryList((diary.neutral ?? []) as DiaryContextEntry[])}`,
       `- disliked: ${formatDiaryList((diary.disliked ?? []) as DiaryContextEntry[])}`,
     )
   }
@@ -147,7 +168,7 @@ function buildScenarioBlock(request: AnalyzePreferencesRequest): string[] {
       'IMPORTANT: Always populate ALL THREE pyramid fields.',
       `Include a reply in ${language} describing the pyramid in a natural, conversational way.`,
     ].join(' '),
-    recommendation: `Scenario recommendation: suggest fragrances the user would likely enjoy based on their diary and preferences. Set recommendations (up to 10 items). For each: id (unique string), brand, name, notesSummary (comma-separated lowercase English notes), pyramidTop/Mid/Base if known (lowercase English), tag (plain string in ${language} — WHY this fragrance suits them). This REPLACES the current recommendation list. Update suggestions to exactly 3 short first-person user messages in ${language} (max 60 chars each, e.g. "Find an analog for Santal 33", "What works for date nights?") — these appear as tappable chips the user can send. Include a helpful reply in ${language} presenting your picks.`,
+    recommendation: `Scenario recommendation: suggest fragrances the user would likely enjoy based on their diary and preferences. Set between ${request.minRecommendations ?? 5} and ${request.maxRecommendations ?? 20} recommendations. For each: id (unique string), brand, name, notesSummary (comma-separated lowercase English notes), pyramidTop/Mid/Base if known (lowercase English), tag (plain string in ${language} — WHY this fragrance suits them). This REPLACES the current recommendation list. Update suggestions to exactly 3 short first-person user messages in ${language} (max 60 chars each, e.g. "Find an analog for Santal 33", "What works for date nights?") — these appear as tappable chips the user can send. Include a helpful reply in ${language} presenting your picks.`,
     comparison: `Scenario comparison: compare two or more fragrances mentioned by the user. Highlight differences in notes, character, and suitability. Update ratings or move rows (using flags) if the user indicates clear preference. Include a reply in ${language} summarizing the comparison.`,
     command: [
       'Scenario command: the user gave a direct instruction OR a structured bulk import. Execute it precisely.',
@@ -169,16 +190,16 @@ function buildScenarioBlock(request: AnalyzePreferencesRequest): string[] {
     ].join(' '),
     // eslint-disable-next-line camelcase
     profile_sync: [
-      'Scenario profile_sync: fill ALL missing data across the diary, then update the user profile. Do NOT generate recommendations.',
-      `STEP 1 — UPDATE ENTRIES: For EVERY entry in "owned", "liked", and "disliked" — generate op=status with rowId. Always set: notesSummary (up to 5 key notes, lowercase English, e.g. "bergamot, lavender, musk"), pyramidTop/Mid/Base (lowercase English, fill all three tiers), agentComment (in ${language} — a punchy phrase, max 80 chars, e.g. "Warm amber with smoky oud"), season (comma-separated from spring/summer/autumn/winter), timeOfDay (comma-separated from day/evening/night), gender (female/male/unisex). Always regenerate even if data already exists.`,
-      'STEP 2 — UPDATE PROFILE: Base calculations ONLY on "owned", "liked", and "disliked" entries.',
-      `profile.archetype: a 2-5 word phrase in ${language} describing their scent personality.`,
+      'Scenario profile_sync: analyze the diary and update the user profile. No entry filling, no recommendations.',
+      'UPDATE PROFILE: Base calculations on ALL lists: "owned", "liked", "neutral", and "disliked". Also consider user note relationships from context if provided.',
+      `profile.archetype: a compact 2-4 word personality descriptor in ${language} based on patterns in pyramids/notes. Not a sentence, not a label — a concise personality tag (e.g. "фруктово-цитрусовый гурман", "цитрусовый эстет", "пряный oriental lover", "woody minimalist").`,
       `profile.favoriteNote: the single most prominent note in ${language} across liked/owned entries.`,
       'profile.radar: 4-7 lowercase English axis keys (e.g. "oud", "floral", "citrus", "woody"), integer values 0-100.',
       `profile.radarLabels: flat object keyed by axis key, values are labels in ${language}. Format: { "woody": "Древесный", "citrus": "Цитрусовый" }.`,
       `profile.rationale: brief explanation in ${language}.`,
+      `profile.noteRelationships: analyze notes from ALL lists (liked, owned, disliked, neutral) — identify which notes appear consistently in liked/owned vs disliked entries. Output 5-20 entries. Each: note (English lowercase, e.g. "synthetic musk", "citrus", "oud"), sentiment (love|like|neutral|dislike|redflag), label (human-friendly phrase in ${language}, e.g. "Цитрусы — обожаю", "Синтетическая мускусная чистота — не моё"). Base redflag on notes found consistently in disliked entries.`,
       `suggestions: exactly 3 short first-person user messages in ${language} (max 60 chars each, e.g. "What suits me for evenings?") — tappable chips the user can send to continue the conversation.`,
-      'If owned/liked/disliked are all empty: set suggestions=[].',
+      'If all diary lists are empty: set suggestions=[], skip profile updates.',
       `Include a brief reply in ${language} summarizing what was updated.`,
     ].join(' '),
   }
