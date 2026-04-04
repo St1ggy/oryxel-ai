@@ -148,7 +148,7 @@
     aria-modal="true"
     aria-label={row.fragrance}
     tabindex="-1"
-    class="fixed top-0 right-0 bottom-0 z-50 flex w-[420px] max-w-full flex-col overflow-hidden border-l border-border bg-surface shadow-[−24px_0_48px_-8px_rgba(0,0,0,0.35)]"
+    class="fixed top-0 right-0 bottom-0 z-50 flex w-[420px] max-w-full flex-col overflow-hidden border-l border-border bg-surface shadow-[−24px_0_48px_-8px_rgba(0,0,0,0.35)] lg:w-[840px]"
     transition:fly={{ x: 420, duration: 300, easing: cubicOut, opacity: 1 }}
     onkeydown={(event) => event.key === 'Escape' && close()}
   >
