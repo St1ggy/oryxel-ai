@@ -1,6 +1,7 @@
 <script lang="ts">
   import { resolve } from '$app/paths'
 
+  import DiaryHeaderControls from '$lib/components/app/diary-header-controls.svelte'
   import RadarChart from '$lib/components/app/radar-chart.svelte'
   import ActivityIcon from '$lib/components/icons/ActivityIcon.svelte'
   import HeartIcon from '$lib/components/icons/HeartIcon.svelte'
@@ -26,7 +27,7 @@
     onProfileSync?: () => void
   }
 
-  const { profile, onProfileSync }: Props = $props()
+  const { variant, profile, onProfileSync }: Props = $props()
   const safeProfile = $derived<ProfileData>(
     profile ?? {
       displayName: m.oryxel_profile_default_user(),
@@ -37,48 +38,96 @@
       suggestions: [],
     },
   )
+
+  const isMobile = $derived(variant === 'mobile')
 </script>
 
-<div class="flex flex-col gap-8">
-  <div
-    class="flex items-center justify-between rounded-[24px] border border-border bg-surface px-[25px] py-[25px] shadow-[0px_1px_3px_0px_rgba(0,0,0,0.1),0px_1px_2px_0px_rgba(0,0,0,0.1)]"
-  >
-    <div class="flex items-center gap-6">
-      <Avatar alt={m.oryxel_profile_default_user()} size="lg" class="size-20" />
-      <div class="flex flex-col gap-1">
-        <h1 class="oryx-heading text-2xl font-semibold tracking-tight text-foreground">{safeProfile.displayName}</h1>
-        <p class="flex items-center gap-2 text-base font-medium text-foreground-muted">
-          <span class="inline-block size-2 rounded-full bg-(--oryx-online)"></span>
-          {m.oryxel_profile_online()}
-        </p>
+<div class="flex flex-col gap-5">
+  {#if isMobile}
+    <!-- Mobile header: stacked layout -->
+    <div class="rounded-[20px] border border-border bg-surface px-5 py-5 shadow-sm">
+      <div class="flex items-center gap-4">
+        <Avatar alt={m.oryxel_profile_default_user()} size="md" class="size-14 shrink-0" />
+        <div class="min-w-0 flex-1">
+          <h1 class="oryx-heading truncate text-xl font-semibold tracking-tight text-foreground">
+            {safeProfile.displayName}
+          </h1>
+          <p class="mt-0.5 flex items-center gap-2 text-sm font-medium text-foreground-muted">
+            <span class="inline-block size-2 shrink-0 rounded-full bg-(--oryx-online)"></span>
+            {m.oryxel_profile_online()}
+          </p>
+        </div>
+      </div>
+      <div class="mt-4 flex gap-2">
+        {#if onProfileSync}
+          <Button
+            variant="secondary"
+            class="h-9 flex-1 rounded-full border-subtle bg-subtle text-sm font-semibold shadow-sm"
+            onclick={onProfileSync}
+          >
+            {m.oryxel_profile_sync()}
+          </Button>
+        {/if}
+        <Button
+          variant="secondary"
+          class="h-9 flex-1 rounded-full border-subtle bg-subtle text-sm font-semibold shadow-sm"
+          href={resolve('/profile/edit')}
+        >
+          {m.oryxel_profile_edit()}
+        </Button>
       </div>
     </div>
-    <div class="flex items-center gap-2">
-      {#if onProfileSync}
+  {:else}
+    <!-- Desktop header: side-by-side layout -->
+    <div
+      class="flex items-center justify-between rounded-[24px] border border-border bg-surface px-[25px] py-[25px] shadow-[0px_1px_3px_0px_rgba(0,0,0,0.1),0px_1px_2px_0px_rgba(0,0,0,0.1)]"
+    >
+      <div class="flex items-center gap-6">
+        <Avatar alt={m.oryxel_profile_default_user()} size="lg" class="size-20" />
+        <div class="flex flex-col gap-1">
+          <h1 class="oryx-heading text-2xl font-semibold tracking-tight text-foreground">{safeProfile.displayName}</h1>
+          <p class="flex items-center gap-2 text-base font-medium text-foreground-muted">
+            <span class="inline-block size-2 rounded-full bg-(--oryx-online)"></span>
+            {m.oryxel_profile_online()}
+          </p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        {#if onProfileSync}
+          <Button
+            variant="secondary"
+            class="h-[42px] rounded-full border-subtle bg-subtle px-5 text-sm font-semibold shadow-sm"
+            onclick={onProfileSync}
+          >
+            {m.oryxel_profile_sync()}
+          </Button>
+        {/if}
         <Button
           variant="secondary"
           class="h-[42px] rounded-full border-subtle bg-subtle px-5 text-sm font-semibold shadow-sm"
-          onclick={onProfileSync}
+          href={resolve('/profile/edit')}
         >
-          {m.oryxel_profile_sync()}
+          {m.oryxel_profile_edit()}
         </Button>
-      {/if}
-      <Button
-        variant="secondary"
-        class="h-[42px] rounded-full border-subtle bg-subtle px-5 text-sm font-semibold shadow-sm"
-        href={resolve('/profile/edit')}
-      >
-        {m.oryxel_profile_edit()}
-      </Button>
+      </div>
     </div>
-  </div>
+  {/if}
 
+  <!-- Radar + stats card -->
   <div
-    class="rounded-[24px] border border-border bg-surface px-[33px] pt-[33px] pb-[8px] shadow-[0px_1px_3px_0px_rgba(0,0,0,0.1),0px_1px_2px_0px_rgba(0,0,0,0.1)]"
+    class={isMobile
+      ? 'rounded-[20px] border border-border bg-surface px-5 pt-5 pb-2 shadow-sm'
+      : 'rounded-[24px] border border-border bg-surface px-[33px] pt-[33px] pb-[8px] shadow-[0px_1px_3px_0px_rgba(0,0,0,0.1),0px_1px_2px_0px_rgba(0,0,0,0.1)]'}
   >
-    <h3 class="oryx-heading mb-6 text-lg font-semibold text-foreground">{m.oryxel_radar_title()}</h3>
+    <h3
+      class={isMobile
+        ? 'oryx-heading mb-4 text-base font-semibold text-foreground'
+        : 'oryx-heading mb-6 text-lg font-semibold text-foreground'}
+    >
+      {m.oryxel_radar_title()}
+    </h3>
     <div class="flex justify-center py-4">
-      <RadarChart axes={safeProfile.radarAxes} size={300} />
+      <RadarChart axes={safeProfile.radarAxes} size={isMobile ? 240 : 300} />
     </div>
     <div class="mt-4 mb-2 divide-y divide-border">
       <div class="flex items-center gap-3 py-3">
@@ -89,13 +138,29 @@
       <div class="flex items-center gap-3 py-3">
         <HeartIcon class="size-4 shrink-0 text-foreground-muted" />
         <span class="text-sm text-foreground-muted">{m.oryxel_stat_note()}</span>
-        <span class="ml-auto text-sm font-semibold text-foreground">{safeProfile.favoriteNote ?? m.oryxel_common_empty()}</span>
+        <span class="ml-auto text-sm font-semibold text-foreground"
+          >{safeProfile.favoriteNote ?? m.oryxel_common_empty()}</span
+        >
       </div>
       <div class="flex items-center gap-3 py-3">
         <SparklesIcon class="size-4 shrink-0 text-foreground-muted" />
         <span class="text-sm text-foreground-muted">{m.oryxel_stat_archetype()}</span>
-        <span class="ml-auto text-sm font-semibold text-foreground">{safeProfile.archetype ?? m.oryxel_common_empty()}</span>
+        <span class="ml-auto text-sm font-semibold text-foreground"
+          >{safeProfile.archetype ?? m.oryxel_common_empty()}</span
+        >
       </div>
     </div>
   </div>
+
+  {#if isMobile}
+    <!-- Appearance controls: theme, language, settings -->
+    <div class="rounded-[20px] border border-border bg-surface px-5 py-4 shadow-sm">
+      <div class="flex items-center justify-between">
+        <span class="text-sm font-medium text-foreground-muted"
+          >{m.oryxel_settings_theme()} · {m.oryxel_locale_switcher_label()}</span
+        >
+        <DiaryHeaderControls />
+      </div>
+    </div>
+  {/if}
 </div>
