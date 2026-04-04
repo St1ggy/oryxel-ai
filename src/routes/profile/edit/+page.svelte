@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { browser } from '$app/environment'
   import { onMount } from 'svelte'
 
   import Button from '$lib/components/ui/button.svelte'
@@ -11,12 +10,10 @@
   import Textarea from '$lib/components/ui/textarea.svelte'
   import * as m from '$lib/paraglide/messages.js'
 
-  const AI_KEY = 'oryxel:ai-personalization'
-
-  let displayName = $state('Alex Rivers')
-  let bio = $state('Quiet luxury, tactile woods, and skin-close musks.')
-  let tone = $state('Warm, concise')
-  let depth = $state('Balanced')
+  let displayName = $state('')
+  let bio = $state('')
+  let tone = $state('')
+  let depth = $state('')
   let rememberContext = $state(true)
   let gender = $state<string>('__none__')
 
@@ -27,31 +24,34 @@
   ])
 
   onMount(async () => {
-    if (!browser) return
-
-    const raw = localStorage.getItem(AI_KEY)
-
-    if (raw) {
-      try {
-        const parsed = JSON.parse(raw) as { tone?: string; depth?: string; rememberContext?: boolean }
-
-        if (parsed.tone) tone = parsed.tone
-
-        if (parsed.depth) depth = parsed.depth
-
-        if (typeof parsed.rememberContext === 'boolean') rememberContext = parsed.rememberContext
-      } catch {
-        /* ignore */
-      }
-    }
-
     try {
-      const response = await fetch('/api/profile')
+      const [profileResponse, aiPrefsResponse] = await Promise.all([
+        fetch('/api/profile'),
+        fetch('/api/ai/preferences'),
+      ])
 
-      if (response.ok) {
-        const data = (await response.json()) as { gender: string | null }
+      if (profileResponse.ok) {
+        const data = (await profileResponse.json()) as {
+          gender: string | null
+          displayName: string | null
+          bio: string | null
+        }
 
         gender = data.gender ?? '__none__'
+        displayName = data.displayName ?? ''
+        bio = data.bio ?? ''
+      }
+
+      if (aiPrefsResponse.ok) {
+        const data = (await aiPrefsResponse.json()) as {
+          tone: string | null
+          depth: string | null
+          rememberContext: boolean
+        }
+
+        tone = data.tone ?? ''
+        depth = data.depth ?? ''
+        rememberContext = data.rememberContext
       }
     } catch {
       /* ignore */
@@ -59,19 +59,18 @@
   })
 
   async function save() {
-    if (browser) {
-      localStorage.setItem(AI_KEY, JSON.stringify({ tone, depth, rememberContext }))
-    }
-
-    try {
-      await fetch('/api/profile', {
+    await Promise.all([
+      fetch('/api/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gender: gender === '__none__' ? null : gender }),
-      })
-    } catch {
-      /* ignore */
-    }
+        body: JSON.stringify({ gender: gender === '__none__' ? null : gender, displayName, bio }),
+      }),
+      fetch('/api/ai/preferences', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tone, depth, rememberContext }),
+      }),
+    ])
   }
 </script>
 

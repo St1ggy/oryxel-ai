@@ -270,6 +270,9 @@ async function runAgentChat(
           minRecommendations: userAiPreferences.minRecommendations,
           maxRecommendations: userAiPreferences.maxRecommendations,
           maxPyramidNotes: userAiPreferences.maxPyramidNotes,
+          tone: userAiPreferences.tone,
+          depth: userAiPreferences.depth,
+          rememberContext: userAiPreferences.rememberContext,
         })
         .from(userAiPreferences)
         .where(eq(userAiPreferences.userId, userId))
@@ -309,7 +312,7 @@ async function runAgentChat(
         owned: diary.owned.map((entry) => toContextEntry(entry)),
       },
       budget: body.context?.budget,
-      recentMessages,
+      recentMessages: (aiPrefs?.rememberContext ?? true) ? recentMessages : undefined,
     }
 
     const router = await analyzePreferences({
@@ -322,6 +325,8 @@ async function runAgentChat(
       minRecommendations: aiPrefs?.minRecommendations,
       maxRecommendations: aiPrefs?.maxRecommendations,
       maxPyramidNotes: aiPrefs?.maxPyramidNotes,
+      tone: aiPrefs?.tone ?? undefined,
+      depth: aiPrefs?.depth ?? undefined,
     })
 
     const patch = router.result.patch

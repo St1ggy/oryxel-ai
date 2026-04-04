@@ -14,6 +14,9 @@ const bodySchema = z.object({
   maxPyramidNotes: z.number().int().min(1).max(10).optional(),
   minRecommendations: z.number().int().min(1).max(30).optional(),
   maxRecommendations: z.number().int().min(1).max(30).optional(),
+  tone: z.string().max(200).optional(),
+  depth: z.string().max(200).optional(),
+  rememberContext: z.boolean().optional(),
 })
 
 export const GET: RequestHandler = async ({ locals }) => {
@@ -28,6 +31,9 @@ export const GET: RequestHandler = async ({ locals }) => {
       maxPyramidNotes: userAiPreferences.maxPyramidNotes,
       minRecommendations: userAiPreferences.minRecommendations,
       maxRecommendations: userAiPreferences.maxRecommendations,
+      tone: userAiPreferences.tone,
+      depth: userAiPreferences.depth,
+      rememberContext: userAiPreferences.rememberContext,
     })
     .from(userAiPreferences)
     .where(eq(userAiPreferences.userId, locals.user.id))
@@ -39,6 +45,9 @@ export const GET: RequestHandler = async ({ locals }) => {
     maxPyramidNotes: prefs?.maxPyramidNotes ?? 5,
     minRecommendations: prefs?.minRecommendations ?? 5,
     maxRecommendations: prefs?.maxRecommendations ?? 20,
+    tone: prefs?.tone ?? null,
+    depth: prefs?.depth ?? null,
+    rememberContext: prefs?.rememberContext ?? true,
   })
 }
 
@@ -62,6 +71,12 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
   if (body.minRecommendations !== undefined) displayUpdates['minRecommendations'] = body.minRecommendations
 
   if (body.maxRecommendations !== undefined) displayUpdates['maxRecommendations'] = body.maxRecommendations
+
+  if (body.tone !== undefined) displayUpdates['tone'] = body.tone
+
+  if (body.depth !== undefined) displayUpdates['depth'] = body.depth
+
+  if (body.rememberContext !== undefined) displayUpdates['rememberContext'] = body.rememberContext
 
   if (Object.keys(displayUpdates).length > 0) {
     await db

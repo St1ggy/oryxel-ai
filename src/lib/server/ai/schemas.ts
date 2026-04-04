@@ -64,6 +64,8 @@ export const analyzePreferencesRequestSchema = z.object({
   minRecommendations: z.number().int().min(1).max(30).optional(),
   maxRecommendations: z.number().int().min(1).max(30).optional(),
   maxPyramidNotes: z.number().int().min(1).max(10).optional(),
+  tone: z.string().max(200).optional(),
+  depth: z.string().max(200).optional(),
 })
 
 export const tableOperationSchema = z.object({

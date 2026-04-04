@@ -33,6 +33,8 @@ type StepContext = {
   minRecommendations: number | undefined
   maxRecommendations: number | undefined
   maxPyramidNotes: number | undefined
+  tone: string | undefined
+  depth: string | undefined
   profileContext: NonNullable<AnalyzePreferencesRequest['context']>['profile']
   likedEntries: DiaryEntry[]
   neutralEntries: DiaryEntry[]
@@ -74,6 +76,8 @@ async function fillListBatches(
         scenario: 'command',
         preferredProvider: context.provider,
         maxPyramidNotes: context.maxPyramidNotes,
+        tone: context.tone,
+        depth: context.depth,
         context: {
           profile: context.profileContext,
           diary: {
@@ -105,6 +109,8 @@ async function runProfileStep(context: StepContext): Promise<void> {
       locale: context.locale,
       scenario: 'profile_sync',
       preferredProvider: context.provider,
+      tone: context.tone,
+      depth: context.depth,
       context: {
         profile: context.profileContext,
         diary: {
@@ -135,6 +141,8 @@ async function runRecommendationsStep(context: StepContext): Promise<void> {
       preferredProvider: context.provider,
       minRecommendations: context.minRecommendations,
       maxRecommendations: context.maxRecommendations,
+      tone: context.tone,
+      depth: context.depth,
       context: {
         profile: {
           archetype: updatedProfile.archetype ?? undefined,
@@ -179,6 +187,8 @@ async function runToTryFillStep(context: StepContext): Promise<void> {
           scenario: 'command',
           preferredProvider: context.provider,
           maxPyramidNotes: context.maxPyramidNotes,
+          tone: context.tone,
+          depth: context.depth,
           context: {
             profile: context.profileContext,
             diary: {
@@ -280,6 +290,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         minRecommendations: userAiPreferences.minRecommendations,
         maxRecommendations: userAiPreferences.maxRecommendations,
         maxPyramidNotes: userAiPreferences.maxPyramidNotes,
+        tone: userAiPreferences.tone,
+        depth: userAiPreferences.depth,
       })
       .from(userAiPreferences)
       .where(eq(userAiPreferences.userId, userId))
@@ -319,6 +331,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     minRecommendations: aiPrefs?.minRecommendations,
     maxRecommendations: aiPrefs?.maxRecommendations,
     maxPyramidNotes: aiPrefs?.maxPyramidNotes,
+    tone: aiPrefs?.tone ?? undefined,
+    depth: aiPrefs?.depth ?? undefined,
     profileContext: {
       archetype: profile.archetype ?? undefined,
       favoriteNote: profile.favoriteNote ?? undefined,

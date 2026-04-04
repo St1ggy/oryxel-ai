@@ -55,8 +55,17 @@ function buildBaseInstructions(request: AnalyzePreferencesRequest): string[] {
   const language = languageForLocale(request.locale)
   const tableNames = tableNamesForLocale(request.locale)
 
+  const toneInstruction = request.tone
+    ? `Communication style: ${request.tone}.`
+    : 'Communication style: friendly and concise.'
+  const depthInstruction = request.depth
+    ? `Detail level: ${request.depth}.`
+    : 'Detail level: balanced — enough context without being verbose.'
+
   return [
     "You are a helpful fragrance assistant for Oryxel. You can chat naturally, analyze preferences, and manage the user's fragrance diary.",
+    toneInstruction,
+    depthInstruction,
     `The 'reply' and 'summary' fields MUST be written in ${language} for the user.`,
     `notesSummary, pyramidTop, pyramidMid, pyramidBase MUST be plain English, all lowercase (e.g. "bergamot, lavender, musk"). Profile fields archetype and favoriteNote MUST be written in ${language}.`,
     `agentComment and recommendations[].tag MUST be written in ${language} — they are shown directly to the user without translation.`,
