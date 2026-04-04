@@ -1,8 +1,11 @@
 <script lang="ts">
+  import { Clock, Droplets, Flame, Layers, Leaf, MapPin, Minimize2, Sprout, Sun, Waves } from '@lucide/svelte'
   import { Tabs } from 'bits-ui'
   import { tick, untrack } from 'svelte'
 
+  import DiaryProfileSkeleton from '$lib/components/app/diary-profile-skeleton.svelte'
   import DiaryProfileTab from '$lib/components/app/diary-profile-tab.svelte'
+  import DiaryTableSkeleton from '$lib/components/app/diary-table-skeleton.svelte'
   import ScentDiaryTable from '$lib/components/app/scent-diary-table.svelte'
   import ToTryTable from '$lib/components/app/to-try-table.svelte'
   import { type DiaryListTabValue, MOBILE_EXCLUDED_TABS, diaryListTabItems } from '$lib/diary/diary-tab-items'
@@ -22,6 +25,7 @@
   type Props = {
     listTab: DiaryListTabValue
     diaryState: DiaryData
+    loading?: boolean
     onRatingChange: (id: number, fragranceId: number, rating: number) => void
     onOpenDetail?: (row: DiaryRow, context: 'diary' | 'to_try') => void
     layout: 'desktop' | 'mobile'
@@ -45,6 +49,7 @@
   let {
     listTab = $bindable(),
     diaryState,
+    loading = false,
     onRatingChange,
     onOpenDetail,
     onProfileSync,
@@ -206,8 +211,9 @@
       abbr: 'EdP+',
       range: '20–40%',
       longevity: '8–12+ h',
-      sillage: 'Low',
+      sillage: 'Intimate',
       strength: 100,
+      color: 'text-accent',
       desc: () => m.oryxel_guide_extrait_desc(),
     },
     {
@@ -215,8 +221,9 @@
       abbr: 'EdP',
       range: '15–20%',
       longevity: '6–8 h',
-      sillage: 'Medium',
+      sillage: 'Noticeable',
       strength: 75,
+      color: 'text-accent/80',
       desc: () => m.oryxel_guide_edp_desc(),
     },
     {
@@ -226,6 +233,7 @@
       longevity: '4–6 h',
       sillage: 'Light',
       strength: 55,
+      color: 'text-accent/60',
       desc: () => m.oryxel_guide_edt_desc(),
     },
     {
@@ -233,8 +241,9 @@
       abbr: 'EdC',
       range: '2–4%',
       longevity: '2–3 h',
-      sillage: 'Very light',
+      sillage: 'Subtle',
       strength: 25,
+      color: 'text-accent/40',
       desc: () => m.oryxel_guide_edc_desc(),
     },
     {
@@ -244,7 +253,76 @@
       longevity: '1–2 h',
       sillage: 'Minimal',
       strength: 12,
+      color: 'text-accent/25',
       desc: () => m.oryxel_guide_fraiche_desc(),
+    },
+  ] as const
+
+  const tips = [
+    {
+      icon: MapPin,
+      title: () => m.oryxel_guide_tip_pulse_title(),
+      desc: () => m.oryxel_guide_tip_pulse_desc(),
+    },
+    {
+      icon: Minimize2,
+      title: () => m.oryxel_guide_tip_less_title(),
+      desc: () => m.oryxel_guide_tip_less_desc(),
+    },
+    {
+      icon: Clock,
+      title: () => m.oryxel_guide_tip_drydown_title(),
+      desc: () => m.oryxel_guide_tip_drydown_desc(),
+    },
+    {
+      icon: Layers,
+      title: () => m.oryxel_guide_tip_layer_title(),
+      desc: () => m.oryxel_guide_tip_layer_desc(),
+    },
+  ] as const
+
+  const families = [
+    {
+      icon: Sun,
+      bg: 'bg-yellow-400/10',
+      iconColor: 'text-yellow-500',
+      name: () => m.oryxel_guide_family_citrus_name(),
+      desc: () => m.oryxel_guide_family_citrus_desc(),
+    },
+    {
+      icon: Sprout,
+      bg: 'bg-pink-400/10',
+      iconColor: 'text-pink-500',
+      name: () => m.oryxel_guide_family_floral_name(),
+      desc: () => m.oryxel_guide_family_floral_desc(),
+    },
+    {
+      icon: Leaf,
+      bg: 'bg-amber-400/10',
+      iconColor: 'text-amber-600',
+      name: () => m.oryxel_guide_family_woody_name(),
+      desc: () => m.oryxel_guide_family_woody_desc(),
+    },
+    {
+      icon: Flame,
+      bg: 'bg-orange-400/10',
+      iconColor: 'text-orange-500',
+      name: () => m.oryxel_guide_family_oriental_name(),
+      desc: () => m.oryxel_guide_family_oriental_desc(),
+    },
+    {
+      icon: Waves,
+      bg: 'bg-sky-400/10',
+      iconColor: 'text-sky-500',
+      name: () => m.oryxel_guide_family_fresh_name(),
+      desc: () => m.oryxel_guide_family_fresh_desc(),
+    },
+    {
+      icon: Droplets,
+      bg: 'bg-violet-400/10',
+      iconColor: 'text-violet-500',
+      name: () => m.oryxel_guide_family_gourmand_name(),
+      desc: () => m.oryxel_guide_family_gourmand_desc(),
     },
   ] as const
 </script>
@@ -275,38 +353,62 @@
     <div class="min-h-0 flex-1 overflow-y-auto p-4 md:p-9">
       <div class={cn('w-full', contentWidthClass)}>
         <Tabs.Content value="owned" class={panelClass}>
-          <ScentDiaryTable
-            rows={diaryState.owned}
-            {onRatingChange}
-            onOpenDetail={(row) => onOpenDetail?.(row, 'diary')}
-          />
+          {#if loading}
+            <DiaryTableSkeleton />
+          {:else}
+            <ScentDiaryTable
+              rows={diaryState.owned}
+              {onRatingChange}
+              onOpenDetail={(row) => onOpenDetail?.(row, 'diary')}
+            />
+          {/if}
         </Tabs.Content>
         <Tabs.Content value="to_try" class={panelClass}>
-          <ToTryTable rows={diaryState.to_try} onOpenDetail={(row) => onOpenDetail?.(row, 'to_try')} />
+          {#if loading}
+            <DiaryTableSkeleton />
+          {:else}
+            <ToTryTable rows={diaryState.to_try} onOpenDetail={(row) => onOpenDetail?.(row, 'to_try')} />
+          {/if}
         </Tabs.Content>
         <Tabs.Content value="liked" class={panelClass}>
-          <ScentDiaryTable
-            rows={diaryState.liked}
-            {onRatingChange}
-            onOpenDetail={(row) => onOpenDetail?.(row, 'diary')}
-          />
+          {#if loading}
+            <DiaryTableSkeleton />
+          {:else}
+            <ScentDiaryTable
+              rows={diaryState.liked}
+              {onRatingChange}
+              onOpenDetail={(row) => onOpenDetail?.(row, 'diary')}
+            />
+          {/if}
         </Tabs.Content>
         <Tabs.Content value="neutral" class={panelClass}>
-          <ScentDiaryTable
-            rows={diaryState.neutral}
-            {onRatingChange}
-            onOpenDetail={(row) => onOpenDetail?.(row, 'diary')}
-          />
+          {#if loading}
+            <DiaryTableSkeleton />
+          {:else}
+            <ScentDiaryTable
+              rows={diaryState.neutral}
+              {onRatingChange}
+              onOpenDetail={(row) => onOpenDetail?.(row, 'diary')}
+            />
+          {/if}
         </Tabs.Content>
         <Tabs.Content value="disliked" class={panelClass}>
-          <ScentDiaryTable
-            rows={diaryState.disliked}
-            {onRatingChange}
-            onOpenDetail={(row) => onOpenDetail?.(row, 'diary')}
-          />
+          {#if loading}
+            <DiaryTableSkeleton />
+          {:else}
+            <ScentDiaryTable
+              rows={diaryState.disliked}
+              {onRatingChange}
+              onOpenDetail={(row) => onOpenDetail?.(row, 'diary')}
+            />
+          {/if}
         </Tabs.Content>
         <Tabs.Content value="profile" class={panelClass}>
-          <DiaryProfileTab variant="desktop" {profile} {onProfileSync} {recentActivity} />
+          {#if loading}
+            <DiaryProfileSkeleton variant="desktop" />
+          {:else}
+            <DiaryProfileTab variant="desktop" {profile} {onProfileSync} {recentActivity} />
+          {/if}
         </Tabs.Content>
         <Tabs.Content value="notes" class={panelClass}>
           {#if localNotes.length === 0}
@@ -367,27 +469,97 @@
           {/if}
         </Tabs.Content>
         <Tabs.Content value="guide" class={panelClass}>
-          <div class="max-w-[720px] space-y-3">
-            {#each concentrations as c (c.abbr)}
-              <div class="rounded-xl border border-border bg-surface p-4 md:p-5">
-                <div class="mb-3 flex flex-wrap items-baseline gap-2">
-                  <h2 class="oryx-heading text-base font-semibold">{c.name}</h2>
-                  <span
-                    class="rounded-md border border-border bg-muted px-2 py-0.5 font-mono text-xs text-foreground-muted"
-                    >{c.abbr}</span
-                  >
-                  <span class="text-xs text-foreground-muted">{c.range}</span>
-                </div>
-                <div class="mb-3 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                  <div class="h-full rounded-full bg-accent" style="width: {c.strength}%"></div>
-                </div>
-                <div class="mb-3 flex flex-wrap gap-4 text-xs text-foreground-muted">
-                  <span>⏱ {c.longevity}</span>
-                  <span>💨 {c.sillage}</span>
-                </div>
-                <p class="text-sm text-foreground-muted">{c.desc()}</p>
+          <div class="max-w-[720px] space-y-8">
+            <!-- Concentrations -->
+            <section>
+              <div class="mb-4 space-y-1">
+                <h2 class="oryx-heading text-base font-semibold">{m.oryxel_guide_subtitle()}</h2>
               </div>
-            {/each}
+              <div class="space-y-3">
+                {#each concentrations as c (c.abbr)}
+                  <div class="rounded-xl border border-border bg-surface p-4 md:p-5">
+                    <div class="flex items-start gap-4">
+                      <!-- Strength dot cluster -->
+                      <div class="mt-0.5 flex shrink-0 flex-col items-center gap-1">
+                        {#each [100, 75, 55, 25, 12] as level (level)}
+                          <div
+                            class="size-2 rounded-full transition-colors"
+                            style="background-color: {c.strength >= level
+                              ? 'var(--color-accent)'
+                              : 'var(--oryx-bg-muted)'}"
+                          ></div>
+                        {/each}
+                      </div>
+                      <div class="min-w-0 flex-1">
+                        <div class="mb-1.5 flex flex-wrap items-baseline gap-2">
+                          <h3 class="oryx-heading text-sm font-semibold">{c.name}</h3>
+                          <span
+                            class="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground-muted"
+                            >{c.abbr}</span
+                          >
+                          <span class="text-xs text-foreground-muted">{c.range}</span>
+                        </div>
+                        <!-- Strength bar -->
+                        <div class="mb-3 h-1 w-full overflow-hidden rounded-full bg-muted">
+                          <div
+                            class="h-full rounded-full bg-accent transition-[width]"
+                            style="width: {c.strength}%"
+                          ></div>
+                        </div>
+                        <!-- Stats -->
+                        <div class="mb-2.5 flex flex-wrap gap-4 text-xs text-foreground-muted">
+                          <span class="flex items-center gap-1">
+                            <Clock class="size-3.5 shrink-0 opacity-60" />
+                            {c.longevity}
+                          </span>
+                          <span class="flex items-center gap-1">
+                            <Waves class="size-3.5 shrink-0 opacity-60" />
+                            {c.sillage}
+                          </span>
+                        </div>
+                        <p class="text-sm leading-relaxed text-foreground-muted">{c.desc()}</p>
+                      </div>
+                    </div>
+                  </div>
+                {/each}
+              </div>
+            </section>
+
+            <!-- Application Tips -->
+            <section>
+              <h2 class="oryx-heading mb-4 text-base font-semibold">{m.oryxel_guide_tips_title()}</h2>
+              <div class="grid gap-3 sm:grid-cols-2">
+                {#each tips as tip (tip.title())}
+                  <div class="flex gap-3 rounded-xl border border-border bg-surface p-4">
+                    <div class="mt-0.5 shrink-0 rounded-lg bg-accent/10 p-2">
+                      <tip.icon class="size-4 text-accent" />
+                    </div>
+                    <div>
+                      <p class="mb-1 text-sm font-medium text-foreground">{tip.title()}</p>
+                      <p class="text-xs leading-relaxed text-foreground-muted">{tip.desc()}</p>
+                    </div>
+                  </div>
+                {/each}
+              </div>
+            </section>
+
+            <!-- Fragrance Families -->
+            <section>
+              <h2 class="oryx-heading mb-4 text-base font-semibold">{m.oryxel_guide_families_title()}</h2>
+              <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {#each families as fam (fam.name())}
+                  <div class="flex gap-3 rounded-xl border border-border bg-surface p-4">
+                    <div class="mt-0.5 shrink-0 rounded-lg p-2 {fam.bg}">
+                      <fam.icon class="size-4 {fam.iconColor}" />
+                    </div>
+                    <div>
+                      <p class="mb-1 text-sm font-medium text-foreground">{fam.name()}</p>
+                      <p class="text-xs leading-relaxed text-foreground-muted">{fam.desc()}</p>
+                    </div>
+                  </div>
+                {/each}
+              </div>
+            </section>
           </div>
         </Tabs.Content>
       </div>
@@ -399,30 +571,62 @@
       {/each}
     </Tabs.List>
     <Tabs.Content value="owned" class={panelClass}>
-      <ScentDiaryTable rows={diaryState.owned} {onRatingChange} onOpenDetail={(row) => onOpenDetail?.(row, 'diary')} />
+      {#if loading}
+        <DiaryTableSkeleton />
+      {:else}
+        <ScentDiaryTable
+          rows={diaryState.owned}
+          {onRatingChange}
+          onOpenDetail={(row) => onOpenDetail?.(row, 'diary')}
+        />
+      {/if}
     </Tabs.Content>
     <Tabs.Content value="to_try" class={panelClass}>
-      <ToTryTable rows={diaryState.to_try} onOpenDetail={(row) => onOpenDetail?.(row, 'to_try')} />
+      {#if loading}
+        <DiaryTableSkeleton />
+      {:else}
+        <ToTryTable rows={diaryState.to_try} onOpenDetail={(row) => onOpenDetail?.(row, 'to_try')} />
+      {/if}
     </Tabs.Content>
     <Tabs.Content value="liked" class={panelClass}>
-      <ScentDiaryTable rows={diaryState.liked} {onRatingChange} onOpenDetail={(row) => onOpenDetail?.(row, 'diary')} />
+      {#if loading}
+        <DiaryTableSkeleton />
+      {:else}
+        <ScentDiaryTable
+          rows={diaryState.liked}
+          {onRatingChange}
+          onOpenDetail={(row) => onOpenDetail?.(row, 'diary')}
+        />
+      {/if}
     </Tabs.Content>
     <Tabs.Content value="neutral" class={panelClass}>
-      <ScentDiaryTable
-        rows={diaryState.neutral}
-        {onRatingChange}
-        onOpenDetail={(row) => onOpenDetail?.(row, 'diary')}
-      />
+      {#if loading}
+        <DiaryTableSkeleton />
+      {:else}
+        <ScentDiaryTable
+          rows={diaryState.neutral}
+          {onRatingChange}
+          onOpenDetail={(row) => onOpenDetail?.(row, 'diary')}
+        />
+      {/if}
     </Tabs.Content>
     <Tabs.Content value="disliked" class={panelClass}>
-      <ScentDiaryTable
-        rows={diaryState.disliked}
-        {onRatingChange}
-        onOpenDetail={(row) => onOpenDetail?.(row, 'diary')}
-      />
+      {#if loading}
+        <DiaryTableSkeleton />
+      {:else}
+        <ScentDiaryTable
+          rows={diaryState.disliked}
+          {onRatingChange}
+          onOpenDetail={(row) => onOpenDetail?.(row, 'diary')}
+        />
+      {/if}
     </Tabs.Content>
     <Tabs.Content value="profile" class={panelClass}>
-      <DiaryProfileTab variant="mobile" {profile} {onProfileSync} {recentActivity} />
+      {#if loading}
+        <DiaryProfileSkeleton variant="mobile" />
+      {:else}
+        <DiaryProfileTab variant="mobile" {profile} {onProfileSync} {recentActivity} />
+      {/if}
     </Tabs.Content>
   {/if}
 </Tabs.Root>
