@@ -1,6 +1,6 @@
 [build]
-builder = "nixpacks"
 buildCommand = "bun install"
+watchPatterns = ["/apps/worker/**", "/packages/**"]
 
 [deploy]
 startCommand = "bun run --cwd apps/worker start"
