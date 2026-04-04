@@ -14,11 +14,12 @@
     "db:studio": "bun run --cwd packages/db db:studio"
   },
   "dependencies": {
-    "drizzle-orm": "^0.45.1",
+    "drizzle-orm": "^0.45.2",
     "zod": "^4.3.6"
   },
   "overrides": {
     "drizzle-orm": "0.45.2",
+    "vite": "7.3.1",
     "zod": "4.3.6"
   }
 }

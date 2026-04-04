@@ -69,6 +69,13 @@ export default defineConfig([
     },
   },
   {
+    // vite.config.ts uses @ts-nocheck to silence the vitest/vite dual-instance type conflict
+    files: ['vite.config.ts', 'vite.config.js'],
+    rules: {
+      '@typescript-eslint/ban-ts-comment': 'off',
+    },
+  },
+  {
     files: ['**/*.svelte', '**/*.svelte.ts', '**/*.svelte.js'],
     languageOptions: {
       parserOptions: {
@@ -88,6 +95,10 @@ export default defineConfig([
       'import/extensions': 'off',
       // We use [...arr].reverse() for Node <20 compatibility (worker shares packages/ai).
       'unicorn/no-array-reverse': 'off',
+      // sonarjs false positives: SvelteKit's onNavigate and runes() return mixed types by design;
+      // includes() on string[] with a specific literal is valid TypeScript.
+      'sonarjs/function-return-type': 'off',
+      'sonarjs/argument-type': 'off',
     },
   },
   {

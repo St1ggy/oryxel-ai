@@ -1,3 +1,4 @@
+// @ts-nocheck -- vitest bundles its own vite instance; the two produce incompatible Plugin types at check time (runtime is fine)
 import { paraglideVitePlugin } from '@inlang/paraglide-js'
 import { sveltekit } from '@sveltejs/kit/vite'
 import tailwindcss from '@tailwindcss/vite'
