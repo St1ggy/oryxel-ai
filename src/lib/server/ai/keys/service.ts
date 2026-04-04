@@ -50,16 +50,6 @@ function getPlatformKeyConfig(): { provider: ProviderId; key: string } | null {
   }
 }
 
-async function userHasPlatformAccess(userId: string): Promise<boolean> {
-  const [row] = await db
-    .select({ platformAccess: userAiPreferences.platformAccess })
-    .from(userAiPreferences)
-    .where(eq(userAiPreferences.userId, userId))
-    .limit(1)
-
-  return row?.platformAccess ?? false
-}
-
 function fallbackProviderKey(provider: ProviderId): string | undefined {
   switch (provider) {
     case 'openai': {
@@ -346,7 +336,7 @@ export async function listProviderApiKeyCandidates(
 
   const platformConfig = getPlatformKeyConfig()
 
-  if (platformConfig && platformConfig.provider === provider && (await userHasPlatformAccess(userId))) {
+  if (platformConfig && platformConfig.provider === provider) {
     candidates.push({
       key: platformConfig.key,
       source: 'platform',
@@ -412,7 +402,7 @@ export async function hasEffectiveProviderAccess(userId: string): Promise<boolea
 
   if (hasUserKeys || hasAnyFallbackKey()) return true
 
-  return Boolean(getPlatformKeyConfig()) && (await userHasPlatformAccess(userId))
+  return Boolean(getPlatformKeyConfig())
 }
 
 export async function grantPlatformAccess(userId: string): Promise<void> {
