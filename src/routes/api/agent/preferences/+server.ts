@@ -14,6 +14,7 @@ import {
 } from '$lib/server/ai/storage'
 import { loadDiaryForUser } from '$lib/server/diary/load'
 import { loadProfileForUser } from '$lib/server/profile/load'
+import { generateMissingTranslations } from '$lib/server/translation/generate'
 
 import type { RequestHandler } from './$types'
 
@@ -31,6 +32,25 @@ const bodySchema = z.object({
 
 function inferScenarioFromMessage(message: string): 'analog' | 'pyramid' | 'recommendation' | 'comparison' | 'command' {
   const normalized = message.toLowerCase()
+
+  // Detect structured bulk import: markdown headers (# ...) or known RU/EN section labels
+  if (message.includes('\n')) {
+    const hasMarkdownHeader = /^#\s/m.test(message)
+    const bulkMarkers = [
+      'в наличии',
+      'нравится',
+      'не нравится',
+      'хочу попробовать',
+      'приоритет на тест',
+      'профиль предпочтений',
+      'owned:',
+      'liked:',
+      'disliked:',
+    ]
+    const hasSectionMarker = bulkMarkers.some((marker) => normalized.includes(marker))
+
+    if (hasMarkdownHeader || hasSectionMarker) return 'command'
+  }
 
   // Command keywords: RU / EN / ES / FR / JA / ZH / DE / PT / IT / KO / AR
   const commandKeywords = [
@@ -238,40 +258,45 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     profile: {
       displayName: profile.displayName,
       bio: profile.bio,
+      preferences: profile.preferences || undefined,
       archetype: profile.archetype ?? undefined,
       favoriteNote: profile.favoriteNote ?? undefined,
       radar: Object.fromEntries(profile.radarAxes.map(({ key, value }) => [key, value])),
     },
     diary: {
       // eslint-disable-next-line camelcase
-      to_try: diary.to_try.map(({ id, brand, fragrance, pyramidTop, pyramidMid, pyramidBase }) => ({
+      to_try: diary.to_try.map(({ id, brand, fragrance, notes, pyramidTop, pyramidMid, pyramidBase }) => ({
         id,
         brand,
         fragrance,
+        notes: notes.join(', ') || null,
         pyramidTop,
         pyramidMid,
         pyramidBase,
       })),
-      liked: diary.liked.map(({ id, brand, fragrance, pyramidTop, pyramidMid, pyramidBase }) => ({
+      liked: diary.liked.map(({ id, brand, fragrance, notes, pyramidTop, pyramidMid, pyramidBase }) => ({
         id,
         brand,
         fragrance,
+        notes: notes.join(', ') || null,
         pyramidTop,
         pyramidMid,
         pyramidBase,
       })),
-      disliked: diary.disliked.map(({ id, brand, fragrance, pyramidTop, pyramidMid, pyramidBase }) => ({
+      disliked: diary.disliked.map(({ id, brand, fragrance, notes, pyramidTop, pyramidMid, pyramidBase }) => ({
         id,
         brand,
         fragrance,
+        notes: notes.join(', ') || null,
         pyramidTop,
         pyramidMid,
         pyramidBase,
       })),
-      owned: diary.owned.map(({ id, brand, fragrance, pyramidTop, pyramidMid, pyramidBase }) => ({
+      owned: diary.owned.map(({ id, brand, fragrance, notes, pyramidTop, pyramidMid, pyramidBase }) => ({
         id,
         brand,
         fragrance,
+        notes: notes.join(', ') || null,
         pyramidTop,
         pyramidMid,
         pyramidBase,
@@ -302,6 +327,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   if (!critical) {
     try {
       await applyPatchToDatabase(locals.user.id, patch)
+      void generateMissingTranslations(locals.user.id, locale)
       await updatePatchStatus({
         patchId: pendingPatch.id,
         userId: locals.user.id,

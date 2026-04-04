@@ -22,9 +22,12 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 
 const patchBodySchema = z.object({
   listType: z.enum(['to_try', 'liked', 'disliked', 'owned']).optional(),
-  statusLabel: z.string().max(64).optional(),
+  userComment: z.string().max(200).optional(),
   isOwned: z.boolean().optional(),
   rating: z.number().int().min(0).max(5).optional(),
+  season: z.string().max(60).optional(),
+  timeOfDay: z.string().max(40).optional(),
+  gender: z.enum(['female', 'male', 'unisex']).optional(),
 })
 
 export const PATCH: RequestHandler = async ({ params, locals, request }) => {
@@ -41,9 +44,15 @@ export const PATCH: RequestHandler = async ({ params, locals, request }) => {
 
   if (typeof body.rating === 'number') updates.rating = body.rating
 
-  if (typeof body.statusLabel === 'string') updates.statusLabel = body.statusLabel
+  if (typeof body.userComment === 'string') updates.userComment = body.userComment
 
   if (typeof body.isOwned === 'boolean') updates.isOwned = body.isOwned
+
+  if (typeof body.season === 'string') updates.season = body.season
+
+  if (typeof body.timeOfDay === 'string') updates.timeOfDay = body.timeOfDay
+
+  if (typeof body.gender === 'string') updates.gender = body.gender
 
   if (Object.keys(updates).length === 0) throw error(400, 'NO_FIELDS')
 
