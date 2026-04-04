@@ -11,6 +11,7 @@ import {
   listConfiguredProviders,
   listUserProviderKeys,
 } from '$lib/server/ai/keys/service'
+import { getActiveJobsForUser } from '$lib/server/ai/jobs'
 import { getLatestPendingPatches, listLatestChatMessages, updatePatchStatus } from '$lib/server/ai/storage'
 import { db } from '$lib/server/db'
 import { aiPendingPatch } from '$lib/server/db/schema'
@@ -52,11 +53,12 @@ export const load: PageServerLoad = async ({ locals, url, cookies }) => {
   // Auto-apply patches confirmed by user but not yet applied
   await applyConfirmedPatches(userId)
 
-  const [diary, profile, pendingPatches, recentActivity] = await Promise.all([
+  const [diary, profile, pendingPatches, recentActivity, activeJobs] = await Promise.all([
     loadDiaryForUser(userId, locale),
     loadProfileForUser(userId, locals.user.name || 'User', locale),
     getLatestPendingPatches(userId, 3),
     loadRecentActivity(userId, 30),
+    getActiveJobsForUser(userId),
   ])
 
   const [configuredProviders, providerRows, defaultProvider] = await Promise.all([
@@ -89,6 +91,7 @@ export const load: PageServerLoad = async ({ locals, url, cookies }) => {
     profile,
     pendingPatches,
     recentActivity,
+    activeJobs,
     locale,
     hasChatAccess,
     chatProviders,

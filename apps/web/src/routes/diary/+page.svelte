@@ -138,6 +138,63 @@
   let syncProgress = $state<SyncProgress>(null)
   let patchProgress = $state<PatchProgress>(null)
   let thinking = $state(false)
+
+  // Resume polling for jobs that were still running when the page was last closed/refreshed
+  let jobsResumed = false
+
+  $effect(() => {
+    if (jobsResumed) return
+    jobsResumed = true
+
+    const syncJob = (data.activeJobs ?? []).find((j) => j.type === 'profile_sync')
+
+    if (syncJob) {
+      const latest = syncJob.progress.at(-1)
+      syncProgress = latest
+        ? { step: latest.step, total: latest.total, phase: latest.phase as NonNullable<SyncProgress>['phase'] }
+        : { step: 0, total: 1, phase: 'profile' }
+      void pollJob(syncJob.id).finally(() => {
+        syncProgress = null
+        void invalidateAll()
+      })
+    }
+
+    const chatJob = (data.activeJobs ?? []).find((j) => j.type === 'agent_chat')
+
+    if (chatJob) {
+      thinking = true
+      void (async () => {
+        try {
+          const job = await (async () => {
+            while (true) {
+              await new Promise((resolve) => setTimeout(resolve, 1500))
+              const r = await fetch(`/api/jobs/${chatJob.id}`)
+              if (!r.ok) throw new Error('poll failed')
+              const j = (await r.json()) as JobResult
+              if (j.status === 'done' || j.status === 'failed') return j
+              const latest = j.progress.at(-1)
+              if (latest?.phase === 'applying') {
+                thinking = false
+                patchProgress = { step: latest.step, total: latest.total }
+              }
+            }
+          })()
+          patchProgress = null
+          thinking = false
+          if (job.status !== 'failed') {
+            const result = job.result ?? {}
+            if (result.triggerSync) void triggerProfileSync()
+          }
+        } catch {
+          // silently ignore
+        } finally {
+          thinking = false
+          patchProgress = null
+          void invalidateAll()
+        }
+      })()
+    }
+  })
   const hasChatAccess = $derived(data.hasChatAccess)
   const providerOptions = $derived(data.chatProviders ?? [])
   let selectedProvider = $state<string>('')

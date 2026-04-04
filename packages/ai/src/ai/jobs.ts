@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, sql } from 'drizzle-orm'
 
 import { db } from '@oryxel/db'
 import { backgroundJob } from '@oryxel/db'
@@ -37,6 +37,28 @@ export async function failJob(jobId: number, errorMessage: string): Promise<void
     .update(backgroundJob)
     .set({ status: 'failed', errorMessage, completedAt: new Date() })
     .where(eq(backgroundJob.id, jobId))
+}
+
+export async function getActiveJobsForUser(userId: string): Promise<
+  { id: number; type: JobType; status: JobStatus; progress: JobProgress[] }[]
+> {
+  const rows = await db
+    .select({
+      id: backgroundJob.id,
+      type: backgroundJob.type,
+      status: backgroundJob.status,
+      progress: backgroundJob.progress,
+    })
+    .from(backgroundJob)
+    .where(and(eq(backgroundJob.userId, userId), inArray(backgroundJob.status, ['pending', 'processing'])))
+    .orderBy(desc(backgroundJob.createdAt))
+
+  return rows.map((row) => ({
+    id: row.id,
+    type: row.type as JobType,
+    status: row.status as JobStatus,
+    progress: (row.progress ?? []) as JobProgress[],
+  }))
 }
 
 export async function getJob(
