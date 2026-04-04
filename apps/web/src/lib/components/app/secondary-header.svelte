@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { resolve } from '$app/paths'
-
   import ArrowLeftIcon from '$lib/components/icons/ArrowLeftIcon.svelte'
   import * as m from '$lib/paraglide/messages.js'
+
+  import { resolve } from '$app/paths'
 
   type Props = {
     title?: string

@@ -1,10 +1,12 @@
-import { eq } from 'drizzle-orm'
-
 import {
+  analyzePreferences,
+  appendPatchAuditLog,
   applyProfileAndSuggestions,
   applyRecommendations,
   applySingleTableOp,
   completeJob,
+  createChatMessage,
+  createPendingPatch,
   failJob,
   generateMissingTranslations,
   getUserDefaultProvider,
@@ -12,15 +14,12 @@ import {
   loadDiaryForUser,
   loadProfileForUser,
   loadRecentChatMessages,
-  analyzePreferences,
-  appendPatchAuditLog,
-  createChatMessage,
-  createPendingPatch,
   pushJobProgress,
   recordActivity,
   updatePatchStatus,
 } from '@oryxel/ai'
 import { db, user, userAiPreferences } from '@oryxel/db'
+import { eq } from 'drizzle-orm'
 
 import type { StructuredPreferencePatch } from '@oryxel/ai'
 
@@ -57,11 +56,7 @@ async function applyPatchWithProgress(
   }
 }
 
-export async function handleAgentChat(
-  jobId: number,
-  userId: string,
-  params: Record<string, unknown>,
-): Promise<void> {
+export async function handleAgentChat(jobId: number, userId: string, params: Record<string, unknown>): Promise<void> {
   const message = params['message'] as string
   const locale = (params['locale'] as string | undefined) ?? 'en'
   const scenario = (params['scenario'] as string | undefined) ?? 'recommendation'
@@ -71,7 +66,12 @@ export async function handleAgentChat(
   try {
     await pushJobProgress(jobId, { step: 0, total: 1, phase: 'analyzing' })
 
-    const userRow = await db.select({ name: user.name }).from(user).where(eq(user.id, userId)).limit(1).then((r) => r[0])
+    const userRow = await db
+      .select({ name: user.name })
+      .from(user)
+      .where(eq(user.id, userId))
+      .limit(1)
+      .then((r) => r[0])
     const userName = userRow?.name ?? 'User'
 
     const [profile, diary, defaultProvider, recentMessages, aiPrefs] = await Promise.all([
@@ -118,7 +118,6 @@ export async function handleAgentChat(
         noteRelationships: profile.noteRelationships.length > 0 ? profile.noteRelationships : undefined,
       },
       diary: {
-        // eslint-disable-next-line camelcase
         to_try: diary.to_try.map((entry) => toContextEntry(entry)),
         liked: diary.liked.map((entry) => toContextEntry(entry)),
         neutral: diary.neutral.map((entry) => toContextEntry(entry)),
@@ -130,9 +129,9 @@ export async function handleAgentChat(
     }
 
     const preferredProvider =
-      explicitProvider !== undefined
-        ? (explicitProvider as Parameters<typeof analyzePreferences>[0]['preferredProvider'])
-        : (defaultProvider ?? undefined)
+      explicitProvider === undefined
+        ? (defaultProvider ?? undefined)
+        : (explicitProvider as Parameters<typeof analyzePreferences>[0]['preferredProvider'])
 
     const router = await analyzePreferences({
       userId,

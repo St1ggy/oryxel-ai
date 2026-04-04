@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { goto, invalidateAll } from '$app/navigation'
   import { untrack } from 'svelte'
   import { fade } from 'svelte/transition'
 
@@ -20,6 +19,8 @@
   import type { DiaryListTabValue } from '$lib/diary/diary-tab-items'
   import type { ChatMessage, DiaryMobileTab, DiaryRow, FragranceListType } from '$lib/types/diary'
   import type { PageData } from './$types'
+
+  import { goto, invalidateAll } from '$app/navigation'
 
   const { data }: { data: PageData } = $props()
 
@@ -144,12 +145,14 @@
 
   $effect(() => {
     if (jobsResumed) return
+
     jobsResumed = true
 
-    const syncJob = (data.activeJobs ?? []).find((j) => j.type === 'profile_sync')
+    const syncJob = (data.activeJobs ?? []).find((index) => index.type === 'profile_sync')
 
     if (syncJob) {
       const latest = syncJob.progress.at(-1)
+
       syncProgress = latest
         ? { step: latest.step, total: latest.total, phase: latest.phase as NonNullable<SyncProgress>['phase'] }
         : { step: 0, total: 1, phase: 'profile' }
@@ -159,7 +162,7 @@
       })
     }
 
-    const chatJob = (data.activeJobs ?? []).find((j) => j.type === 'agent_chat')
+    const chatJob = (data.activeJobs ?? []).find((index) => index.type === 'agent_chat')
 
     if (chatJob) {
       thinking = true
@@ -169,20 +172,28 @@
             while (true) {
               await new Promise((resolve) => setTimeout(resolve, 1500))
               const r = await fetch(`/api/jobs/${chatJob.id}`)
+
               if (!r.ok) throw new Error('poll failed')
-              const j = (await r.json()) as JobResult
-              if (j.status === 'done' || j.status === 'failed') return j
-              const latest = j.progress.at(-1)
+
+              const index = (await r.json()) as JobResult
+
+              if (index.status === 'done' || index.status === 'failed') return index
+
+              const latest = index.progress.at(-1)
+
               if (latest?.phase === 'applying') {
                 thinking = false
                 patchProgress = { step: latest.step, total: latest.total }
               }
             }
           })()
+
           patchProgress = null
           thinking = false
+
           if (job.status !== 'failed') {
             const result = job.result ?? {}
+
             if (result.triggerSync) void triggerProfileSync()
           }
         } catch {

@@ -1,7 +1,5 @@
+import { db, userFragrance, userProfile } from '@oryxel/db'
 import { and, eq, sql } from 'drizzle-orm'
-
-import { db } from '@oryxel/db'
-import { userFragrance, userProfile } from '@oryxel/db'
 
 import type { NoteRelationship, RadarAxes, RadarAxis } from '../types/diary'
 

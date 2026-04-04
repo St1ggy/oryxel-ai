@@ -1,14 +1,14 @@
 <script lang="ts">
-  import { browser } from '$app/environment'
-  import { onNavigate } from '$app/navigation'
-  import { page } from '$app/state'
   import favicon from '$lib/assets/favicon.svg'
   import SecondaryHeader from '$lib/components/app/secondary-header.svelte'
   import ThemeRoot from '$lib/components/app/theme-root.svelte'
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  import { localeStore } from '$lib/locale.svelte'
+  import '$lib/locale.svelte'
   import * as m from '$lib/paraglide/messages.js'
-  import { deLocalizeHref, getLocale, locales, localizeHref } from '$lib/paraglide/runtime'
+  import { deLocalizeHref, locales, localizeHref } from '$lib/paraglide/runtime'
+
+  import { browser } from '$app/environment'
+  import { onNavigate } from '$app/navigation'
+  import { page } from '$app/state'
 
   import './layout.css'
 

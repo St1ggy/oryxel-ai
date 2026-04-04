@@ -1,4 +1,3 @@
-import { getRequestEvent } from '$app/server'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { betterAuth } from 'better-auth/minimal'
 import { sveltekitCookies } from 'better-auth/svelte-kit'
@@ -6,6 +5,7 @@ import { sveltekitCookies } from 'better-auth/svelte-kit'
 import { db } from '$lib/server/db'
 import * as schema from '$lib/server/db/schema'
 
+import { getRequestEvent } from '$app/server'
 import { env } from '$env/dynamic/private'
 
 const socialProviders: Record<string, { clientId: string; clientSecret: string }> = {}

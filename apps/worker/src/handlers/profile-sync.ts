@@ -1,5 +1,3 @@
-import { eq } from 'drizzle-orm'
-
 import {
   analyzePreferences,
   applyPatchToDatabase,
@@ -13,6 +11,7 @@ import {
   recordActivity,
 } from '@oryxel/ai'
 import { db, userAiPreferences } from '@oryxel/db'
+import { eq } from 'drizzle-orm'
 
 import type { AnalyzePreferencesRequest } from '@oryxel/ai'
 
@@ -77,7 +76,6 @@ async function fillListBatches(
         context: {
           profile: context.profileContext,
           diary: {
-            // eslint-disable-next-line camelcase
             to_try: [],
             liked: phase === 'liked' ? batch : [],
             neutral: phase === 'neutral' ? batch : [],
@@ -110,7 +108,6 @@ async function runProfileStep(context: StepContext): Promise<void> {
       context: {
         profile: context.profileContext,
         diary: {
-          // eslint-disable-next-line camelcase
           to_try: [],
           liked: context.likedEntries,
           neutral: context.neutralEntries,
@@ -149,11 +146,9 @@ async function runRecommendationsStep(context: StepContext): Promise<void> {
               ? Object.fromEntries(updatedProfile.radarAxes.map(({ key, value }) => [key, value]))
               : undefined,
           gender: updatedProfile.gender ?? undefined,
-          noteRelationships:
-            updatedProfile.noteRelationships.length > 0 ? updatedProfile.noteRelationships : undefined,
+          noteRelationships: updatedProfile.noteRelationships.length > 0 ? updatedProfile.noteRelationships : undefined,
         },
         diary: {
-          // eslint-disable-next-line camelcase
           to_try: [],
           liked: context.likedEntries,
           neutral: context.neutralEntries,
@@ -189,7 +184,6 @@ async function runToTryFillStep(context: StepContext): Promise<void> {
           context: {
             profile: context.profileContext,
             diary: {
-              // eslint-disable-next-line camelcase
               to_try: batch,
               liked: [],
               disliked: [],
@@ -311,7 +305,8 @@ export async function handleProfileSync(
     const neutralBatches = chunk(neutralEntries, BATCH_SIZE).length
     const dislikedBatches = chunk(dislikedEntries, BATCH_SIZE).length
 
-    const hasPreferences = ownedEntries.length + likedEntries.length + neutralEntries.length + dislikedEntries.length > 0
+    const hasPreferences =
+      ownedEntries.length + likedEntries.length + neutralEntries.length + dislikedEntries.length > 0
     const total = ownedBatches + likedBatches + neutralBatches + dislikedBatches + 1 + (hasPreferences ? 2 : 0)
 
     const syncContext: StepContext = {

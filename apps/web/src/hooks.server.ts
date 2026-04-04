@@ -1,4 +1,3 @@
-import { building } from '$app/environment'
 import { sequence } from '@sveltejs/kit/hooks'
 import { svelteKitHandler } from 'better-auth/svelte-kit'
 
@@ -7,6 +6,8 @@ import { paraglideMiddleware } from '$lib/paraglide/server'
 import { auth } from '$lib/server/auth'
 
 import type { Handle } from '@sveltejs/kit'
+
+import { building } from '$app/environment'
 
 const handleParaglide: Handle = ({ event, resolve }) =>
   paraglideMiddleware(event.request, ({ request, locale }) => {

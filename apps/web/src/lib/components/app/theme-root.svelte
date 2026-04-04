@@ -1,11 +1,12 @@
 <script lang="ts">
-  import { browser } from '$app/environment'
   import { Tooltip } from 'bits-ui'
 
   import { DEFAULT_THEME, ORYXEL_THEME_STORAGE_KEY, type OryxelThemeId, isOryxelThemeId } from '$lib/theme/constants'
   import { setThemeContext } from '$lib/theme/context'
 
   import type { Snippet } from 'svelte'
+
+  import { browser } from '$app/environment'
 
   const ACCENT_KEY = 'oryxel:accent-custom'
 

@@ -1,7 +1,5 @@
+import { db, fragrance, translations, userFragrance } from '@oryxel/db'
 import { and, eq, inArray } from 'drizzle-orm'
-
-import { db } from '@oryxel/db'
-import { fragrance, translations, userFragrance } from '@oryxel/db'
 
 import { extractEnglishKey, saveTranslations } from './service'
 import { translateBatch } from './translate'

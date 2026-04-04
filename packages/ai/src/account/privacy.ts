@@ -1,11 +1,8 @@
-import { eq, inArray } from 'drizzle-orm'
-
-import { decryptSecret } from '../ai/crypto/secret-box'
-import { db } from '@oryxel/db'
 import {
   account,
   aiPatchAuditLog,
   aiPendingPatch,
+  db,
   session,
   user,
   userAiPreferences,
@@ -15,6 +12,9 @@ import {
   userProfile,
   verification,
 } from '@oryxel/db'
+import { eq, inArray } from 'drizzle-orm'
+
+import { decryptSecret } from '../ai/crypto/secret-box'
 
 export type UserExportPayload = {
   exportedAt: string

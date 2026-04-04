@@ -87,7 +87,9 @@ export const PATCH: RequestHandler = async ({ params, locals, request }) => {
 
   function buildSummary(): string {
     if (typeof body.rating === 'number') return `Rated ${label}: ${body.rating}★`
+
     if (body.listType) return `Moved ${label} → ${body.listType}`
+
     if (typeof body.userComment === 'string') return `Commented on ${label}`
 
     return `Updated ${label}`

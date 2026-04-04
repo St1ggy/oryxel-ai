@@ -26,7 +26,14 @@ export async function seedMinimalAgentScenario(userId: string) {
       archetype: 'Modern classic',
       favoriteNote: 'iris',
       radar: { woody: 80, citrus: 60, green: 50, spice: 35, sweet: 25, metallic: 10 },
-      radarLabels: { woody: 'Woody', citrus: 'Citrus', green: 'Green', spice: 'Spice', sweet: 'Sweet', metallic: 'Metallic' },
+      radarLabels: {
+        woody: 'Woody',
+        citrus: 'Citrus',
+        green: 'Green',
+        spice: 'Spice',
+        sweet: 'Sweet',
+        metallic: 'Metallic',
+      },
     })
     .onConflictDoNothing()
 

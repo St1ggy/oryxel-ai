@@ -1,7 +1,5 @@
+import { backgroundJob, db } from '@oryxel/db'
 import { and, desc, eq, inArray, sql } from 'drizzle-orm'
-
-import { db } from '@oryxel/db'
-import { backgroundJob } from '@oryxel/db'
 
 export type JobType = 'profile_sync' | 'agent_chat'
 export type JobStatus = 'pending' | 'processing' | 'done' | 'failed'
@@ -39,9 +37,9 @@ export async function failJob(jobId: number, errorMessage: string): Promise<void
     .where(eq(backgroundJob.id, jobId))
 }
 
-export async function getActiveJobsForUser(userId: string): Promise<
-  { id: number; type: JobType; status: JobStatus; progress: JobProgress[] }[]
-> {
+export async function getActiveJobsForUser(
+  userId: string,
+): Promise<{ id: number; type: JobType; status: JobStatus; progress: JobProgress[] }[]> {
   const rows = await db
     .select({
       id: backgroundJob.id,

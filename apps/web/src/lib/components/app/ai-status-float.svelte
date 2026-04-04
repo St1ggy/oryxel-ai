@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { invalidateAll } from '$app/navigation'
   import { fly, slide } from 'svelte/transition'
 
   import * as m from '$lib/paraglide/messages.js'
+
+  import { invalidateAll } from '$app/navigation'
 
   type PendingPatch = {
     id: number
@@ -32,22 +33,29 @@
 
   function phaseLabel(phase: SyncPhase): string {
     if (phase === 'owned') return m.oryxel_sync_phase_owned()
+
     if (phase === 'liked') return m.oryxel_sync_phase_liked()
+
     if (phase === 'disliked') return m.oryxel_sync_phase_disliked()
+
     if (phase === 'profile') return m.oryxel_sync_phase_profile()
+
     if (phase === 'to_try') return m.oryxel_sync_phase_to_try()
+
     return m.oryxel_sync_phase_recommendations()
   }
 
-  const statusLabel = $derived(
-    patchProgress
-      ? m.oryxel_patch_applying()
-      : syncProgress
-        ? `${m.oryxel_profile_sync()} — ${phaseLabel(syncProgress.phase)}`
-        : thinking
-          ? m.oryxel_chat_preparing()
-          : '',
-  )
+  function getStatusLabel(): string {
+    if (patchProgress) return m.oryxel_patch_applying()
+
+    if (syncProgress) return `${m.oryxel_profile_sync()} — ${phaseLabel(syncProgress.phase)}`
+
+    if (thinking) return m.oryxel_chat_preparing()
+
+    return ''
+  }
+
+  const statusLabel = $derived(getStatusLabel())
 
   let busyId = $state<number | null>(null)
 
@@ -74,15 +82,11 @@
   >
     <!-- Patch confirmation cards -->
     {#each pendingPatches as patch (patch.id)}
-      <div
-        class="border-t border-border bg-surface"
-        in:slide={{ duration: 200 }}
-        out:slide={{ duration: 160 }}
-      >
+      <div class="border-t border-border bg-surface" in:slide={{ duration: 200 }} out:slide={{ duration: 160 }}>
         <div class="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
           <p class="min-w-0 flex-1 text-sm text-foreground">
             <span class="font-medium">{m.oryxel_pending_title()}</span>
-            {' — '}
+            &nbsp;—&nbsp;
             {patch.summary ?? m.oryxel_pending_fallback_summary()}
           </p>
           <div class="flex shrink-0 items-center gap-2">
@@ -114,16 +118,14 @@
           {#if thinking && !isProgressActive}
             <span class="flex shrink-0 gap-1">
               {#each [0, 1, 2] as index (index)}
-                <span
-                  class="size-1.5 animate-pulse rounded-full bg-accent"
-                  style="animation-delay: {index * 0.15}s"
+                <span class="size-1.5 animate-pulse rounded-full bg-accent" style="animation-delay: {index * 0.15}s"
                 ></span>
               {/each}
             </span>
           {/if}
           <span class="flex-1 truncate text-sm text-foreground-muted">{statusLabel}</span>
           {#if activeProgress}
-            <span class="shrink-0 text-xs font-medium tabular-nums text-foreground-muted">
+            <span class="shrink-0 text-xs font-medium text-foreground-muted tabular-nums">
               {activeProgress.step}/{activeProgress.total}
             </span>
           {/if}

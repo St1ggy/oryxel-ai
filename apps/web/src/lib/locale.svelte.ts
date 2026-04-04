@@ -1,12 +1,13 @@
-import { browser } from '$app/environment'
+import { type Locale, cookieMaxAge, cookieName, getLocale, overwriteGetLocale } from '$lib/paraglide/runtime'
 
-import { cookieMaxAge, cookieName, getLocale, overwriteGetLocale, type Locale } from '$lib/paraglide/runtime'
+import { browser } from '$app/environment'
 
 class LocaleStore {
   current = $state<Locale>(browser ? getLocale() : 'en')
 
   set(locale: Locale) {
     this.current = locale
+
     if (browser) {
       document.cookie = `${cookieName}=${locale}; path=/; max-age=${cookieMaxAge}`
     }

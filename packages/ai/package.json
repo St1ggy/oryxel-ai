@@ -6,6 +6,10 @@
   "exports": {
     ".": "./src/index.ts"
   },
+  "scripts": {
+    "lint": "prettier --check . && eslint .",
+    "format": "prettier --write ."
+  },
   "dependencies": {
     "@oryxel/db": "workspace:*",
     "drizzle-orm": "^0.45.1",

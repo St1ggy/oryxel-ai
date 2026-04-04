@@ -1,7 +1,5 @@
+import { db, fragrance, userFragrance, userProfile } from '@oryxel/db'
 import { and, eq } from 'drizzle-orm'
-
-import { db } from '@oryxel/db'
-import { fragrance, userFragrance, userProfile } from '@oryxel/db'
 
 import { findOrCreateBrand, findOrCreateFragrance } from '../diary/find-or-create'
 

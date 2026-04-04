@@ -4,6 +4,7 @@ import { and, eq } from 'drizzle-orm'
 import { DIARY_LIST_TAB_VALUES } from '$lib/diary/diary-tab-items'
 import { cookieName } from '$lib/paraglide/runtime'
 import { applyPatchToDatabase } from '$lib/server/ai/apply'
+import { getActiveJobsForUser } from '$lib/server/ai/jobs'
 import {
   PROVIDER_DISPLAY_NAME,
   getUserDefaultProvider,
@@ -11,7 +12,6 @@ import {
   listConfiguredProviders,
   listUserProviderKeys,
 } from '$lib/server/ai/keys/service'
-import { getActiveJobsForUser } from '$lib/server/ai/jobs'
 import { getLatestPendingPatches, listLatestChatMessages, updatePatchStatus } from '$lib/server/ai/storage'
 import { db } from '$lib/server/db'
 import { aiPendingPatch } from '$lib/server/db/schema'

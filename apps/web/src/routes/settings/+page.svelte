@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { browser } from '$app/environment'
   import { Accordion } from 'bits-ui'
   import { onMount } from 'svelte'
 
@@ -17,6 +16,8 @@
   import { getLocale } from '$lib/paraglide/runtime'
   import { ORYXEL_THEMES, type OryxelThemeId } from '$lib/theme/constants'
   import { getThemeContext } from '$lib/theme/context'
+
+  import { browser } from '$app/environment'
 
   const LEGACY_PROVIDERS_KEY = 'oryxel:providers'
   const PRIVACY_KEY = 'oryxel:privacy'

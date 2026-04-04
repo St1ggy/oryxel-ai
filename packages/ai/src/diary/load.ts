@@ -1,7 +1,5 @@
+import { brand, db as database, fragrance, userFragrance } from '@oryxel/db'
 import { eq } from 'drizzle-orm'
-
-import { db as database } from '@oryxel/db'
-import { brand, fragrance, userFragrance } from '@oryxel/db'
 
 import { extractEnglishKey, lookupTranslations, resolveCommaSeparated } from '../translation/service'
 
@@ -113,7 +111,6 @@ export async function loadDiaryForUser(userId: string, locale = 'en'): Promise<D
     const translationsMap = await lookupTranslations(allKeys, locale)
 
     const result: DiaryData = {
-      // eslint-disable-next-line camelcase
       to_try: [],
       liked: [],
       neutral: [],
@@ -139,7 +136,6 @@ export async function loadDiaryForUser(userId: string, locale = 'en'): Promise<D
   } catch (error) {
     console.error('[diary/load] Failed to load diary from database:', error)
 
-    // eslint-disable-next-line camelcase
     return { to_try: [], liked: [], neutral: [], disliked: [], owned: [] }
   }
 }

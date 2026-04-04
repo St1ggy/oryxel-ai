@@ -25,7 +25,7 @@ function parseProviderOrder(raw: string | undefined): AiProviderName[] {
 
 export function getAiRouterPolicy(): AiRouterPolicy {
   return {
-    timeoutMs: Number(process.env.AI_ROUTER_TIMEOUT_MS ?? 120000),
+    timeoutMs: Number(process.env.AI_ROUTER_TIMEOUT_MS ?? 120_000),
     maxRetriesPerProvider: Number(process.env.AI_ROUTER_MAX_RETRIES ?? 0),
     maxAttemptsTotal: Number(process.env.AI_ROUTER_MAX_ATTEMPTS ?? 4),
     providerOrder: parseProviderOrder(process.env.AI_ROUTER_PROVIDER_ORDER),

@@ -1,6 +1,4 @@
 <script lang="ts">
-  import { resolve } from '$app/paths'
-
   import ActivityLog from '$lib/components/app/activity-log.svelte'
   import DiaryHeaderControls from '$lib/components/app/diary-header-controls.svelte'
   import RadarChart from '$lib/components/app/radar-chart.svelte'
@@ -14,6 +12,8 @@
   import { cn } from '$lib/utils/cn'
 
   import type { ActivityEntry, RadarAxis } from '$lib/types/diary'
+
+  import { resolve } from '$app/paths'
 
   type ProfileData = {
     displayName: string

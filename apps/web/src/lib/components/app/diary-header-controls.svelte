@@ -1,6 +1,4 @@
 <script lang="ts">
-  import { invalidateAll } from '$app/navigation'
-  import { resolve } from '$app/paths'
   import { DropdownMenu } from 'bits-ui'
 
   import CheckIcon from '$lib/components/icons/CheckIcon.svelte'
@@ -14,6 +12,9 @@
   import { ORYXEL_THEMES, type OryxelThemeId } from '$lib/theme/constants'
   import { getThemeContext } from '$lib/theme/context'
   import { cn } from '$lib/utils/cn'
+
+  import { invalidateAll } from '$app/navigation'
+  import { resolve } from '$app/paths'
 
   type Props = {
     showSettingsButton?: boolean

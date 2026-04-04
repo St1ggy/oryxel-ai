@@ -1,7 +1,5 @@
+import { db, userActivityLog } from '@oryxel/db'
 import { desc, eq } from 'drizzle-orm'
-
-import { db } from '@oryxel/db'
-import { userActivityLog } from '@oryxel/db'
 
 export type ActivityEntry = {
   id: number

@@ -1,7 +1,5 @@
+import { db, translations } from '@oryxel/db'
 import { and, eq, inArray } from 'drizzle-orm'
-
-import { db } from '@oryxel/db'
-import { translations } from '@oryxel/db'
 
 // Batch-looks up cached translations for a set of canonical English keys + locale.
 // Returns a map of key → translated text. Missing keys are absent from the map.

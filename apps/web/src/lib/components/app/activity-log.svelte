@@ -26,8 +26,11 @@
     const days = Math.floor(diff / 86_400_000)
 
     if (minutes < 1) return '< 1 min'
+
     if (minutes < 60) return `${minutes} min`
+
     if (hours < 24) return `${hours} h`
+
     if (days < 30) return `${days} d`
 
     return new Date(date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })

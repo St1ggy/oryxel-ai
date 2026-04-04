@@ -30,6 +30,7 @@ function omitParserProjectKey(config) {
 }
 
 export default defineConfig([
+  { ignores: ['src/lib/paraglide/**', 'src/paraglide/**', '.svelte-kit/**', 'build/**'] },
   ...st1ggySvelte.map((config) => omitParserProjectKey(config)),
   {
     languageOptions: {
@@ -85,6 +86,8 @@ export default defineConfig([
     rules: {
       'import/no-unresolved': 'off',
       'import/extensions': 'off',
+      // We use [...arr].reverse() for Node <20 compatibility (worker shares packages/ai).
+      'unicorn/no-array-reverse': 'off',
     },
   },
   {
@@ -167,6 +170,20 @@ export default defineConfig([
     rules: {
       // Icon components are kept in PascalCase to match Svelte component imports.
       'unicorn/filename-case': 'off',
+    },
+  },
+  {
+    files: ['src/lib/locale.svelte.ts'],
+    rules: {
+      // Paraglide runtime module cannot be statically resolved by the import plugin.
+      'import/namespace': 'off',
+    },
+  },
+  {
+    files: ['scripts/**'],
+    rules: {
+      // Seed scripts intentionally use console output.
+      'no-console': 'off',
     },
   },
 ])

@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { invalidateAll } from '$app/navigation'
-
   import Button from '$lib/components/ui/button.svelte'
   import Card from '$lib/components/ui/card.svelte'
   import * as m from '$lib/paraglide/messages.js'
+
+  import { invalidateAll } from '$app/navigation'
 
   type PendingPatch = {
     id: number

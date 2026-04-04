@@ -1,7 +1,6 @@
-import { and, eq } from 'drizzle-orm'
-
 import { type db } from '@oryxel/db'
 import { brand, fragrance } from '@oryxel/db'
+import { and, eq } from 'drizzle-orm'
 
 // Works for both the top-level db instance and a transaction object
 type DatabaseOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0]

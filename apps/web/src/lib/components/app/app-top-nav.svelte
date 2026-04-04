@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { resolve } from '$app/paths'
-  import { page } from '$app/state'
-
   import * as m from '$lib/paraglide/messages.js'
   import { deLocalizeHref } from '$lib/paraglide/runtime'
   import { cn } from '$lib/utils/cn'
+
+  import { resolve } from '$app/paths'
+  import { page } from '$app/state'
 
   const path = $derived(deLocalizeHref(page.url.pathname))
 

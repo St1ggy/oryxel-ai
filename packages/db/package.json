@@ -7,6 +7,8 @@
     ".": "./src/index.ts"
   },
   "scripts": {
+    "lint": "prettier --check . && eslint .",
+    "format": "prettier --write .",
     "db:push": "bun --env-file=../../.env.development drizzle-kit push --force",
     "db:push:prod": "bun --env-file=../../.env.production drizzle-kit push --force",
     "db:generate": "bun --env-file=../../.env.development drizzle-kit generate",

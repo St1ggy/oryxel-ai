@@ -1,11 +1,11 @@
 <script lang="ts">
-  import { resolve } from '$app/paths'
-
   import Button from '$lib/components/ui/button.svelte'
   import Card from '$lib/components/ui/card.svelte'
   import * as m from '$lib/paraglide/messages.js'
 
   import type { PageData } from './$types'
+
+  import { resolve } from '$app/paths'
 
   const { data }: { data: PageData } = $props()
 

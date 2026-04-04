@@ -1,7 +1,6 @@
-import { eq } from 'drizzle-orm'
-
-import { db, backgroundJob, user } from '@oryxel/db'
 import { failJob } from '@oryxel/ai'
+import { backgroundJob, db, user } from '@oryxel/db'
+import { eq } from 'drizzle-orm'
 
 import { handleAgentChat } from './handlers/agent-chat'
 import { handleProfileSync } from './handlers/profile-sync'
@@ -13,7 +12,12 @@ async function claimNextJob() {
   // Neon serverless doesn't support FOR UPDATE SKIP LOCKED directly, so we use a two-step
   // approach: select first pending, then UPDATE with WHERE id=? AND status='pending'.
   const pending = await db
-    .select({ id: backgroundJob.id, userId: backgroundJob.userId, type: backgroundJob.type, params: backgroundJob.params })
+    .select({
+      id: backgroundJob.id,
+      userId: backgroundJob.userId,
+      type: backgroundJob.type,
+      params: backgroundJob.params,
+    })
     .from(backgroundJob)
     .where(eq(backgroundJob.status, 'pending'))
     .orderBy(backgroundJob.createdAt)
@@ -43,11 +47,7 @@ async function processJob(job: {
 }): Promise<void> {
   const params = job.params ?? {}
 
-  const [userRow] = await db
-    .select({ name: user.name })
-    .from(user)
-    .where(eq(user.id, job.userId))
-    .limit(1)
+  const [userRow] = await db.select({ name: user.name }).from(user).where(eq(user.id, job.userId)).limit(1)
 
   const userName = userRow?.name ?? 'User'
 
@@ -79,4 +79,4 @@ console.log('[worker] starting, polling every', POLL_INTERVAL_MS, 'ms')
 setInterval(() => void poll(), POLL_INTERVAL_MS)
 
 // Run immediately on startup
-void poll()
+await poll()

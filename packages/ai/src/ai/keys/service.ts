@@ -1,7 +1,5 @@
+import { db, userAiPreferences, userAiProviderKey } from '@oryxel/db'
 import { and, desc, eq, sql } from 'drizzle-orm'
-
-import { db } from '@oryxel/db'
-import { userAiPreferences, userAiProviderKey } from '@oryxel/db'
 
 import { decryptSecret, encryptSecret } from '../crypto/secret-box'
 
