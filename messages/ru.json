@@ -317,5 +317,7 @@
   "oryxel_guide_edc_desc": "Очень лёгкий. Держится 2–3 часа. Классический формат для освежающего всплеска.",
   "oryxel_guide_fraiche_desc": "Самая лёгкая категория. Держится 1–2 часа. Часто на водной основе, идеально для жаркой погоды.",
   "oryxel_nav_guide": "Гид",
-  "oryxel_nav_notes": "Ноты"
+  "oryxel_nav_notes": "Ноты",
+  "oryxel_tab_notes": "Ноты",
+  "oryxel_tab_guide": "Гид"
 }

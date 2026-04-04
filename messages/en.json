@@ -317,5 +317,7 @@
   "oryxel_guide_edc_desc": "Very light. Lasts 2–3 hours. Classic splash-on format for a refreshing burst.",
   "oryxel_guide_fraiche_desc": "The lightest category. Lasts 1–2 hours. Often water-based, perfect for warm weather.",
   "oryxel_nav_guide": "Guide",
-  "oryxel_nav_notes": "Notes"
+  "oryxel_nav_notes": "Notes",
+  "oryxel_tab_notes": "Notes",
+  "oryxel_tab_guide": "Guide"
 }

@@ -317,5 +317,7 @@
   "oryxel_guide_edc_desc": "Très léger. Dure 2–3 heures. Format classique pour une touche rafraîchissante.",
   "oryxel_guide_fraiche_desc": "La catégorie la plus légère. Dure 1–2 heures. Souvent à base d'eau, parfait par temps chaud.",
   "oryxel_nav_guide": "Guide",
-  "oryxel_nav_notes": "Notes"
+  "oryxel_nav_notes": "Notes",
+  "oryxel_tab_notes": "Notes",
+  "oryxel_tab_guide": "Guide"
 }

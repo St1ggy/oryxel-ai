@@ -1,15 +1,22 @@
 <script lang="ts">
   import { Tabs } from 'bits-ui'
-  import { tick } from 'svelte'
+  import { tick, untrack } from 'svelte'
 
   import DiaryProfileTab from '$lib/components/app/diary-profile-tab.svelte'
   import ScentDiaryTable from '$lib/components/app/scent-diary-table.svelte'
   import ToTryTable from '$lib/components/app/to-try-table.svelte'
-  import { type DiaryListTabValue, diaryListTabItems } from '$lib/diary/diary-tab-items'
+  import { type DiaryListTabValue, MOBILE_EXCLUDED_TABS, diaryListTabItems } from '$lib/diary/diary-tab-items'
   import * as m from '$lib/paraglide/messages.js'
   import { cn } from '$lib/utils/cn'
 
-  import type { ActivityEntry, DiaryData, DiaryRow, RadarAxis } from '$lib/types/diary'
+  import type {
+    ActivityEntry,
+    DiaryData,
+    DiaryRow,
+    NoteRelationship,
+    NoteRelationshipSentiment,
+    RadarAxis,
+  } from '$lib/types/diary'
   import type { Snippet } from 'svelte'
 
   type Props = {
@@ -32,6 +39,7 @@
       suggestions: string[]
     }
     recentActivity?: ActivityEntry[]
+    noteRelationships?: NoteRelationship[]
   }
 
   let {
@@ -47,9 +55,14 @@
     statusBanner,
     profile,
     recentActivity,
+    noteRelationships = [],
   }: Props = $props()
 
-  const tabItems = $derived(diaryListTabItems().filter((tab) => !(layout === 'mobile' && tab.value === 'profile')))
+  const tabItems = $derived(
+    diaryListTabItems().filter(
+      (tab) => !(layout === 'mobile' && (MOBILE_EXCLUDED_TABS as DiaryListTabValue[]).includes(tab.value)),
+    ),
+  )
 
   // Animated indicator state
   let tabsListElement = $state<HTMLElement | null>(null)
@@ -89,6 +102,151 @@
   )
 
   const panelClass = $derived(cn('oryx-tab-panel', { 'outline-none': layout === 'desktop' }))
+
+  // --- Notes tab state ---
+  let lastNoteRelationshipsRef: NoteRelationship[] | null = null
+  let localNotes = $state<NoteRelationship[]>(untrack(() => [...noteRelationships]))
+
+  $effect(() => {
+    if (noteRelationships !== lastNoteRelationshipsRef) {
+      lastNoteRelationshipsRef = noteRelationships
+      localNotes = [...noteRelationships]
+    }
+  })
+
+  let editingLabel = $state<string | null>(null)
+  let editingValue = $state('')
+
+  const sentimentOptions: NoteRelationshipSentiment[] = ['love', 'like', 'neutral', 'dislike', 'redflag']
+
+  function sentimentLabel(s: NoteRelationshipSentiment): string {
+    switch (s) {
+      case 'love': {
+        return m.oryxel_notes_sentiment_love()
+      }
+
+      case 'like': {
+        return m.oryxel_notes_sentiment_like()
+      }
+
+      case 'neutral': {
+        return m.oryxel_notes_sentiment_neutral()
+      }
+
+      case 'dislike': {
+        return m.oryxel_notes_sentiment_dislike()
+      }
+
+      case 'redflag': {
+        return m.oryxel_notes_sentiment_redflag()
+      }
+    }
+  }
+
+  function sentimentColor(s: NoteRelationshipSentiment): string {
+    switch (s) {
+      case 'love': {
+        return 'bg-accent/20 text-accent border-accent/30'
+      }
+
+      case 'like': {
+        return 'bg-success/15 text-success border-success/30'
+      }
+
+      case 'neutral': {
+        return 'bg-muted text-foreground-muted border-border'
+      }
+
+      case 'dislike': {
+        return 'bg-warning/15 text-warning border-warning/30'
+      }
+
+      case 'redflag': {
+        return 'bg-destructive/15 text-destructive border-destructive/30'
+      }
+    }
+  }
+
+  async function patchNote(note: string, updates: { sentiment?: NoteRelationshipSentiment; label?: string }) {
+    const index = localNotes.findIndex((r) => r.note === note)
+
+    if (index !== -1) {
+      localNotes[index] = { ...localNotes[index], ...updates }
+    }
+
+    await fetch('/api/profile/notes', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ note, ...updates }),
+    })
+  }
+
+  function startEditLabel(r: NoteRelationship) {
+    editingLabel = r.note
+    editingValue = r.label
+  }
+
+  async function commitLabel(note: string) {
+    if (editingLabel !== note) return
+
+    await patchNote(note, { label: editingValue })
+    editingLabel = null
+  }
+
+  function onLabelKeydown(event: KeyboardEvent, note: string) {
+    if (event.key === 'Enter') void commitLabel(note)
+
+    if (event.key === 'Escape') editingLabel = null
+  }
+
+  // --- Guide tab data ---
+  const concentrations = [
+    {
+      name: 'Extrait de Parfum',
+      abbr: 'EdP+',
+      range: '20–40%',
+      longevity: '8–12+ h',
+      sillage: 'Low',
+      strength: 100,
+      desc: () => m.oryxel_guide_extrait_desc(),
+    },
+    {
+      name: 'Eau de Parfum',
+      abbr: 'EdP',
+      range: '15–20%',
+      longevity: '6–8 h',
+      sillage: 'Medium',
+      strength: 75,
+      desc: () => m.oryxel_guide_edp_desc(),
+    },
+    {
+      name: 'Eau de Toilette',
+      abbr: 'EdT',
+      range: '10–15%',
+      longevity: '4–6 h',
+      sillage: 'Light',
+      strength: 55,
+      desc: () => m.oryxel_guide_edt_desc(),
+    },
+    {
+      name: 'Eau de Cologne',
+      abbr: 'EdC',
+      range: '2–4%',
+      longevity: '2–3 h',
+      sillage: 'Very light',
+      strength: 25,
+      desc: () => m.oryxel_guide_edc_desc(),
+    },
+    {
+      name: 'Eau Fraîche',
+      abbr: 'EF',
+      range: '1–3%',
+      longevity: '1–2 h',
+      sillage: 'Minimal',
+      strength: 12,
+      desc: () => m.oryxel_guide_fraiche_desc(),
+    },
+  ] as const
 </script>
 
 <Tabs.Root class={shellClass} bind:value={listTab}>
@@ -149,6 +307,88 @@
         </Tabs.Content>
         <Tabs.Content value="profile" class={panelClass}>
           <DiaryProfileTab variant="desktop" {profile} {onProfileSync} {recentActivity} />
+        </Tabs.Content>
+        <Tabs.Content value="notes" class={panelClass}>
+          {#if localNotes.length === 0}
+            <p class="text-sm text-foreground-muted">{m.oryxel_notes_empty()}</p>
+          {:else}
+            <div class="overflow-x-auto rounded-xl border border-border bg-surface">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="border-b border-border text-left text-xs text-foreground-muted">
+                    <th class="px-4 py-3 font-medium">{m.oryxel_notes_col_note()}</th>
+                    <th class="px-4 py-3 font-medium">{m.oryxel_notes_col_sentiment()}</th>
+                    <th class="px-4 py-3 font-medium">{m.oryxel_notes_col_label()}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {#each localNotes as r (r.note)}
+                    <tr class="border-b border-border/50 last:border-0 hover:bg-muted/20">
+                      <td class="px-4 py-3 font-mono text-xs text-foreground">{r.note}</td>
+                      <td class="px-4 py-3">
+                        <div class="flex flex-wrap gap-1">
+                          {#each sentimentOptions as s (s)}
+                            <button
+                              type="button"
+                              class="oryx-transition rounded-full border px-2 py-0.5 text-xs font-medium {s ===
+                              r.sentiment
+                                ? sentimentColor(s)
+                                : 'border-border bg-transparent text-foreground-muted hover:bg-muted'}"
+                              onclick={() => patchNote(r.note, { sentiment: s })}
+                            >
+                              {sentimentLabel(s)}
+                            </button>
+                          {/each}
+                        </div>
+                      </td>
+                      <td class="px-4 py-3">
+                        {#if editingLabel === r.note}
+                          <input
+                            class="oryx-input w-full rounded-md px-2 py-1 text-sm"
+                            bind:value={editingValue}
+                            onblur={() => commitLabel(r.note)}
+                            onkeydown={(event) => onLabelKeydown(event, r.note)}
+                          />
+                        {:else}
+                          <button
+                            type="button"
+                            class="oryx-transition w-full rounded-md px-2 py-1 text-left hover:bg-muted"
+                            onclick={() => startEditLabel(r)}
+                          >
+                            {r.label}
+                          </button>
+                        {/if}
+                      </td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          {/if}
+        </Tabs.Content>
+        <Tabs.Content value="guide" class={panelClass}>
+          <div class="max-w-[720px] space-y-3">
+            {#each concentrations as c (c.abbr)}
+              <div class="rounded-xl border border-border bg-surface p-4 md:p-5">
+                <div class="mb-3 flex flex-wrap items-baseline gap-2">
+                  <h2 class="oryx-heading text-base font-semibold">{c.name}</h2>
+                  <span
+                    class="rounded-md border border-border bg-muted px-2 py-0.5 font-mono text-xs text-foreground-muted"
+                    >{c.abbr}</span
+                  >
+                  <span class="text-xs text-foreground-muted">{c.range}</span>
+                </div>
+                <div class="mb-3 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                  <div class="h-full rounded-full bg-accent" style="width: {c.strength}%"></div>
+                </div>
+                <div class="mb-3 flex flex-wrap gap-4 text-xs text-foreground-muted">
+                  <span>⏱ {c.longevity}</span>
+                  <span>💨 {c.sillage}</span>
+                </div>
+                <p class="text-sm text-foreground-muted">{c.desc()}</p>
+              </div>
+            {/each}
+          </div>
         </Tabs.Content>
       </div>
     </div>

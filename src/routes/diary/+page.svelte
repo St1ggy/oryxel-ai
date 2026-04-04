@@ -127,6 +127,14 @@
 
   type PatchProgress = { step: number; total: number } | null
 
+  type JobResult = {
+    id: number
+    status: string
+    progress: { step: number; total: number; phase: string }[]
+    result: Record<string, unknown> | null
+    errorMessage: string | null
+  }
+
   let syncProgress = $state<SyncProgress>(null)
   let patchProgress = $state<PatchProgress>(null)
   let thinking = $state(false)
@@ -146,79 +154,51 @@
     }
   })
 
-  function handleSyncLine(line: string) {
-    if (!line.startsWith('data: ')) return
+  async function pollJob(jobId: number, intervalMs = 2000): Promise<JobResult> {
+    while (true) {
+      await new Promise((resolve) => setTimeout(resolve, intervalMs))
 
-    try {
-      const event = JSON.parse(line.slice(6)) as
-        | { step: number; total: number; phase: 'owned' | 'liked' | 'disliked' | 'profile' | 'recommendations' }
-        | { done: true }
+      const pollResponse = await fetch(`/api/jobs/${jobId}`)
 
-      if ('done' in event) {
-        syncProgress = null
-        void invalidateAll()
-      } else {
-        syncProgress = event
+      if (!pollResponse.ok) throw new Error(`Job poll failed: ${pollResponse.status}`)
+
+      const job = (await pollResponse.json()) as JobResult
+
+      if (job.status === 'done' || job.status === 'failed') return job
+
+      // Update progress from latest event in progress array
+      const latest = job.progress.at(-1)
+
+      if (latest) {
+        syncProgress = {
+          step: latest.step,
+          total: latest.total,
+          phase: latest.phase as NonNullable<SyncProgress>['phase'],
+        }
       }
-    } catch {
-      // ignore malformed line
     }
   }
 
   async function triggerProfileSync() {
-    const response = await fetch('/api/agent/profile-sync', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ locale: data.locale }),
-    })
-
-    if (!response.body) {
-      void invalidateAll()
-
-      return
-    }
-
-    const reader = response.body.getReader()
-    const decoder = new TextDecoder()
+    syncProgress = { step: 0, total: 1, phase: 'profile' }
 
     try {
-      while (true) {
-        const { done, value } = await reader.read()
+      const response = await fetch('/api/agent/profile-sync', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ locale: data.locale }),
+      })
 
-        if (done) break
+      if (!response.ok) throw new Error('Sync failed')
 
-        for (const line of decoder.decode(value, { stream: true }).split('\n')) {
-          handleSyncLine(line)
-        }
-      }
+      const { jobId } = (await response.json()) as { jobId: number }
+
+      await pollJob(jobId)
+    } catch {
+      // silently ignore — diary still reloads
     } finally {
       syncProgress = null
       void invalidateAll()
-    }
-  }
-
-  async function* parsePatchStream(response: Response): AsyncGenerator<Record<string, unknown>> {
-    const reader = response.body!.getReader()
-    const decoder = new TextDecoder()
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read()
-
-        if (done) break
-
-        for (const line of decoder.decode(value, { stream: true }).split('\n')) {
-          if (!line.startsWith('data: ')) continue
-
-          try {
-            yield JSON.parse(line.slice(6)) as Record<string, unknown>
-          } catch {
-            // ignore malformed line
-          }
-        }
-      }
-    } finally {
-      reader.cancel()
     }
   }
 
@@ -235,29 +215,49 @@
         body: JSON.stringify({ message: text, locale: data.locale, provider: selectedProvider || undefined }),
       })
 
-      if (!response.body) throw new Error('No stream body')
+      if (!response.ok) throw new Error('Agent request failed')
 
-      for await (const event of parsePatchStream(response)) {
-        if (event.phase === 'applying') {
-          thinking = false
-          patchProgress = { step: event.step as number, total: event.total as number }
-        } else if (event.done) {
-          patchProgress = null
-          thinking = false
-          autoSync = event.triggerSync === true
+      const { jobId } = (await response.json()) as { jobId: number }
 
-          const summary = (event.summary as string | null) ?? ''
-          const responseText =
-            (event.reply as string | undefined) ??
-            (event.requiresConfirmation
-              ? m.oryxel_chat_critical_pending({ summary })
-              : m.oryxel_chat_patch_applied({ summary }))
+      // Poll for completion, updating patchProgress from job progress events
+      const job = await (async () => {
+        while (true) {
+          await new Promise((resolve) => setTimeout(resolve, 1500))
 
-          messages = [...messages, { id: crypto.randomUUID(), role: 'assistant', content: responseText }]
-        } else if (event.error) {
-          throw new Error('Stream error')
+          const pollResponse = await fetch(`/api/jobs/${jobId}`)
+
+          if (!pollResponse.ok) throw new Error(`Job poll failed: ${pollResponse.status}`)
+
+          const index = (await pollResponse.json()) as JobResult
+
+          if (index.status === 'done' || index.status === 'failed') return index
+
+          const latest = index.progress.at(-1)
+
+          if (latest?.phase === 'applying') {
+            thinking = false
+            patchProgress = { step: latest.step, total: latest.total }
+          }
         }
-      }
+      })()
+
+      patchProgress = null
+      thinking = false
+
+      if (job.status === 'failed') throw new Error(job.errorMessage ?? 'Agent failed')
+
+      const result = job.result ?? {}
+
+      autoSync = result.triggerSync === true
+
+      const summary = (result.summary as string | null) ?? ''
+      const responseText =
+        (result.reply as string | undefined) ??
+        (result.requiresConfirmation
+          ? m.oryxel_chat_critical_pending({ summary })
+          : m.oryxel_chat_patch_applied({ summary }))
+
+      messages = [...messages, { id: crypto.randomUUID(), role: 'assistant', content: responseText }]
     } catch {
       messages = [...messages, { id: crypto.randomUUID(), role: 'assistant', content: m.oryxel_chat_error_generic() }]
     } finally {
@@ -359,6 +359,7 @@
         onProfileSync={triggerProfileSync}
         profile={profileData}
         recentActivity={data.recentActivity}
+        noteRelationships={data.profile?.noteRelationships}
         layout="desktop"
         contentWidthClass={desktopContentWidthClass}
       >
