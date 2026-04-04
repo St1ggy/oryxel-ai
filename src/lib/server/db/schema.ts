@@ -48,6 +48,7 @@ export const userAiPreferences = pgTable('user_ai_preferences', {
   rememberContext: boolean('remember_context').notNull().default(false),
   defaultProvider: text('default_provider'),
   defaultModelLabel: text('default_model_label'),
+  platformAccess: boolean('platform_access').notNull().default(false),
 })
 
 export const userAiProviderKey = pgTable(

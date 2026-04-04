@@ -33,7 +33,7 @@ export type AiRouterResult = {
     provider: AiProviderName
     ok: boolean
     latencyMs: number
-    keySource?: 'user' | 'env'
+    keySource?: 'user' | 'env' | 'platform'
     keyLabel?: string
     error?: string
   }[]

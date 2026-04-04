@@ -19,7 +19,7 @@ export type ProviderKeyListItem = {
 
 export type ProviderApiKeyCandidate = {
   key: string
-  source: 'user' | 'env'
+  source: 'user' | 'env' | 'platform'
   keyId: number | null
   label: string
   isDefault: boolean
@@ -33,6 +33,31 @@ const DEFAULT_LABEL_BY_PROVIDER: Record<ProviderId, string> = {
   perplexity: 'Perplexity',
   groq: 'Groq',
   deepseek: 'DeepSeek',
+}
+
+function getPlatformKeyConfig(): { provider: ProviderId; key: string } | null {
+  const provider = env.PLATFORM_AI_PROVIDER?.trim()
+  const key = env.PLATFORM_AI_KEY?.trim()
+
+  if (!provider || !key) return null
+
+  try {
+    assertProvider(provider)
+
+    return { provider: provider as ProviderId, key }
+  } catch {
+    return null
+  }
+}
+
+async function userHasPlatformAccess(userId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ platformAccess: userAiPreferences.platformAccess })
+    .from(userAiPreferences)
+    .where(eq(userAiPreferences.userId, userId))
+    .limit(1)
+
+  return row?.platformAccess ?? false
 }
 
 function fallbackProviderKey(provider: ProviderId): string | undefined {
@@ -319,6 +344,18 @@ export async function listProviderApiKeyCandidates(
     })
   }
 
+  const platformConfig = getPlatformKeyConfig()
+
+  if (platformConfig && platformConfig.provider === provider && (await userHasPlatformAccess(userId))) {
+    candidates.push({
+      key: platformConfig.key,
+      source: 'platform',
+      keyId: null,
+      label: 'platform',
+      isDefault: false,
+    })
+  }
+
   return candidates
 }
 
@@ -373,5 +410,18 @@ export async function hasEffectiveProviderAccess(userId: string): Promise<boolea
     .where(eq(userAiProviderKey.userId, userId))
     .limit(1)
 
-  return Boolean(hasUserKeys) || hasAnyFallbackKey()
+  if (hasUserKeys || hasAnyFallbackKey()) return true
+
+  return Boolean(getPlatformKeyConfig()) && (await userHasPlatformAccess(userId))
+}
+
+export async function grantPlatformAccess(userId: string): Promise<void> {
+  await db
+    .insert(userAiPreferences)
+    .values({ userId, platformAccess: true })
+    .onConflictDoUpdate({ target: userAiPreferences.userId, set: { platformAccess: true } })
+}
+
+export async function revokePlatformAccess(userId: string): Promise<void> {
+  await db.update(userAiPreferences).set({ platformAccess: false }).where(eq(userAiPreferences.userId, userId))
 }
