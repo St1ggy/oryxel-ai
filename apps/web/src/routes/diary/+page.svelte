@@ -223,8 +223,14 @@
   })
 
   async function pollJob(jobId: number, intervalMs = 2000): Promise<JobResult> {
+    const deadline = Date.now() + 12 * 60 * 1000 // 12-min client-side hard stop
+
     while (true) {
       await new Promise((resolve) => setTimeout(resolve, intervalMs))
+
+      if (Date.now() > deadline) {
+        throw new Error('Poll timed out')
+      }
 
       const pollResponse = await fetch(`/api/jobs/${jobId}`)
 
@@ -396,6 +402,11 @@
   }
 
   const desktopContentWidthClass = $derived(listTab === 'profile' ? 'mx-auto w-full max-w-[880px]' : 'w-full')
+
+  // Extra bottom padding on mobile when the fixed status bar is visible.
+  const mobileStatusVisible = $derived(
+    thinking || pendingItems.some((p) => p.status === 'created') || !!patchProgress || !!syncProgress,
+  )
 </script>
 
 <div class="flex min-h-0 w-full flex-1 flex-col">
@@ -445,10 +456,16 @@
           <DiaryHeaderControls />
         {/snippet}
       </DiaryListTabs>
+      <!-- Desktop status bar — inline at bottom of right panel, never overlaps chat -->
+      <AiStatusFloat {thinking} patches={pendingItems} {syncProgress} {patchProgress} inline />
     </section>
   </div>
 
-  <div class="flex min-h-svh flex-1 flex-col pb-16 md:hidden">
+  <div
+    class={mobileStatusVisible
+      ? 'flex min-h-svh flex-1 flex-col pb-28 md:hidden'
+      : 'flex min-h-svh flex-1 flex-col pb-16 md:hidden'}
+  >
     {#key mobileTab}
       {#if mobileTab === 'chat'}
         <div class="flex min-h-0 flex-1 flex-col" in:fade={{ duration: 180 }} out:fade={{ duration: 120 }}>
@@ -499,4 +516,7 @@
   onEdit={detailContext === 'diary' ? onEdit : undefined}
   onTried={detailContext === 'to_try' ? onTriedRecommendation : undefined}
 />
-<AiStatusFloat {thinking} patches={pendingItems} {syncProgress} {patchProgress} />
+<!-- Mobile status bar — fixed above bottom nav, only on mobile -->
+<div class="md:hidden">
+  <AiStatusFloat {thinking} patches={pendingItems} {syncProgress} {patchProgress} />
+</div>

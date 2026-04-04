@@ -21,9 +21,12 @@
     patches?: PendingPatch[]
     syncProgress?: SyncProgress | null
     patchProgress?: PatchProgress | null
+    // When true, renders as a plain block at the bottom of its parent (desktop use).
+    // When false (default), renders as a fixed overlay above the mobile nav.
+    inline?: boolean
   }
 
-  const { thinking = false, patches = [], syncProgress = null, patchProgress = null }: Props = $props()
+  const { thinking = false, patches = [], syncProgress = null, patchProgress = null, inline = false }: Props = $props()
 
   const pendingPatches = $derived(patches.filter((p) => p.status === 'created'))
   const activeProgress = $derived(patchProgress ?? syncProgress)
@@ -76,7 +79,7 @@
 
 {#if visible}
   <div
-    class="fixed right-0 bottom-16 left-0 z-50 md:bottom-0"
+    class={inline ? '' : 'fixed right-0 bottom-16 left-0 z-50 md:bottom-0'}
     in:fly={{ y: 16, duration: 220, opacity: 0 }}
     out:fly={{ y: 16, duration: 180, opacity: 0 }}
   >

@@ -37,6 +37,9 @@ export async function failJob(jobId: number, errorMessage: string): Promise<void
     .where(eq(backgroundJob.id, jobId))
 }
 
+/** Jobs in 'processing' older than this are considered stale and auto-failed. */
+const STALE_PROCESSING_MS = 15 * 60 * 1000 // 15 minutes
+
 export async function getActiveJobsForUser(
   userId: string,
 ): Promise<{ id: number; type: JobType; status: JobStatus; progress: JobProgress[] }[]> {
@@ -46,17 +49,28 @@ export async function getActiveJobsForUser(
       type: backgroundJob.type,
       status: backgroundJob.status,
       progress: backgroundJob.progress,
+      createdAt: backgroundJob.createdAt,
     })
     .from(backgroundJob)
     .where(and(eq(backgroundJob.userId, userId), inArray(backgroundJob.status, ['pending', 'processing'])))
     .orderBy(desc(backgroundJob.createdAt))
 
-  return rows.map((row) => ({
-    id: row.id,
-    type: row.type as JobType,
-    status: row.status as JobStatus,
-    progress: (row.progress ?? []) as JobProgress[],
-  }))
+  const stale = rows.filter(
+    (row) => row.status === 'processing' && Date.now() - row.createdAt.getTime() > STALE_PROCESSING_MS,
+  )
+
+  if (stale.length > 0) {
+    await Promise.all(stale.map((row) => failJob(row.id, 'Job timed out')))
+  }
+
+  return rows
+    .filter((row) => !stale.some((s) => s.id === row.id))
+    .map((row) => ({
+      id: row.id,
+      type: row.type as JobType,
+      status: row.status as JobStatus,
+      progress: (row.progress ?? []) as JobProgress[],
+    }))
 }
 
 export async function getJob(
@@ -77,6 +91,7 @@ export async function getJob(
       progress: backgroundJob.progress,
       result: backgroundJob.result,
       errorMessage: backgroundJob.errorMessage,
+      createdAt: backgroundJob.createdAt,
     })
     .from(backgroundJob)
     .where(and(eq(backgroundJob.id, jobId), eq(backgroundJob.userId, userId)))
@@ -85,6 +100,19 @@ export async function getJob(
   const row = rows[0]
 
   if (!row) return null
+
+  // Auto-fail jobs stuck in 'processing' beyond the stale threshold.
+  if (row.status === 'processing' && Date.now() - row.createdAt.getTime() > STALE_PROCESSING_MS) {
+    await failJob(row.id, 'Job timed out')
+
+    return {
+      id: row.id,
+      status: 'failed',
+      progress: (row.progress ?? []) as JobProgress[],
+      result: null,
+      errorMessage: 'Job timed out',
+    }
+  }
 
   return {
     id: row.id,
