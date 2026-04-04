@@ -5,6 +5,7 @@ const radarSchema = z.record(z.string().min(1).max(40), z.number().int().min(0).
 const profileContextSchema = z.object({
   displayName: z.string().max(120).optional(),
   bio: z.string().max(600).optional(),
+  preferences: z.string().max(2000).optional(),
   archetype: z.string().max(120).optional(),
   favoriteNote: z.string().max(120).optional(),
   radar: radarSchema.optional(),
@@ -14,6 +15,7 @@ const diaryEntryContextSchema = z.object({
   id: z.number().int(),
   brand: z.string().max(120),
   fragrance: z.string().max(120),
+  notes: z.string().max(400).nullable().optional(),
   pyramidTop: z.string().max(300).nullable().optional(),
   pyramidMid: z.string().max(300).nullable().optional(),
   pyramidBase: z.string().max(300).nullable().optional(),
@@ -60,10 +62,16 @@ export const tableOperationSchema = z.object({
   pyramidTop: z.string().max(300).nullable().optional(),
   pyramidMid: z.string().max(300).nullable().optional(),
   pyramidBase: z.string().max(300).nullable().optional(),
-  listType: z.enum(['to_try', 'liked', 'disliked', 'owned']).optional(),
-  rating: z.number().int().min(0).max(5).optional(),
-  statusLabel: z.string().max(64).optional(),
+  // Flags for op=add / op=move (replaces listType)
   isOwned: z.boolean().optional(),
+  isTried: z.boolean().optional(),
+  isLiked: z.boolean().nullable().optional(),
+  rating: z.number().int().min(0).max(5).optional(),
+  agentComment: z.string().max(80).optional(),
+  userComment: z.string().max(200).nullable().optional(),
+  season: z.string().max(60).optional(),
+  timeOfDay: z.string().max(40).optional(),
+  gender: z.enum(['female', 'male', 'unisex']).optional(),
 })
 
 export const structuredPreferencePatchSchema = z.object({
@@ -72,57 +80,29 @@ export const structuredPreferencePatchSchema = z.object({
   summary: z.string().min(1).max(400),
   profile: z
     .object({
-      archetype: z.record(z.string(), z.string().max(100)).optional(),
-      favoriteNote: z.record(z.string(), z.string().max(100)).optional(),
+      archetype: z.string().max(120).optional(),
+      favoriteNote: z.string().max(120).optional(),
       radar: radarSchema.optional(),
-      radarLabels: z
-        .preprocess(
-          (value) => {
-            if (!value || typeof value !== 'object' || Array.isArray(value)) return value
-
-            const locales = new Set(['en', 'es', 'fr', 'jp', 'ru', 'zh'])
-            const outer = value as Record<string, unknown>
-            const outerKeys = Object.keys(outer)
-
-            // Detect inverted format: outer keys are locales → { locale: { axisKey: label } }
-            if (outerKeys.length > 0 && outerKeys.every((k) => locales.has(k))) {
-              const result: Record<string, Record<string, string>> = {}
-
-              for (const [locale, axisMap] of Object.entries(outer)) {
-                if (!axisMap || typeof axisMap !== 'object' || Array.isArray(axisMap)) continue
-
-                for (const [axisKey, label] of Object.entries(axisMap as Record<string, unknown>)) {
-                  if (!result[axisKey]) result[axisKey] = {}
-
-                  result[axisKey][locale] = String(label)
-                }
-              }
-
-              return result
-            }
-
-            return value
-          },
-          z.record(z.string().min(1).max(40), z.record(z.string(), z.string().max(40))),
-        )
-        .optional(),
+      radarLabels: z.record(z.string().min(1).max(40), z.string().max(60)).optional(),
+      preferences: z.string().max(2000).optional(),
       rationale: z.string().min(1).max(800).optional(),
     })
     .nullish(),
-  tableOps: z.array(tableOperationSchema).max(30).default([]),
+  tableOps: z.array(tableOperationSchema).max(150).default([]),
   recommendations: z
     .array(
       z.object({
         id: z.string(),
         brand: z.string().max(120),
         name: z.string().max(120),
-        tag: z.record(z.string(), z.string().max(120)),
+        notesSummary: z.string().max(400).optional(),
+        pyramidTop: z.string().max(300).nullable().optional(),
+        pyramidMid: z.string().max(300).nullable().optional(),
+        pyramidBase: z.string().max(300).nullable().optional(),
+        tag: z.string().max(120),
       }),
     )
-    .max(12)
+    .max(15)
     .nullish(),
-  suggestions: z
-    .array(z.record(z.string(), z.string().max(120)))
-    .max(5)
-    .nullish(),
+  suggestions: z.array(z.string().max(200)).max(5).nullish(),
 })

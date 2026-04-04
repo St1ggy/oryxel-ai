@@ -9,14 +9,7 @@ describe('isCriticalPatch', () => {
         confidence: 0.9,
         summary: 'Update archetype',
         profile: {
-          archetype: {
-            en: 'Explorer',
-            es: 'Explorador',
-            fr: 'Explorateur',
-            jp: '探求者',
-            ru: 'Исследователь',
-            zh: '探索者',
-          },
+          archetype: 'Explorer',
         },
         tableOps: [],
       }),
@@ -28,7 +21,7 @@ describe('isCriticalPatch', () => {
       isCriticalPatch({
         confidence: 0.7,
         summary: 'Move row',
-        tableOps: [{ op: 'move', rowId: 10, listType: 'liked' }],
+        tableOps: [{ op: 'move', rowId: 10, isTried: true, isLiked: true }],
       }),
     ).toBe(true)
   })
