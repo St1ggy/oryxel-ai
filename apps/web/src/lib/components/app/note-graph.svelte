@@ -34,15 +34,19 @@
 
   const { graph, onNodeClick, height = 480 }: Props = $props()
 
+  let containerElement: HTMLDivElement | undefined = $state()
   let svgElement: SVGSVGElement | undefined = $state()
   let controls: GraphControls | null = null
   let tooltip: TooltipState | null = $state(null)
 
   $effect(() => {
-    if (!svgElement || graph.nodes.length === 0) return
+    if (!svgElement || !containerElement || graph.nodes.length === 0) return
 
     controls?.cleanup()
-    controls = initNoteGraphD3(svgElement, graph, height, onNodeClick, (state) => {
+
+    const measuredWidth = containerElement.getBoundingClientRect().width || 800
+
+    controls = initNoteGraphD3(svgElement, graph, measuredWidth, height, onNodeClick, (state) => {
       tooltip = state
     })
 
@@ -56,7 +60,11 @@
   }
 </script>
 
-<div class="relative w-full overflow-hidden rounded-lg border border-border bg-surface" style="height:{height}px">
+<div
+  bind:this={containerElement}
+  class="relative w-full overflow-hidden rounded-lg border border-border bg-surface"
+  style="height:{height}px"
+>
   {#if graph.nodes.length === 0}
     <div class="flex h-full items-center justify-center text-sm" style="color:var(--oryx-fg-muted)">
       {m.oryxel_note_graph_empty()}

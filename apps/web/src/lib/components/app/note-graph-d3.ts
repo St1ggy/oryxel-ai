@@ -56,6 +56,7 @@ function buildAdjacency(links: NoteLink[]): Set<string> {
 export function initNoteGraphD3(
   svgElement: SVGSVGElement,
   graph: NoteGraph,
+  canvasWidth: number,
   height: number,
   onNodeClick: (node: NoteNode) => void,
   onTooltipChange: (state: TooltipState | null) => void,
@@ -71,7 +72,7 @@ export function initNoteGraphD3(
 
   svg.selectAll('*').remove()
 
-  const width = svgElement.getBoundingClientRect().width || 800
+  const width = canvasWidth || svgElement.getBoundingClientRect().width || 800
   const adjacency = buildAdjacency(graph.links)
   let hoveredNode: NoteNode | null = null
 
@@ -98,6 +99,7 @@ export function initNoteGraphD3(
   // ── Force simulation ──────────────────────────────────────────────────
   const simulation = d3
     .forceSimulation<NoteNode>(nodes)
+    .velocityDecay(0.28)
     .force(
       'link',
       d3
@@ -107,17 +109,18 @@ export function initNoteGraphD3(
           const s = lk.source as NoteNode
           const t = lk.target as NoteNode
 
-          return 70 + (s.size + t.size) * 0.9
+          return 100 + (s.size + t.size) * 1.2
         }),
     )
     .force(
       'charge',
-      d3.forceManyBody<NoteNode>().strength((d) => -(300 + d.size * 4)),
+      d3.forceManyBody<NoteNode>().strength((d) => -(600 + d.size * 8)),
     )
-    .force('center', d3.forceCenter(width / 2, height / 2).strength(0.08))
+    .force('x', d3.forceX<NoteNode>(width / 2).strength(0.04))
+    .force('y', d3.forceY<NoteNode>(height / 2).strength(0.04))
     .force(
       'collide',
-      d3.forceCollide<NoteNode>().radius((d) => d.size + 22),
+      d3.forceCollide<NoteNode>().radius((d) => d.size + 28),
     )
 
   // ── Defs: gradients (inside <g> so userSpaceOnUse = simulation coords) ──
