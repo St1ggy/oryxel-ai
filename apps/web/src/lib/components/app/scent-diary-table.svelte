@@ -139,7 +139,7 @@
           <td class="px-5 py-4 align-middle">
             <NoteTags notes={row.notes} />
           </td>
-          <td class="px-5 py-4 align-middle">
+          <td class="px-5 py-4 align-middle" onclick={(event) => event.stopPropagation()}>
             <RatingStars
               value={row.rating}
               readonly={false}
