@@ -26,15 +26,7 @@
 
   const spokeEndpoints = $derived(axes.map((_, index) => pointFor(index, 100)))
   const vertexPoints = $derived(axes.map(({ value }, index) => pointFor(index, value)))
-
-  // Straight polygon path for ring backgrounds.
-  function polygonPath(pts: { x: number; y: number }[]): string {
-    if (pts.length < 3) return ''
-
-    const segments = pts.map((p, index) => [index === 0 ? 'M' : 'L', p.x, p.y].join(' '))
-
-    return [...segments, 'Z'].join(' ')
-  }
+  const ringRadii = $derived([0.33, 0.67, 1].map((f) => f * r))
 
   // Straight-edge polygon with small rounded corners at each vertex.
   function roundedPolygonPath(pts: { x: number; y: number }[], cornerR = 6): string {
@@ -73,10 +65,6 @@
 
   const dataPath = $derived(roundedPolygonPath(vertexPoints))
 
-  const ringPaths = $derived(
-    [0.33, 0.67, 1].map((ring) => polygonPath(axes.map((_, index) => pointFor(index, ring * 100)))),
-  )
-
   const labelData = $derived(
     axes.map(({ label }, index) => {
       const angle = angleFor(index)
@@ -114,9 +102,17 @@
       </radialGradient>
     </defs>
 
-    <!-- Spider-web rings (curved) -->
-    {#each ringPaths as ringPath, index (index)}
-      <path d={ringPath} fill="none" stroke="currentColor" stroke-opacity={index === 2 ? 0.1 : 0.06} stroke-width="1" />
+    <!-- Concentric circle rings -->
+    {#each ringRadii as ringR, index (index)}
+      <circle
+        {cx}
+        {cy}
+        r={ringR}
+        fill="none"
+        stroke="currentColor"
+        stroke-opacity={index === 2 ? 0.1 : 0.06}
+        stroke-width="1"
+      />
     {/each}
 
     <!-- Spokes -->
@@ -141,11 +137,6 @@
       stroke-width="1.5"
       class="oryx-transition"
     />
-
-    <!-- Vertex dots -->
-    {#each vertexPoints as p, index (index)}
-      <circle cx={p.x} cy={p.y} r="3.5" fill="var(--color-accent)" fill-opacity="0.9" class="oryx-transition" />
-    {/each}
 
     <!-- Labels -->
     {#each labelData as { label, x, y, anchor } (label)}

@@ -147,9 +147,6 @@
     }
   })
 
-  let editingLabel = $state<string | null>(null)
-  let editingValue = $state('')
-
   const sentimentOptions: NoteRelationshipSentiment[] = ['love', 'like', 'neutral', 'dislike', 'redflag']
 
   function sentimentLabel(s: NoteRelationshipSentiment): string {
@@ -265,24 +262,6 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ note, ...updates }),
     })
-  }
-
-  function startEditLabel(r: NoteRelationship) {
-    editingLabel = r.note
-    editingValue = r.label
-  }
-
-  async function commitLabel(note: string) {
-    if (editingLabel !== note) return
-
-    await patchNote(note, { label: editingValue })
-    editingLabel = null
-  }
-
-  function onLabelKeydown(event: KeyboardEvent, note: string) {
-    if (event.key === 'Enter') void commitLabel(note)
-
-    if (event.key === 'Escape') editingLabel = null
   }
 
   // --- Guide tab data ---
@@ -521,7 +500,6 @@
                   <tr class="border-b border-border text-left text-xs text-foreground-muted">
                     <th class="w-[200px] px-4 py-3 font-medium">{m.oryxel_notes_col_note()}</th>
                     <th class="w-[160px] px-4 py-3 font-medium">{m.oryxel_notes_col_sentiment()}</th>
-                    <th class="w-[180px] px-4 py-3 font-medium">{m.oryxel_notes_col_label()}</th>
                     <th class="px-4 py-3 font-medium">{m.oryxel_notes_col_comment()}</th>
                   </tr>
                 </thead>
@@ -570,24 +548,6 @@
                             </DropdownMenu.Content>
                           </DropdownMenu.Portal>
                         </DropdownMenu.Root>
-                      </td>
-                      <td class="px-4 py-3">
-                        {#if editingLabel === r.note}
-                          <input
-                            class="oryx-input w-full rounded-md px-2 py-1 text-sm"
-                            bind:value={editingValue}
-                            onblur={() => commitLabel(r.note)}
-                            onkeydown={(event) => onLabelKeydown(event, r.note)}
-                          />
-                        {:else}
-                          <button
-                            type="button"
-                            class="oryx-transition w-full rounded-md px-2 py-1 text-left hover:bg-muted"
-                            onclick={() => startEditLabel(r)}
-                          >
-                            {r.label}
-                          </button>
-                        {/if}
                       </td>
                       <td class="max-w-[260px] px-4 py-3 text-xs leading-relaxed text-foreground-muted">
                         {r.agentComment ?? ''}
