@@ -40,14 +40,17 @@ async function applyPatchWithProgress(
       await applyProfileAndSuggestions(userId, patch)
     }
 
-    if (recStep) {
-      await pushJobProgress(jobId, { step: ++step, total, phase: 'applying' })
-      await applyRecommendations(userId, patch)
-    }
-
+    // Apply tableOps FIRST so that user interactions with recommendations
+    // (e.g. op=move marking a rec as disliked) are committed before
+    // applyRecommendations deletes isRecommendation=true,isTried=false rows.
     for (const op of patch.tableOps) {
       await pushJobProgress(jobId, { step: ++step, total, phase: 'applying' })
       await applySingleTableOp(userId, op)
+    }
+
+    if (recStep) {
+      await pushJobProgress(jobId, { step: ++step, total, phase: 'applying' })
+      await applyRecommendations(userId, patch)
     }
 
     return true

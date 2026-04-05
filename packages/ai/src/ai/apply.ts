@@ -179,7 +179,7 @@ async function applyTableOp(executor: DatabaseExecutor, userId: string, op: Tabl
 
     await executor
       .update(userFragrance)
-      .set(flags)
+      .set({ ...flags, isRecommendation: false })
       .where(and(eq(userFragrance.userId, userId), eq(userFragrance.id, op.rowId)))
 
     return
@@ -219,6 +219,13 @@ export async function applyPatchToDatabase(userId: string, patch: StructuredPref
         })
     }
 
+    // Apply tableOps FIRST so that user interactions with recommendations
+    // (e.g. op=move marking a rec as disliked) are committed before the
+    // recommendations block deletes isRecommendation=true,isTried=false rows.
+    for (const op of patch.tableOps) {
+      await applyTableOp(tx, userId, op)
+    }
+
     if (patch.recommendations != null) {
       await tx
         .delete(userFragrance)
@@ -250,13 +257,12 @@ export async function applyPatchToDatabase(userId: string, patch: StructuredPref
             isDisliked: false,
             isRecommendation: true,
             agentComment: rec.tag || null,
+            gender: rec.gender ?? null,
+            timeOfDay: rec.timeOfDay ?? null,
+            season: rec.season ?? null,
           })
           .onConflictDoNothing()
       }
-    }
-
-    for (const op of patch.tableOps) {
-      await applyTableOp(tx, userId, op)
     }
   })
 }
@@ -330,6 +336,9 @@ export async function applyRecommendations(userId: string, patch: StructuredPref
           isDisliked: false,
           isRecommendation: true,
           agentComment: rec.tag || null,
+          gender: rec.gender ?? null,
+          timeOfDay: rec.timeOfDay ?? null,
+          season: rec.season ?? null,
         })
         .onConflictDoNothing()
     }
