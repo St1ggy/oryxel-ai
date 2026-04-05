@@ -52,7 +52,7 @@ export async function loadProfileForUser(userId: string, fallbackName = 'User', 
   const [countRow] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(userFragrance)
-    .where(and(eq(userFragrance.userId, userId), eq(userFragrance.isOwned, true)))
+    .where(eq(userFragrance.userId, userId))
 
   const rawSuggestions = profileRow?.suggestions ?? []
   const suggestions = rawSuggestions
