@@ -345,5 +345,7 @@
   "oryxel_guide_family_fresh_name": "Fresco",
   "oryxel_guide_family_fresh_desc": "Limpio y aéreo. Notas marinas, acuerdo verde, ozono.",
   "oryxel_guide_family_gourmand_name": "Gourmand",
-  "oryxel_guide_family_gourmand_desc": "Dulce y apetitoso. Vainilla, caramelo, praliné."
+  "oryxel_guide_family_gourmand_desc": "Dulce y apetitoso. Vainilla, caramelo, praliné.",
+  "oryxel_status_expand": "Mostrar detalles",
+  "oryxel_status_collapse": "Ocultar"
 }

@@ -345,5 +345,7 @@
   "oryxel_guide_family_fresh_name": "Fresh",
   "oryxel_guide_family_fresh_desc": "Clean and airy. Marine notes, green accord, ozone.",
   "oryxel_guide_family_gourmand_name": "Gourmand",
-  "oryxel_guide_family_gourmand_desc": "Sweet and edible. Vanilla, caramel, praline."
+  "oryxel_guide_family_gourmand_desc": "Sweet and edible. Vanilla, caramel, praline.",
+  "oryxel_status_expand": "Show details",
+  "oryxel_status_collapse": "Hide details"
 }
