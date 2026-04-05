@@ -3,26 +3,21 @@ import { and, eq } from 'drizzle-orm'
 
 import { findOrCreateBrand, findOrCreateFragrance } from '../diary/find-or-create'
 
-import type { NoteRelationship } from '../types/diary'
 import type { StructuredPreferencePatch, TableOperation } from './contracts'
+import type { NoteRelationship } from '../types/diary'
 
 type DatabaseExecutor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0]
 
-/**
- * Merges incoming agent noteRelationships with the currently stored ones,
- * preserving any entry the user has manually locked (`lockedByUser: true`).
- */
-async function mergeNoteRelationships(
-  userId: string,
-  incoming: NoteRelationship[],
-): Promise<NoteRelationship[]> {
+// Merges incoming agent noteRelationships with the currently stored ones,
+// preserving any entry the user has manually locked (`lockedByUser: true`).
+async function mergeNoteRelationships(userId: string, incoming: NoteRelationship[]): Promise<NoteRelationship[]> {
   const [row] = await db
     .select({ noteRelationships: userProfile.noteRelationships })
     .from(userProfile)
     .where(eq(userProfile.userId, userId))
     .limit(1)
 
-  const existing = ((row?.noteRelationships ?? []) as NoteRelationship[])
+  const existing = (row?.noteRelationships ?? []) as NoteRelationship[]
   const lockedMap = new Map(existing.filter((n) => n.lockedByUser).map((n) => [n.note, n]))
 
   if (lockedMap.size === 0) return incoming
@@ -223,9 +218,9 @@ export async function applyPatchToDatabase(userId: string, patch: StructuredPref
   await db.transaction(async (tx) => {
     if (patch.profile != null || patch.suggestions != null) {
       const mergedNoteRels =
-        patch.profile?.noteRelationships != null
-          ? ((await mergeNoteRelationships(userId, patch.profile.noteRelationships)) as never[])
-          : undefined
+        patch.profile?.noteRelationships == null
+          ? undefined
+          : ((await mergeNoteRelationships(userId, patch.profile.noteRelationships)) as never[])
 
       await tx
         .insert(userProfile)
@@ -306,9 +301,9 @@ export async function applyProfileAndSuggestions(userId: string, patch: Structur
   if (patch.profile == null && patch.suggestions == null) return
 
   const mergedNoteRels =
-    patch.profile?.noteRelationships != null
-      ? ((await mergeNoteRelationships(userId, patch.profile.noteRelationships)) as never[])
-      : undefined
+    patch.profile?.noteRelationships == null
+      ? undefined
+      : ((await mergeNoteRelationships(userId, patch.profile.noteRelationships)) as never[])
 
   await db
     .insert(userProfile)
