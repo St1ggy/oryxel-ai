@@ -3,9 +3,40 @@ import { and, eq } from 'drizzle-orm'
 
 import { findOrCreateBrand, findOrCreateFragrance } from '../diary/find-or-create'
 
+import type { NoteRelationship } from '../types/diary'
 import type { StructuredPreferencePatch, TableOperation } from './contracts'
 
 type DatabaseExecutor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0]
+
+/**
+ * Merges incoming agent noteRelationships with the currently stored ones,
+ * preserving any entry the user has manually locked (`lockedByUser: true`).
+ */
+async function mergeNoteRelationships(
+  userId: string,
+  incoming: NoteRelationship[],
+): Promise<NoteRelationship[]> {
+  const [row] = await db
+    .select({ noteRelationships: userProfile.noteRelationships })
+    .from(userProfile)
+    .where(eq(userProfile.userId, userId))
+    .limit(1)
+
+  const existing = ((row?.noteRelationships ?? []) as NoteRelationship[])
+  const lockedMap = new Map(existing.filter((n) => n.lockedByUser).map((n) => [n.note, n]))
+
+  if (lockedMap.size === 0) return incoming
+
+  // Replace agent entries for locked notes with the locked version.
+  const merged = incoming.map((n) => (lockedMap.has(n.note) ? lockedMap.get(n.note)! : n))
+
+  // Append locked notes not present in agent output.
+  for (const [key, locked] of lockedMap) {
+    if (!merged.some((n) => n.note === key)) merged.push(locked)
+  }
+
+  return merged
+}
 
 /** Lowercase a string field; passes through null/undefined unchanged. */
 function lc(s: string | null | undefined): string | null | undefined {
@@ -191,6 +222,11 @@ async function applyTableOp(executor: DatabaseExecutor, userId: string, op: Tabl
 export async function applyPatchToDatabase(userId: string, patch: StructuredPreferencePatch): Promise<void> {
   await db.transaction(async (tx) => {
     if (patch.profile != null || patch.suggestions != null) {
+      const mergedNoteRels =
+        patch.profile?.noteRelationships != null
+          ? ((await mergeNoteRelationships(userId, patch.profile.noteRelationships)) as never[])
+          : undefined
+
       await tx
         .insert(userProfile)
         .values({
@@ -200,7 +236,7 @@ export async function applyPatchToDatabase(userId: string, patch: StructuredPref
           radar: patch.profile?.radar,
           radarLabels: patch.profile?.radarLabels,
           preferences: patch.profile?.preferences,
-          noteRelationships: patch.profile?.noteRelationships as never[] | undefined,
+          noteRelationships: mergedNoteRels,
           suggestions: patch.suggestions ?? undefined,
         })
         .onConflictDoUpdate({
@@ -211,9 +247,7 @@ export async function applyPatchToDatabase(userId: string, patch: StructuredPref
             ...(patch.profile?.radar != null && { radar: patch.profile.radar }),
             ...(patch.profile?.radarLabels != null && { radarLabels: patch.profile.radarLabels }),
             ...(patch.profile?.preferences != null && { preferences: patch.profile.preferences }),
-            ...(patch.profile?.noteRelationships != null && {
-              noteRelationships: patch.profile.noteRelationships as never[],
-            }),
+            ...(mergedNoteRels != null && { noteRelationships: mergedNoteRels }),
             ...(patch.suggestions != null && { suggestions: patch.suggestions }),
           },
         })
@@ -271,6 +305,11 @@ export async function applyPatchToDatabase(userId: string, patch: StructuredPref
 export async function applyProfileAndSuggestions(userId: string, patch: StructuredPreferencePatch): Promise<void> {
   if (patch.profile == null && patch.suggestions == null) return
 
+  const mergedNoteRels =
+    patch.profile?.noteRelationships != null
+      ? ((await mergeNoteRelationships(userId, patch.profile.noteRelationships)) as never[])
+      : undefined
+
   await db
     .insert(userProfile)
     .values({
@@ -280,7 +319,7 @@ export async function applyProfileAndSuggestions(userId: string, patch: Structur
       radar: patch.profile?.radar,
       radarLabels: patch.profile?.radarLabels,
       preferences: patch.profile?.preferences,
-      noteRelationships: patch.profile?.noteRelationships as never[] | undefined,
+      noteRelationships: mergedNoteRels,
       suggestions: patch.suggestions ?? undefined,
     })
     .onConflictDoUpdate({
@@ -291,9 +330,7 @@ export async function applyProfileAndSuggestions(userId: string, patch: Structur
         ...(patch.profile?.radar != null && { radar: patch.profile.radar }),
         ...(patch.profile?.radarLabels != null && { radarLabels: patch.profile.radarLabels }),
         ...(patch.profile?.preferences != null && { preferences: patch.profile.preferences }),
-        ...(patch.profile?.noteRelationships != null && {
-          noteRelationships: patch.profile.noteRelationships as never[],
-        }),
+        ...(mergedNoteRels != null && { noteRelationships: mergedNoteRels }),
         ...(patch.suggestions != null && { suggestions: patch.suggestions }),
       },
     })

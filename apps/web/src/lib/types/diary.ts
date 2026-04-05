@@ -6,6 +6,12 @@ export type NoteRelationship = {
   note: string
   sentiment: NoteRelationshipSentiment
   label: string
+  /** User manually set this sentiment — agent must not modify it. */
+  lockedByUser?: boolean
+  /** Agent's short description of the note (character, typical use). */
+  agentComment?: string
+  /** Translated note name resolved at load time — not persisted. */
+  translatedNote?: string
 }
 
 export type DiaryData = {

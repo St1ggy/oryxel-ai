@@ -52,11 +52,12 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
       note: body.note,
       sentiment: body.sentiment ?? 'neutral',
       label: body.label ?? body.note,
+      ...(body.sentiment !== undefined && { lockedByUser: true }),
     })
   } else {
     current[index] = {
       ...current[index],
-      ...(body.sentiment !== undefined && { sentiment: body.sentiment }),
+      ...(body.sentiment !== undefined && { sentiment: body.sentiment, lockedByUser: true }),
       ...(body.label !== undefined && { label: body.label }),
     }
   }

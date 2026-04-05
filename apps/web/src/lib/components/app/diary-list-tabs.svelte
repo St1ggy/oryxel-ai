@@ -1,6 +1,24 @@
 <script lang="ts">
-  import { Clock, Droplets, Flame, Layers, Leaf, MapPin, Minimize2, Sprout, Sun, Waves } from '@lucide/svelte'
-  import { Tabs } from 'bits-ui'
+  import {
+    AlertTriangle,
+    ChevronDown,
+    Clock,
+    Droplets,
+    Flame,
+    Heart,
+    Layers,
+    Leaf,
+    Lock,
+    MapPin,
+    Minimize2,
+    Minus,
+    Sprout,
+    Sun,
+    ThumbsDown,
+    ThumbsUp,
+    Waves,
+  } from '@lucide/svelte'
+  import { DropdownMenu, Tabs } from 'bits-ui'
   import { tick, untrack } from 'svelte'
 
   import DiaryProfileSkeleton from '$lib/components/app/diary-profile-skeleton.svelte'
@@ -148,6 +166,55 @@
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function sentimentIcon(s: NoteRelationshipSentiment): any {
+    switch (s) {
+      case 'love': {
+        return Heart
+      }
+
+      case 'like': {
+        return ThumbsUp
+      }
+
+      case 'neutral': {
+        return Minus
+      }
+
+      case 'dislike': {
+        return ThumbsDown
+      }
+
+      case 'redflag': {
+        return AlertTriangle
+      }
+    }
+  }
+
+  function sentimentIconColor(s: NoteRelationshipSentiment): string {
+    switch (s) {
+      case 'love': {
+        return 'text-accent'
+      }
+
+      case 'like': {
+        return 'text-success'
+      }
+
+      case 'neutral': {
+        return 'text-foreground-muted'
+      }
+
+      case 'dislike': {
+        return 'text-warning'
+      }
+
+      case 'redflag': {
+        return 'text-destructive'
+      }
+    }
+  }
+
   function sentimentColor(s: NoteRelationshipSentiment): string {
     switch (s) {
       case 'love': {
@@ -176,7 +243,11 @@
     const index = localNotes.findIndex((r) => r.note === note)
 
     if (index !== -1) {
-      localNotes[index] = { ...localNotes[index], ...updates }
+      localNotes[index] = {
+        ...localNotes[index],
+        ...updates,
+        ...(updates.sentiment === undefined ? {} : { lockedByUser: true }),
+      }
     }
 
     await fetch('/api/profile/notes', {
@@ -418,30 +489,57 @@
               <table class="w-full text-sm">
                 <thead>
                   <tr class="border-b border-border text-left text-xs text-foreground-muted">
-                    <th class="px-4 py-3 font-medium">{m.oryxel_notes_col_note()}</th>
-                    <th class="px-4 py-3 font-medium">{m.oryxel_notes_col_sentiment()}</th>
-                    <th class="px-4 py-3 font-medium">{m.oryxel_notes_col_label()}</th>
+                    <th class="w-[200px] px-4 py-3 font-medium">{m.oryxel_notes_col_note()}</th>
+                    <th class="w-[160px] px-4 py-3 font-medium">{m.oryxel_notes_col_sentiment()}</th>
+                    <th class="w-[180px] px-4 py-3 font-medium">{m.oryxel_notes_col_label()}</th>
+                    <th class="px-4 py-3 font-medium">{m.oryxel_notes_col_comment()}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {#each localNotes as r (r.note)}
+                    {@const SentIcon = sentimentIcon(r.sentiment)}
                     <tr class="border-b border-border/50 last:border-0 hover:bg-muted/20">
-                      <td class="px-4 py-3 font-mono text-xs text-foreground">{r.note}</td>
                       <td class="px-4 py-3">
-                        <div class="flex flex-wrap gap-1">
-                          {#each sentimentOptions as s (s)}
-                            <button
-                              type="button"
-                              class="oryx-transition rounded-full border px-2 py-0.5 text-xs font-medium {s ===
-                              r.sentiment
-                                ? sentimentColor(s)
-                                : 'border-border bg-transparent text-foreground-muted hover:bg-muted'}"
-                              onclick={() => patchNote(r.note, { sentiment: s })}
-                            >
-                              {sentimentLabel(s)}
-                            </button>
-                          {/each}
+                        <div class="flex flex-col gap-0.5">
+                          <span class="text-sm font-medium text-foreground">{r.translatedNote ?? r.note}</span>
+                          {#if r.translatedNote}
+                            <span class="font-mono text-[11px] text-foreground-muted">{r.note}</span>
+                          {/if}
                         </div>
+                      </td>
+                      <td class="px-4 py-3">
+                        <DropdownMenu.Root>
+                          <DropdownMenu.Trigger
+                            class="oryx-transition flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium outline-none {sentimentColor(
+                              r.sentiment,
+                            )} hover:opacity-80"
+                          >
+                            <SentIcon class="size-3.5 shrink-0" />
+                            <span>{sentimentLabel(r.sentiment)}</span>
+                            {#if r.lockedByUser}
+                              <Lock class="size-3 shrink-0 opacity-60" />
+                            {:else}
+                              <ChevronDown class="size-3 shrink-0 opacity-50" />
+                            {/if}
+                          </DropdownMenu.Trigger>
+                          <DropdownMenu.Portal>
+                            <DropdownMenu.Content
+                              class="oryx-dropdown-content z-50 min-w-40 rounded-lg border border-border bg-surface p-1 shadow-card"
+                              sideOffset={4}
+                            >
+                              {#each sentimentOptions as s (s)}
+                                {@const Ico = sentimentIcon(s)}
+                                <DropdownMenu.Item
+                                  class="oryx-transition flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground outline-none select-none hover:bg-muted data-highlighted:bg-muted"
+                                  onSelect={() => patchNote(r.note, { sentiment: s })}
+                                >
+                                  <Ico class="size-4 shrink-0 {sentimentIconColor(s)}" />
+                                  {sentimentLabel(s)}
+                                </DropdownMenu.Item>
+                              {/each}
+                            </DropdownMenu.Content>
+                          </DropdownMenu.Portal>
+                        </DropdownMenu.Root>
                       </td>
                       <td class="px-4 py-3">
                         {#if editingLabel === r.note}
@@ -460,6 +558,9 @@
                             {r.label}
                           </button>
                         {/if}
+                      </td>
+                      <td class="max-w-[260px] px-4 py-3 text-xs leading-relaxed text-foreground-muted">
+                        {r.agentComment ?? ''}
                       </td>
                     </tr>
                   {/each}

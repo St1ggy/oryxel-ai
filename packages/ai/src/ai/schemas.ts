@@ -16,6 +16,8 @@ const profileContextSchema = z.object({
         note: z.string().max(80),
         sentiment: z.enum(['love', 'like', 'neutral', 'dislike', 'redflag']),
         label: z.string().max(200),
+        lockedByUser: z.boolean().optional(),
+        agentComment: z.string().max(400).optional(),
       }),
     )
     .optional(),
@@ -110,6 +112,8 @@ export const structuredPreferencePatchSchema = z.object({
             note: z.string().max(80),
             sentiment: z.enum(['love', 'like', 'neutral', 'dislike', 'redflag']),
             label: z.string().max(200),
+            lockedByUser: z.boolean().optional(),
+            agentComment: z.string().max(400).optional(),
           }),
         )
         .max(30)

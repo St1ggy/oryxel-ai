@@ -1,6 +1,8 @@
 import { db, userFragrance, userProfile } from '@oryxel/db'
 import { and, eq, sql } from 'drizzle-orm'
 
+import { lookupTranslations } from '../translation/service'
+
 import type { NoteRelationship, RadarAxes, RadarAxis } from '../types/diary'
 
 /** Handles both new plain strings and old locale-map JSON (backward compat). */
@@ -67,6 +69,14 @@ export async function loadProfileForUser(userId: string, fallbackName = 'User', 
     radarAxes: buildRadarAxes(profileRow?.radar, profileRow?.radarLabels, locale),
     suggestions,
     gender: profileRow?.gender ?? null,
-    noteRelationships: (profileRow?.noteRelationships ?? []) as NoteRelationship[],
+    noteRelationships: await (async () => {
+      const raw = (profileRow?.noteRelationships ?? []) as NoteRelationship[]
+      if (raw.length === 0) return raw
+      const noteTranslations = await lookupTranslations(raw.map((n) => n.note), locale)
+      return raw.map((n) => ({
+        ...n,
+        translatedNote: noteTranslations.get(n.note) || undefined,
+      }))
+    })(),
   }
 }
