@@ -1,6 +1,6 @@
 import * as d3 from 'd3'
 
-import { linkThickness } from '../common'
+import { linkThickness, truncateLabel } from '../common'
 
 import type { NoteLink, NoteNode, RenderedSelections, StyleContext, StyleRenderer } from '../types'
 
@@ -64,7 +64,7 @@ const init = (context: StyleContext): RenderedSelections => {
   nodeGroupSel
     .filter((d) => d.size >= 28)
     .append('text')
-    .text((d) => d.name)
+    .text((d) => truncateLabel(d.name, d.size))
     .attr('text-anchor', 'middle')
     .attr('dominant-baseline', 'middle')
     .attr('fill', (d) => d.color)

@@ -7,17 +7,19 @@ import {
   lightenHex,
   linkOpacity,
   linkThickness,
+  truncateLabel,
 } from '../common'
 
 import type { NoteLink, NoteNode, RenderedSelections, StyleContext, StyleRenderer } from '../types'
 
 // ── Default style — gradient bubbles with radial fills ────────────────────────
 
-const init = (ctx: StyleContext): RenderedSelections => {
-  const { g, defs, nodes, links, uid } = ctx
+const init = (context: StyleContext): RenderedSelections => {
+  const { g, defs, nodes, links, uid } = context
 
   buildShadowFilter(defs, uid)
   const linkGrads = buildLinkGradients(defs, links, uid)
+
   buildNodeGradients(defs, nodes, uid)
 
   const linkSel = g
@@ -40,7 +42,13 @@ const init = (ctx: StyleContext): RenderedSelections => {
     .style('cursor', 'pointer')
 
   // Outer glow ring
-  nodeGroupSel.append('circle').attr('class', 'node-glow').attr('r', (d) => d.size + 5).attr('fill', (d) => d.color).attr('fill-opacity', 0.12).attr('pointer-events', 'none')
+  nodeGroupSel
+    .append('circle')
+    .attr('class', 'node-glow')
+    .attr('r', (d) => d.size + 5)
+    .attr('fill', (d) => d.color)
+    .attr('fill-opacity', 0.12)
+    .attr('pointer-events', 'none')
 
   // Main circle with radial gradient + shadow
   nodeGroupSel
@@ -70,7 +78,7 @@ const init = (ctx: StyleContext): RenderedSelections => {
   nodeGroupSel
     .filter((d) => d.size >= 32)
     .append('text')
-    .text((d) => d.name)
+    .text((d) => truncateLabel(d.name, d.size))
     .attr('text-anchor', 'middle')
     .attr('dominant-baseline', 'middle')
     .attr('fill', 'white')
@@ -133,9 +141,15 @@ const buildSimulation = (
         .id((d) => d.id)
         .distance((lk) => 100 + ((lk.source as NoteNode).size + (lk.target as NoteNode).size) * 1.2),
     )
-    .force('charge', d3.forceManyBody<NoteNode>().strength((d) => -(600 + d.size * 8)))
+    .force(
+      'charge',
+      d3.forceManyBody<NoteNode>().strength((d) => -(600 + d.size * 8)),
+    )
     .force('x', d3.forceX<NoteNode>(width / 2).strength(0.04))
     .force('y', d3.forceY<NoteNode>(height / 2).strength(0.04))
-    .force('collide', d3.forceCollide<NoteNode>().radius((d) => d.size + 28))
+    .force(
+      'collide',
+      d3.forceCollide<NoteNode>().radius((d) => d.size + 28),
+    )
 
 export const defaultRenderer: StyleRenderer = { init, tick, buildSimulation }

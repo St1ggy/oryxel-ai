@@ -15,19 +15,40 @@ export function lightenHex(hex: string, amount: number): string {
 // ── Link weight helpers ───────────────────────────────────────────────────────
 
 export function linkThickness(weight: number): number {
-  if (weight <= 2) return 1.5
-  if (weight <= 6) return 2.5
-  if (weight <= 12) return 3.5
+  if (weight <= 2) return 1
 
-  return Math.min(4.5 + (weight - 12) * 0.15, 7)
+  if (weight <= 6) return 1.5
+
+  if (weight <= 12) return 2.5
+
+  return Math.min(3.5 + (weight - 12) * 0.12, 5.5)
 }
 
 export function linkOpacity(weight: number): number {
-  if (weight <= 2) return 0.35
-  if (weight <= 6) return 0.45
-  if (weight <= 12) return 0.55
+  if (weight <= 2) return 0.1
 
-  return 0.65
+  if (weight <= 6) return 0.2
+
+  if (weight <= 12) return 0.32
+
+  return 0.48
+}
+
+// ── Label truncation ──────────────────────────────────────────────────────────
+
+// Truncates a node label to fit inside a circle of `size` radius.
+// Uses an approximate char-width heuristic; avoids SVG clipPath overhead.
+export function truncateLabel(name: string, size: number): string {
+  const fontSize = Math.max(9, Math.min(size * 0.26, 13))
+  // usable diameter minus padding
+  const maxWidth = size * 1.7
+  // average character width ≈ 55% of font-size for Inter
+  const charWidth = fontSize * 0.55
+  const maxChars = Math.floor(maxWidth / charWidth)
+
+  if (name.length <= maxChars) return name
+
+  return `${name.slice(0, Math.max(1, maxChars - 1))}…`
 }
 
 // ── Adjacency ─────────────────────────────────────────────────────────────────
@@ -48,10 +69,7 @@ export function buildAdjacency(links: NoteLink[]): Set<string> {
 
 // ── SVG defs builders ─────────────────────────────────────────────────────────
 
-export function buildShadowFilter(
-  defs: d3.Selection<SVGDefsElement, unknown, null, undefined>,
-  uid: string,
-): void {
+export function buildShadowFilter(defs: d3.Selection<SVGDefsElement, unknown, null, undefined>, uid: string): void {
   const shadow = defs
     .append('filter')
     .attr('id', `${uid}-shadow`)
@@ -60,7 +78,12 @@ export function buildShadowFilter(
     .attr('width', '180%')
     .attr('height', '180%')
 
-  shadow.append('feDropShadow').attr('dx', 0).attr('dy', 2).attr('stdDeviation', 5).attr('flood-color', 'rgba(0,0,0,0.18)')
+  shadow
+    .append('feDropShadow')
+    .attr('dx', 0)
+    .attr('dy', 2)
+    .attr('stdDeviation', 5)
+    .attr('flood-color', 'rgba(0,0,0,0.18)')
 }
 
 export function buildNodeGradients(
@@ -78,9 +101,21 @@ export function buildNodeGradients(
     .attr('r', '70%')
     .attr('gradientUnits', 'objectBoundingBox')
 
-  nodeGrads.append('stop').attr('offset', '0%').attr('stop-color', (d) => lightenHex(d.color, 0.38)).attr('stop-opacity', 1)
-  nodeGrads.append('stop').attr('offset', '65%').attr('stop-color', (d) => d.color).attr('stop-opacity', 0.92)
-  nodeGrads.append('stop').attr('offset', '100%').attr('stop-color', (d) => lightenHex(d.color, -0.12)).attr('stop-opacity', 1)
+  nodeGrads
+    .append('stop')
+    .attr('offset', '0%')
+    .attr('stop-color', (d) => lightenHex(d.color, 0.38))
+    .attr('stop-opacity', 1)
+  nodeGrads
+    .append('stop')
+    .attr('offset', '65%')
+    .attr('stop-color', (d) => d.color)
+    .attr('stop-opacity', 0.92)
+  nodeGrads
+    .append('stop')
+    .attr('offset', '100%')
+    .attr('stop-color', (d) => lightenHex(d.color, -0.12))
+    .attr('stop-opacity', 1)
 
   return nodeGrads
 }
@@ -97,8 +132,16 @@ export function buildLinkGradients(
     .attr('id', (_lk, index) => `${uid}-lg-${index}`)
     .attr('gradientUnits', 'userSpaceOnUse')
 
-  linkGrads.append('stop').attr('offset', '0%').attr('stop-color', (lk) => (lk.source as NoteNode).color).attr('stop-opacity', 0.8)
-  linkGrads.append('stop').attr('offset', '100%').attr('stop-color', (lk) => (lk.target as NoteNode).color).attr('stop-opacity', 0.8)
+  linkGrads
+    .append('stop')
+    .attr('offset', '0%')
+    .attr('stop-color', (lk) => (lk.source as NoteNode).color)
+    .attr('stop-opacity', 0.8)
+  linkGrads
+    .append('stop')
+    .attr('offset', '100%')
+    .attr('stop-color', (lk) => (lk.target as NoteNode).color)
+    .attr('stop-opacity', 0.8)
 
   return linkGrads
 }
@@ -132,7 +175,12 @@ export function makeControls(
   return {
     cleanup: () => simulation.stop(),
     zoomIn: () => d3.select(svgElement).transition().duration(250).call(zoomBehavior.scaleBy, 1.4),
-    zoomOut: () => d3.select(svgElement).transition().duration(250).call(zoomBehavior.scaleBy, 1 / 1.4),
+    zoomOut: () =>
+      d3
+        .select(svgElement)
+        .transition()
+        .duration(250)
+        .call(zoomBehavior.scaleBy, 1 / 1.4),
     resetView: () => d3.select(svgElement).transition().duration(350).call(zoomBehavior.transform, d3.zoomIdentity),
   }
 }

@@ -1,6 +1,6 @@
 import * as d3 from 'd3'
 
-import { buildAdjacency, lightenHex, linkOpacity, linkThickness } from '../common'
+import { buildAdjacency, lightenHex, linkOpacity, linkThickness, truncateLabel } from '../common'
 
 import type { NoteLink, NoteNode, RenderedSelections, StyleContext, StyleRenderer } from '../types'
 
@@ -18,12 +18,12 @@ function arcPath(x1: number, y1: number, x2: number, y2: number): string {
 }
 
 const init = (context: StyleContext): RenderedSelections => {
-  const { g, defs, nodes, links, width, height, uid } = context
+  const { g, nodes, links, width, height } = context
 
   // Background sky
   g.insert('rect', ':first-child').attr('width', width).attr('height', height).attr('fill', '#080b1a')
 
-  // Stars
+  // Stars — static, rendered once, no filter
   const starCount = 80
 
   const stars = Array.from({ length: starCount }, () => ({
@@ -49,41 +49,18 @@ const init = (context: StyleContext): RenderedSelections => {
     .attr('fill-opacity', (s) => s.op)
     .attr('pointer-events', 'none')
 
-  // Glow filter for links
-  const glowFilter = defs
-    .append('filter')
-    .attr('id', `${uid}-glow`)
-    .attr('x', '-50%')
-    .attr('y', '-50%')
-    .attr('width', '200%')
-    .attr('height', '200%')
-
-  glowFilter.append('feGaussianBlur').attr('in', 'SourceGraphic').attr('stdDeviation', 3)
-
-  const linkG = g.append('g').attr('class', 'links')
-
-  // Glow copy
-  const linkGlowSel = linkG
-    .selectAll<SVGPathElement, NoteLink>('path.link-glow')
+  // Links — simple bezier arcs, no expensive filter
+  const linkSel = g
+    .append('g')
+    .attr('class', 'links')
+    .selectAll<SVGPathElement, NoteLink>('path')
     .data(links)
     .join('path')
-    .attr('class', 'link-glow')
     .attr('fill', 'none')
-    .attr('stroke', (lk) => lightenHex((lk.source as NoteNode).color, 0.25))
-    .attr('stroke-width', (lk) => linkThickness(lk.weight) + 3)
-    .attr('stroke-opacity', (lk) => linkOpacity(lk.weight) * 0.4)
-    .attr('filter', `url(#${uid}-glow)`)
-    .attr('pointer-events', 'none')
-
-  const linkSel = linkG
-    .selectAll<SVGPathElement, NoteLink>('path.link-main')
-    .data(links)
-    .join('path')
-    .attr('class', 'link-main')
-    .attr('fill', 'none')
-    .attr('stroke', (lk) => lightenHex((lk.source as NoteNode).color, 0.3))
+    .attr('stroke', (lk) => lightenHex((lk.source as NoteNode).color, 0.35))
     .attr('stroke-width', (lk) => linkThickness(lk.weight))
     .attr('stroke-opacity', (lk) => linkOpacity(lk.weight))
+    .attr('stroke-linecap', 'round')
 
   const nodeGroupSel = g
     .append('g')
@@ -93,9 +70,9 @@ const init = (context: StyleContext): RenderedSelections => {
     .join('g')
     .style('cursor', 'pointer')
 
-  // 3 concentric glow rings
-  const ringRadii = [4, 10, 18] as const
-  const ringOpacities = [0.25, 0.12, 0.05] as const
+  // 2 concentric glow rings (no filter, just semi-transparent fills)
+  const ringRadii = [5, 14] as const
+  const ringOpacities = [0.22, 0.08] as const
 
   for (const [index, ringRadius] of ringRadii.entries()) {
     nodeGroupSel
@@ -137,7 +114,7 @@ const init = (context: StyleContext): RenderedSelections => {
   nodeGroupSel
     .filter((d) => d.size >= 24)
     .append('text')
-    .text((d) => d.name)
+    .text((d) => truncateLabel(d.name, d.size))
     .attr('text-anchor', 'middle')
     .attr('dominant-baseline', 'middle')
     .attr('fill', 'rgba(255,255,255,0.9)')
@@ -163,30 +140,18 @@ const init = (context: StyleContext): RenderedSelections => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     linkSel: linkSel as any,
     nodeGroupSel,
-    extras: {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      linkGlowSel: linkGlowSel as any,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      adjacency: adjacency as any,
-    },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    extras: { adjacency: adjacency as any },
   }
 }
 
-const tick = (sel: RenderedSelections, _nodes: NoteNode[], links: NoteLink[]): void => {
-  function pathForLink(lk: NoteLink): string {
+const tick = (sel: RenderedSelections): void => {
+  sel.linkSel.attr('d', (lk) => {
     const s = lk.source as NoteNode
     const t = lk.target as NoteNode
 
     return arcPath(s.x ?? 0, s.y ?? 0, t.x ?? 0, t.y ?? 0)
-  }
-
-  sel.linkSel.attr('d', pathForLink)
-
-  const linkGlowSel = sel.extras?.['linkGlowSel']
-
-  if (linkGlowSel) {
-    linkGlowSel.attr('d', (_lk: NoteLink, index: number) => pathForLink(links[index]))
-  }
+  })
 
   sel.nodeGroupSel.attr('transform', (d) => `translate(${d.x ?? 0},${d.y ?? 0})`)
 }
