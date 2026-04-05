@@ -215,26 +215,27 @@
         aria-expanded={!collapsed}
         aria-label={collapsed ? m.oryxel_status_expand() : m.oryxel_status_collapse()}
       >
-        <!-- Left: activity indicator -->
-        {#if thinking && !isProgressActive}
-          <span class="flex shrink-0 gap-1">
-            {#each [0, 1, 2] as index (index)}
-              <span class="size-1.5 animate-pulse rounded-full bg-accent" style="animation-delay: {index * 0.15}s"
-              ></span>
-            {/each}
-          </span>
-        {:else if isProgressActive}
-          <span class="shrink-0 text-xs font-semibold text-accent tabular-nums">{progressPercent}%</span>
-        {/if}
-
-        <!-- Status text -->
-        <span class="min-w-0 flex-1 truncate text-sm text-foreground-muted">{statusLabel}</span>
-
-        <!-- Patch count badge (if any and collapsed) -->
-        {#if collapsed && pendingPatches.length > 0}
-          <span class="shrink-0 rounded-full bg-accent px-2 py-0.5 text-[10px] font-semibold text-white tabular-nums">
-            {pendingPatches.length}
-          </span>
+        {#if collapsed}
+          <!-- Collapsed: show compact status summary -->
+          {#if thinking && !isProgressActive}
+            <span class="flex shrink-0 gap-1">
+              {#each [0, 1, 2] as index (index)}
+                <span class="size-1.5 animate-pulse rounded-full bg-accent" style="animation-delay: {index * 0.15}s"
+                ></span>
+              {/each}
+            </span>
+          {:else if isProgressActive}
+            <span class="shrink-0 text-xs font-semibold text-accent tabular-nums">{progressPercent}%</span>
+          {/if}
+          <span class="min-w-0 flex-1 truncate text-sm text-foreground-muted">{statusLabel}</span>
+          {#if pendingPatches.length > 0}
+            <span class="shrink-0 rounded-full bg-accent px-2 py-0.5 text-[10px] font-semibold text-white tabular-nums">
+              {pendingPatches.length}
+            </span>
+          {/if}
+        {:else}
+          <!-- Expanded: just a collapse label -->
+          <span class="flex-1 text-xs text-foreground-muted">{m.oryxel_status_collapse()}</span>
         {/if}
 
         <!-- Chevron -->
