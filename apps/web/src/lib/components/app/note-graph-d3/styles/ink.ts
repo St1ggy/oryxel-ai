@@ -160,10 +160,15 @@ const init = (context: StyleContext): RenderedSelections => {
     .text((d) => truncateLabel(d.name, d.size))
     .attr('text-anchor', 'middle')
     .attr('dominant-baseline', 'middle')
-    .attr('fill', 'var(--oryx-fg, #333)')
+    .attr('fill', 'var(--oryx-fg, #1a1a1a)')
     .attr('font-size', (d) => `${Math.max(9, Math.min(d.size * 0.25, 13))}px`)
     .attr('font-family', '"Georgia", "Palatino", serif')
     .attr('font-style', 'italic')
+    .attr('font-weight', '600')
+    .attr('paint-order', 'stroke')
+    .attr('stroke', 'rgba(255,250,240,0.9)')
+    .attr('stroke-width', 1.5)
+    .attr('stroke-linejoin', 'round')
 
   labelGroupSel
     .filter((d) => d.size < 28)
@@ -171,10 +176,14 @@ const init = (context: StyleContext): RenderedSelections => {
     .text((d) => d.name)
     .attr('text-anchor', 'middle')
     .attr('dy', (d) => d.size + 12)
-    .attr('fill', 'var(--oryx-fg-muted, #888)')
+    .attr('fill', 'var(--oryx-fg, #1a1a1a)')
     .attr('font-size', '9px')
     .attr('font-family', '"Georgia", serif')
     .attr('font-style', 'italic')
+    .attr('paint-order', 'stroke')
+    .attr('stroke', 'rgba(255,250,240,0.85)')
+    .attr('stroke-width', 1.5)
+    .attr('stroke-linejoin', 'round')
 
   return {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
