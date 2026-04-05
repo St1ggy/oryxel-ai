@@ -1,5 +1,5 @@
 import { brand, db as database, fragrance, userFragrance } from '@oryxel/db'
-import { eq } from 'drizzle-orm'
+import { asc, eq } from 'drizzle-orm'
 
 import { extractEnglishKey, lookupTranslations, resolveCommaSeparated } from '../translation/service'
 
@@ -108,6 +108,7 @@ export async function loadDiaryForUser(userId: string, locale = 'en'): Promise<D
       .innerJoin(fragrance, eq(userFragrance.fragranceId, fragrance.id))
       .innerJoin(brand, eq(fragrance.brandId, brand.id))
       .where(eq(userFragrance.userId, userId))
+      .orderBy(asc(brand.name), asc(fragrance.name))
 
     // Collect all canonical English keys then batch-lookup translations
     const allKeys = rows.flatMap((r) => collectKeys(r))
