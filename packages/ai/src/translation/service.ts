@@ -23,6 +23,7 @@ export async function lookupTranslations(keys: string[], locale: string): Promis
 // each individual term in the translation map and rejoining them.
 // Falls back to the original term when no translation is found.
 // Returns null when raw is null/empty.
+// eslint-disable-next-line sonarjs/function-return-type
 export function resolveCommaSeparated(raw: string | null, map: Map<string, string>): string | null {
   if (!raw) return null
 
@@ -46,6 +47,7 @@ export async function saveTranslations(entries: { key: string; locale: string; v
 }
 
 /** Extracts canonical English text from a stored value (plain text or legacy locale-map JSON). */
+// eslint-disable-next-line sonarjs/function-return-type
 export function extractEnglishKey(raw: string | null): string | null {
   if (!raw) return null
 

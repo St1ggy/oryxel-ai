@@ -3,6 +3,7 @@ import commonConfig from '@st1ggy/linter-config/eslint-common'
 import { defineConfig } from 'eslint/config'
 
 export default defineConfig([
+  { ignores: ['eslint.config.js', 'prettier.config.js', 'drizzle.config.ts'] },
   ...commonConfig,
   {
     rules: {

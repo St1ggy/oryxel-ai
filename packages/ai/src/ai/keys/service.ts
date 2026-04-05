@@ -31,6 +31,7 @@ const DEFAULT_LABEL_BY_PROVIDER: Record<ProviderId, string> = {
   deepseek: 'DeepSeek',
 }
 
+// eslint-disable-next-line sonarjs/function-return-type
 function getPlatformKeyConfig(): { provider: ProviderId; key: string } | null {
   const provider = process.env.PLATFORM_AI_PROVIDER?.trim()
   const key = process.env.PLATFORM_AI_KEY?.trim()
@@ -46,6 +47,7 @@ function getPlatformKeyConfig(): { provider: ProviderId; key: string } | null {
   }
 }
 
+// eslint-disable-next-line sonarjs/function-return-type
 function fallbackProviderKey(provider: ProviderId): string | undefined {
   switch (provider) {
     case 'openai': {
@@ -94,8 +96,10 @@ function toKeyHint(rawKey: string): string {
   return `••••${normalized.slice(-4)}`
 }
 
+const KNOWN_PROVIDERS = new Set<string>(['openai', 'anthropic', 'gemini', 'qwen', 'perplexity', 'groq', 'deepseek'])
+
 function assertProvider(provider: string): asserts provider is ProviderId {
-  if (!['openai', 'anthropic', 'gemini', 'qwen', 'perplexity', 'groq', 'deepseek'].includes(provider)) {
+  if (!KNOWN_PROVIDERS.has(provider)) {
     throw new Error(`Unsupported provider: ${provider}`)
   }
 }
