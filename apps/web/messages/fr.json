@@ -368,5 +368,7 @@
   "oryxel_note_tier_top": "Tête",
   "oryxel_note_tier_heart": "Cœur",
   "oryxel_note_tier_base": "Fond",
-  "oryxel_note_tier_unknown": "—"
+  "oryxel_note_tier_unknown": "—",
+  "oryxel_note_graph_legend_size": "Taille = note × couche × attitude",
+  "oryxel_note_graph_legend_lines": "Lignes = notes coexistent dans un parfum"
 }

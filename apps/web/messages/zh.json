@@ -368,5 +368,7 @@
   "oryxel_note_tier_top": "前调",
   "oryxel_note_tier_heart": "中调",
   "oryxel_note_tier_base": "后调",
-  "oryxel_note_tier_unknown": "—"
+  "oryxel_note_tier_unknown": "—",
+  "oryxel_note_graph_legend_size": "大小 = 评分 × 层次 × 态度",
+  "oryxel_note_graph_legend_lines": "连线 = 共现于同一香水"
 }

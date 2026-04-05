@@ -368,5 +368,7 @@
   "oryxel_note_tier_top": "Top",
   "oryxel_note_tier_heart": "Heart",
   "oryxel_note_tier_base": "Base",
-  "oryxel_note_tier_unknown": "—"
+  "oryxel_note_tier_unknown": "—",
+  "oryxel_note_graph_legend_size": "Size = rating × layer × attitude",
+  "oryxel_note_graph_legend_lines": "Lines = notes co-occur in a fragrance"
 }

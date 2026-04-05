@@ -368,5 +368,7 @@
   "oryxel_note_tier_top": "トップ",
   "oryxel_note_tier_heart": "ハート",
   "oryxel_note_tier_base": "ベース",
-  "oryxel_note_tier_unknown": "—"
+  "oryxel_note_tier_unknown": "—",
+  "oryxel_note_graph_legend_size": "サイズ = 評価 × 層 × 態度",
+  "oryxel_note_graph_legend_lines": "線 = 同じ香水に共存する"
 }
