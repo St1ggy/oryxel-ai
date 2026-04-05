@@ -83,6 +83,7 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
         .select({
           minRecommendations: userAiPreferences.minRecommendations,
           maxRecommendations: userAiPreferences.maxRecommendations,
+          minPyramidNotes: userAiPreferences.minPyramidNotes,
           maxPyramidNotes: userAiPreferences.maxPyramidNotes,
           tone: userAiPreferences.tone,
           depth: userAiPreferences.depth,
@@ -142,6 +143,7 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
       preferredProvider,
       minRecommendations: aiPrefs?.minRecommendations,
       maxRecommendations: aiPrefs?.maxRecommendations,
+      minPyramidNotes: aiPrefs?.minPyramidNotes,
       maxPyramidNotes: aiPrefs?.maxPyramidNotes,
       tone: aiPrefs?.tone ?? undefined,
       depth: aiPrefs?.depth ?? undefined,
