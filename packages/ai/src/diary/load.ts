@@ -125,7 +125,7 @@ export async function loadDiaryForUser(userId: string, locale = 'en'): Promise<D
 
       if (r.isTried && r.isLiked === true) result.liked.push(row)
 
-      if (r.isTried && r.isLiked === null && !r.isOwned) result.neutral.push(row)
+      if (r.isTried && r.isLiked === null) result.neutral.push(row)
 
       if (r.isTried && r.isLiked === false) result.disliked.push(row)
 
