@@ -370,5 +370,11 @@
   "oryxel_note_tier_base": "Базовая",
   "oryxel_note_tier_unknown": "—",
   "oryxel_note_graph_legend_size": "Размер = рейтинг × слой × отношение",
-  "oryxel_note_graph_legend_lines": "Линии = ноты встречаются в одном аромате"
+  "oryxel_note_graph_legend_lines": "Линии = ноты встречаются в одном аромате",
+  "oryxel_note_graph_style_default": "Стандарт",
+  "oryxel_note_graph_style_constellation": "Созвездие",
+  "oryxel_note_graph_style_bubble": "Пузырьки",
+  "oryxel_note_graph_style_ink": "Чернила",
+  "oryxel_note_graph_style_cluster": "Кластеры",
+  "oryxel_note_graph_style_timeline": "Хронология"
 }

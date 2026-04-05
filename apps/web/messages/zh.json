@@ -370,5 +370,11 @@
   "oryxel_note_tier_base": "后调",
   "oryxel_note_tier_unknown": "—",
   "oryxel_note_graph_legend_size": "大小 = 评分 × 层次 × 态度",
-  "oryxel_note_graph_legend_lines": "连线 = 共现于同一香水"
+  "oryxel_note_graph_legend_lines": "连线 = 共现于同一香水",
+  "oryxel_note_graph_style_default": "默认",
+  "oryxel_note_graph_style_constellation": "星座",
+  "oryxel_note_graph_style_bubble": "气泡",
+  "oryxel_note_graph_style_ink": "水墨",
+  "oryxel_note_graph_style_cluster": "聚类",
+  "oryxel_note_graph_style_timeline": "时间线"
 }

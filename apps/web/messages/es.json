@@ -370,5 +370,11 @@
   "oryxel_note_tier_base": "Base",
   "oryxel_note_tier_unknown": "—",
   "oryxel_note_graph_legend_size": "Tamaño = valoración × capa × actitud",
-  "oryxel_note_graph_legend_lines": "Líneas = notas coexisten en un perfume"
+  "oryxel_note_graph_legend_lines": "Líneas = notas coexisten en un perfume",
+  "oryxel_note_graph_style_default": "Predeterminado",
+  "oryxel_note_graph_style_constellation": "Constelación",
+  "oryxel_note_graph_style_bubble": "Burbujas",
+  "oryxel_note_graph_style_ink": "Tinta",
+  "oryxel_note_graph_style_cluster": "Clústeres",
+  "oryxel_note_graph_style_timeline": "Cronología"
 }

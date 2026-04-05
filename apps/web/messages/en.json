@@ -370,5 +370,11 @@
   "oryxel_note_tier_base": "Base",
   "oryxel_note_tier_unknown": "—",
   "oryxel_note_graph_legend_size": "Size = rating × layer × attitude",
-  "oryxel_note_graph_legend_lines": "Lines = notes co-occur in a fragrance"
+  "oryxel_note_graph_legend_lines": "Lines = notes co-occur in a fragrance",
+  "oryxel_note_graph_style_default": "Default",
+  "oryxel_note_graph_style_constellation": "Constellation",
+  "oryxel_note_graph_style_bubble": "Bubble",
+  "oryxel_note_graph_style_ink": "Ink",
+  "oryxel_note_graph_style_cluster": "Cluster",
+  "oryxel_note_graph_style_timeline": "Timeline"
 }

@@ -370,5 +370,11 @@
   "oryxel_note_tier_base": "ベース",
   "oryxel_note_tier_unknown": "—",
   "oryxel_note_graph_legend_size": "サイズ = 評価 × 層 × 態度",
-  "oryxel_note_graph_legend_lines": "線 = 同じ香水に共存する"
+  "oryxel_note_graph_legend_lines": "線 = 同じ香水に共存する",
+  "oryxel_note_graph_style_default": "デフォルト",
+  "oryxel_note_graph_style_constellation": "星座",
+  "oryxel_note_graph_style_bubble": "バブル",
+  "oryxel_note_graph_style_ink": "墨絵",
+  "oryxel_note_graph_style_cluster": "クラスター",
+  "oryxel_note_graph_style_timeline": "タイムライン"
 }

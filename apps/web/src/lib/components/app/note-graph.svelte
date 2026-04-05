@@ -1,9 +1,10 @@
 <script lang="ts">
+  import { Disc, Hexagon, Layers, Pen, Sparkles, Star } from '@lucide/svelte'
   import { onDestroy } from 'svelte'
 
   import * as m from '$lib/paraglide/messages.js'
 
-  import { type GraphControls, type TooltipState, initNoteGraphD3 } from './note-graph-d3'
+  import { type GraphControls, type GraphStyle, type TooltipState, initNoteGraphD3 } from './note-graph-d3'
 
   import type { DiaryData, DiaryRow } from '$lib/types/diary'
   import type { NoteGraph, NoteNode } from '$lib/utils/note-graph'
@@ -59,6 +60,15 @@
     neutral: m.oryxel_note_graph_list_neutral,
   }
 
+  const STYLES: { style: GraphStyle; icon: typeof Sparkles; label: () => string }[] = [
+    { style: 'default', icon: Sparkles, label: m.oryxel_note_graph_style_default },
+    { style: 'constellation', icon: Star, label: m.oryxel_note_graph_style_constellation },
+    { style: 'bubble', icon: Disc, label: m.oryxel_note_graph_style_bubble },
+    { style: 'ink', icon: Pen, label: m.oryxel_note_graph_style_ink },
+    { style: 'cluster', icon: Hexagon, label: m.oryxel_note_graph_style_cluster },
+    { style: 'timeline', icon: Layers, label: m.oryxel_note_graph_style_timeline },
+  ]
+
   function localFamily(family: string): string {
     return familyLabel[family]?.() ?? family
   }
@@ -72,6 +82,7 @@
   let controls: GraphControls | null = null
   let tooltip: TooltipState | null = $state(null)
   let panelNode: NoteNode | null = $state(null)
+  let activeStyle = $state<GraphStyle>('default')
 
   // Fragrances containing the selected note
 
@@ -114,7 +125,7 @@
 
     const measuredWidth = containerElement.getBoundingClientRect().width || 800
 
-    controls = initNoteGraphD3(
+    initNoteGraphD3(
       svgElement,
       graph,
       measuredWidth,
@@ -126,7 +137,10 @@
       (state) => {
         tooltip = state
       },
-    )
+      activeStyle,
+    ).then((c) => {
+      controls = c
+    })
 
     return () => controls?.cleanup()
   })
@@ -238,7 +252,26 @@
       {/if}
     </div>
 
-    <!-- Zoom controls -->
+    <!-- Style switcher — top-right, above zoom controls -->
+    <div class="absolute top-2 right-2 z-10 flex flex-col gap-1">
+      {#each STYLES as { style, icon: Icon, label } (style)}
+        <button
+          onclick={() => (activeStyle = style)}
+          title={label()}
+          class="oryx-transition flex h-7 w-7 items-center justify-center rounded-md border border-border bg-surface shadow-sm hover:bg-muted active:scale-95 {activeStyle ===
+          style
+            ? 'bg-muted ring-1 ring-accent'
+            : ''}"
+          style="color:{activeStyle === style ? 'var(--color-accent, #6366f1)' : 'var(--oryx-fg-muted, #888)'}"
+          aria-label={label()}
+          aria-pressed={activeStyle === style}
+        >
+          <Icon size={13} />
+        </button>
+      {/each}
+    </div>
+
+    <!-- Zoom controls — below switcher, same column -->
     <div class="absolute right-2 bottom-2 flex flex-col gap-1">
       {#each [{ label: '+', action: () => controls?.zoomIn() }, { label: '⊙', action: () => controls?.resetView() }, { label: '−', action: () => controls?.zoomOut() }] as button (button.label)}
         <button
