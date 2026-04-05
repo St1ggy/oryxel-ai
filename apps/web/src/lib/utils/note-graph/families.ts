@@ -1,7 +1,14 @@
-type FamilyDefinition = {
+export type FamilyDefinition = {
   family: string
   color: string
   keywords: string[]
+  /** Per-locale display name. Falls back to `family` if locale not found. */
+  translations?: Record<string, string>
+}
+
+/** Resolve the display name for a family in a given locale. */
+export function familyDisplayName(family: FamilyDefinition, locale: string): string {
+  return family.translations?.[locale] ?? family.translations?.['en'] ?? family.family
 }
 
 const FAMILY_DEFS: FamilyDefinition[] = [
@@ -649,10 +656,13 @@ const FAMILY_DEFS: FamilyDefinition[] = [
   },
 ]
 
-export function detectFamily(note: string): { family: string; color: string } {
+export function detectFamily(
+  note: string,
+  families: FamilyDefinition[] = FAMILY_DEFS,
+): { family: string; color: string } {
   const lower = note.toLowerCase()
 
-  for (const familyEntry of FAMILY_DEFS) {
+  for (const familyEntry of families) {
     if (familyEntry.keywords.some((kw) => lower.includes(kw))) {
       return { family: familyEntry.family, color: familyEntry.color }
     }
