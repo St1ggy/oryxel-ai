@@ -11,6 +11,7 @@
     "db:push:prod": "bun run --cwd packages/db db:push:prod",
     "db:generate": "bun run --cwd packages/db db:generate",
     "db:migrate": "bun run --cwd packages/db db:migrate",
+    "db:migrate:prod": "bun run --cwd packages/db db:migrate:prod",
     "db:studio": "bun run --cwd packages/db db:studio"
   },
   "dependencies": {

@@ -17,4 +17,12 @@ export default defineConfig([
       'unicorn/prevent-abbreviations': 'off',
     },
   },
+  {
+    files: ['src/migrate.ts'],
+    rules: {
+      // Migration runner is a CLI script — console output and process.exit() are intentional.
+      'no-console': 'off',
+      'unicorn/no-process-exit': 'off',
+    },
+  },
 ])
