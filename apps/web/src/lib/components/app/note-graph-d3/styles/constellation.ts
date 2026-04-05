@@ -189,9 +189,20 @@ const buildSimulation = (
             (100 + ((lk.source as NoteNode).size + (lk.target as NoteNode).size) * 1.2) * linkDistanceFactor(lk.weight),
         ),
     )
+    // Base repulsion — keeps stars from overlapping
     .force(
       'charge',
-      d3.forceManyBody<NoteNode>().strength((d) => -(720 + d.size * 10)),
+      d3.forceManyBody<NoteNode>().strength((d) => -(220 + d.size * 6)),
+    )
+    // Gravitational attraction — only large stars (size > 30) pull others toward them.
+    // Strength scales with "stellar mass" (size); distanceMax limits the field of influence.
+    .force(
+      'gravity',
+      d3
+        .forceManyBody<NoteNode>()
+        .strength((d) => Math.max(0, (d.size - 30) * 9))
+        .distanceMin(20)
+        .distanceMax(340),
     )
     .force('x', d3.forceX<NoteNode>(width / 2).strength(0.04))
     .force('y', d3.forceY<NoteNode>(height / 2).strength(0.04))
