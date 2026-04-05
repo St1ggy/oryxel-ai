@@ -347,5 +347,13 @@
   "oryxel_guide_family_gourmand_name": "Gourmand",
   "oryxel_guide_family_gourmand_desc": "Sweet and edible. Vanilla, caramel, praline.",
   "oryxel_status_expand": "Show details",
-  "oryxel_status_collapse": "Hide details"
+  "oryxel_status_collapse": "Hide details",
+  "oryxel_notes_view_list": "List",
+  "oryxel_notes_view_graph": "Graph",
+  "oryxel_note_graph_empty": "Add fragrances to see the note graph",
+  "oryxel_note_graph_tooltip_count": "{count} fragrances",
+  "oryxel_note_graph_modal_title": "{note}",
+  "oryxel_note_graph_list_liked": "Liked",
+  "oryxel_note_graph_list_owned": "Owned",
+  "oryxel_note_graph_list_neutral": "Neutral"
 }

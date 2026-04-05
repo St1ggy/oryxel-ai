@@ -347,5 +347,13 @@
   "oryxel_guide_family_gourmand_name": "グルマン",
   "oryxel_guide_family_gourmand_desc": "甘くておいしい香り。バニラ、キャラメル、プラリネ。",
   "oryxel_status_expand": "詳細を表示",
-  "oryxel_status_collapse": "非表示"
+  "oryxel_status_collapse": "非表示",
+  "oryxel_notes_view_list": "リスト",
+  "oryxel_notes_view_graph": "グラフ",
+  "oryxel_note_graph_empty": "香水を追加してノートグラフを表示",
+  "oryxel_note_graph_tooltip_count": "{count}件の香水",
+  "oryxel_note_graph_modal_title": "{note}",
+  "oryxel_note_graph_list_liked": "好き",
+  "oryxel_note_graph_list_owned": "所持",
+  "oryxel_note_graph_list_neutral": "普通"
 }

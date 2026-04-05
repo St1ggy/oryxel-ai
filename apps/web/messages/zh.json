@@ -347,5 +347,13 @@
   "oryxel_guide_family_gourmand_name": "美食调",
   "oryxel_guide_family_gourmand_desc": "甜蜜诱人。香草、焦糖、榛子糖。",
   "oryxel_status_expand": "显示详情",
-  "oryxel_status_collapse": "隐藏"
+  "oryxel_status_collapse": "隐藏",
+  "oryxel_notes_view_list": "列表",
+  "oryxel_notes_view_graph": "图谱",
+  "oryxel_note_graph_empty": "添加香水以查看香调图谱",
+  "oryxel_note_graph_tooltip_count": "{count} 款香水",
+  "oryxel_note_graph_modal_title": "{note}",
+  "oryxel_note_graph_list_liked": "喜欢",
+  "oryxel_note_graph_list_owned": "拥有",
+  "oryxel_note_graph_list_neutral": "中性"
 }

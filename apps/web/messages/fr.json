@@ -347,5 +347,13 @@
   "oryxel_guide_family_gourmand_name": "Gourmand",
   "oryxel_guide_family_gourmand_desc": "Doux et appétissant. Vanille, caramel, praliné.",
   "oryxel_status_expand": "Afficher les détails",
-  "oryxel_status_collapse": "Masquer"
+  "oryxel_status_collapse": "Masquer",
+  "oryxel_notes_view_list": "Liste",
+  "oryxel_notes_view_graph": "Graphe",
+  "oryxel_note_graph_empty": "Ajoutez des parfums pour voir le graphe des notes",
+  "oryxel_note_graph_tooltip_count": "{count} parfums",
+  "oryxel_note_graph_modal_title": "{note}",
+  "oryxel_note_graph_list_liked": "Aimé",
+  "oryxel_note_graph_list_owned": "Possédé",
+  "oryxel_note_graph_list_neutral": "Neutre"
 }

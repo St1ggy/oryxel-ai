@@ -24,11 +24,14 @@
   import DiaryProfileSkeleton from '$lib/components/app/diary-profile-skeleton.svelte'
   import DiaryProfileTab from '$lib/components/app/diary-profile-tab.svelte'
   import DiaryTableSkeleton from '$lib/components/app/diary-table-skeleton.svelte'
+  import NoteFragrancesModal from '$lib/components/app/note-fragrances-modal.svelte'
+  import NoteGraph from '$lib/components/app/note-graph.svelte'
   import ScentDiaryTable from '$lib/components/app/scent-diary-table.svelte'
   import ToTryTable from '$lib/components/app/to-try-table.svelte'
   import { type DiaryListTabValue, MOBILE_EXCLUDED_TABS, diaryListTabItems } from '$lib/diary/diary-tab-items'
   import * as m from '$lib/paraglide/messages.js'
   import { cn } from '$lib/utils/cn'
+  import { buildNoteGraph } from '$lib/utils/note-graph'
 
   import type {
     ActivityEntry,
@@ -38,6 +41,7 @@
     NoteRelationshipSentiment,
     RadarAxis,
   } from '$lib/types/diary'
+  import type { NoteNode } from '$lib/utils/note-graph'
   import type { Snippet } from 'svelte'
 
   type Props = {
@@ -210,6 +214,15 @@
   // --- Notes tab state ---
   let lastNoteRelationshipsRef: NoteRelationship[] | null = null
   let localNotes = $state<NoteRelationship[]>(untrack(() => [...noteRelationships]))
+  let notesViewMode = $state<'list' | 'graph'>('list')
+  let graphModalOpen = $state(false)
+  let graphModalNode = $state<NoteNode | null>(null)
+  const noteGraph = $derived(buildNoteGraph(diaryState))
+
+  function handleGraphNodeClick(node: NoteNode) {
+    graphModalNode = node
+    graphModalOpen = true
+  }
 
   $effect(() => {
     if (noteRelationships !== lastNoteRelationshipsRef) {
@@ -563,72 +576,98 @@
           {/if}
         </Tabs.Content>
         <Tabs.Content value="notes" class={panelClass}>
-          {#if localNotes.length === 0}
-            <p class="text-sm text-foreground-muted">{m.oryxel_notes_empty()}</p>
-          {:else}
-            <div class="overflow-x-auto rounded-xl border border-border bg-surface">
-              <table class="w-full text-sm">
-                <thead>
-                  <tr class="border-b border-border text-left text-xs text-foreground-muted">
-                    <th class="w-[200px] px-4 py-3 font-medium">{m.oryxel_notes_col_note()}</th>
-                    <th class="w-[160px] px-4 py-3 font-medium">{m.oryxel_notes_col_sentiment()}</th>
-                    <th class="px-4 py-3 font-medium">{m.oryxel_notes_col_comment()}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {#each localNotes as r (r.note)}
-                    {@const SentIcon = sentimentIcon(r.sentiment)}
-                    <tr class="border-b border-border/50 last:border-0 hover:bg-muted/20">
-                      <td class="px-4 py-3">
-                        <div class="flex flex-col gap-0.5">
-                          <span class="text-sm font-medium text-foreground">{r.translatedNote ?? r.note}</span>
-                          {#if r.translatedNote}
-                            <span class="font-mono text-[11px] text-foreground-muted">{r.note}</span>
-                          {/if}
-                        </div>
-                      </td>
-                      <td class="px-4 py-3">
-                        <DropdownMenu.Root>
-                          <DropdownMenu.Trigger
-                            class="oryx-transition flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium outline-none {sentimentColor(
-                              r.sentiment,
-                            )} hover:opacity-80"
-                          >
-                            <SentIcon class="size-3.5 shrink-0" />
-                            <span>{sentimentLabel(r.sentiment)}</span>
-                            {#if r.lockedByUser}
-                              <Lock class="size-3 shrink-0 opacity-60" />
-                            {:else}
-                              <ChevronDown class="size-3 shrink-0 opacity-50" />
-                            {/if}
-                          </DropdownMenu.Trigger>
-                          <DropdownMenu.Portal>
-                            <DropdownMenu.Content
-                              class="oryx-dropdown-content z-50 min-w-40 rounded-lg border border-border bg-surface p-1 shadow-card"
-                              sideOffset={4}
-                            >
-                              {#each sentimentOptions as s (s)}
-                                {@const Ico = sentimentIcon(s)}
-                                <DropdownMenu.Item
-                                  class="oryx-transition flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground outline-none select-none hover:bg-muted data-highlighted:bg-muted"
-                                  onSelect={() => patchNote(r.note, { sentiment: s })}
-                                >
-                                  <Ico class="size-4 shrink-0 {sentimentIconColor(s)}" />
-                                  {sentimentLabel(s)}
-                                </DropdownMenu.Item>
-                              {/each}
-                            </DropdownMenu.Content>
-                          </DropdownMenu.Portal>
-                        </DropdownMenu.Root>
-                      </td>
-                      <td class="max-w-[260px] px-4 py-3 text-xs leading-relaxed text-foreground-muted">
-                        {r.agentComment ?? ''}
-                      </td>
-                    </tr>
-                  {/each}
-                </tbody>
-              </table>
+          <!-- View toggle -->
+          <div class="mb-3 flex items-center justify-end">
+            <div class="flex gap-0.5 rounded-lg border border-border bg-muted p-0.5">
+              <button
+                onclick={() => (notesViewMode = 'list')}
+                class="oryx-transition rounded-md px-3 py-1 text-xs font-medium {notesViewMode === 'list'
+                  ? 'bg-surface text-foreground shadow-sm'
+                  : 'text-foreground-muted hover:text-foreground'}"
+              >
+                {m.oryxel_notes_view_list()}
+              </button>
+              <button
+                onclick={() => (notesViewMode = 'graph')}
+                class="oryx-transition rounded-md px-3 py-1 text-xs font-medium {notesViewMode === 'graph'
+                  ? 'bg-surface text-foreground shadow-sm'
+                  : 'text-foreground-muted hover:text-foreground'}"
+              >
+                {m.oryxel_notes_view_graph()}
+              </button>
             </div>
+          </div>
+
+          {#if notesViewMode === 'list'}
+            {#if localNotes.length === 0}
+              <p class="text-sm text-foreground-muted">{m.oryxel_notes_empty()}</p>
+            {:else}
+              <div class="overflow-x-auto rounded-xl border border-border bg-surface">
+                <table class="w-full text-sm">
+                  <thead>
+                    <tr class="border-b border-border text-left text-xs text-foreground-muted">
+                      <th class="w-[200px] px-4 py-3 font-medium">{m.oryxel_notes_col_note()}</th>
+                      <th class="w-[160px] px-4 py-3 font-medium">{m.oryxel_notes_col_sentiment()}</th>
+                      <th class="px-4 py-3 font-medium">{m.oryxel_notes_col_comment()}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {#each localNotes as r (r.note)}
+                      {@const SentIcon = sentimentIcon(r.sentiment)}
+                      <tr class="border-b border-border/50 last:border-0 hover:bg-muted/20">
+                        <td class="px-4 py-3">
+                          <div class="flex flex-col gap-0.5">
+                            <span class="text-sm font-medium text-foreground">{r.translatedNote ?? r.note}</span>
+                            {#if r.translatedNote}
+                              <span class="font-mono text-[11px] text-foreground-muted">{r.note}</span>
+                            {/if}
+                          </div>
+                        </td>
+                        <td class="px-4 py-3">
+                          <DropdownMenu.Root>
+                            <DropdownMenu.Trigger
+                              class="oryx-transition flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium outline-none {sentimentColor(
+                                r.sentiment,
+                              )} hover:opacity-80"
+                            >
+                              <SentIcon class="size-3.5 shrink-0" />
+                              <span>{sentimentLabel(r.sentiment)}</span>
+                              {#if r.lockedByUser}
+                                <Lock class="size-3 shrink-0 opacity-60" />
+                              {:else}
+                                <ChevronDown class="size-3 shrink-0 opacity-50" />
+                              {/if}
+                            </DropdownMenu.Trigger>
+                            <DropdownMenu.Portal>
+                              <DropdownMenu.Content
+                                class="oryx-dropdown-content z-50 min-w-40 rounded-lg border border-border bg-surface p-1 shadow-card"
+                                sideOffset={4}
+                              >
+                                {#each sentimentOptions as s (s)}
+                                  {@const Ico = sentimentIcon(s)}
+                                  <DropdownMenu.Item
+                                    class="oryx-transition flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground outline-none select-none hover:bg-muted data-highlighted:bg-muted"
+                                    onSelect={() => patchNote(r.note, { sentiment: s })}
+                                  >
+                                    <Ico class="size-4 shrink-0 {sentimentIconColor(s)}" />
+                                    {sentimentLabel(s)}
+                                  </DropdownMenu.Item>
+                                {/each}
+                              </DropdownMenu.Content>
+                            </DropdownMenu.Portal>
+                          </DropdownMenu.Root>
+                        </td>
+                        <td class="max-w-[260px] px-4 py-3 text-xs leading-relaxed text-foreground-muted">
+                          {r.agentComment ?? ''}
+                        </td>
+                      </tr>
+                    {/each}
+                  </tbody>
+                </table>
+              </div>
+            {/if}
+          {:else}
+            <NoteGraph graph={noteGraph} onNodeClick={handleGraphNodeClick} height={480} />
           {/if}
         </Tabs.Content>
         <Tabs.Content value="guide" class={panelClass}>
@@ -809,72 +848,98 @@
       {/if}
     </Tabs.Content>
     <Tabs.Content value="notes" class={panelClass}>
-      {#if localNotes.length === 0}
-        <p class="text-sm text-foreground-muted">{m.oryxel_notes_empty()}</p>
-      {:else}
-        <div class="overflow-x-auto rounded-xl border border-border bg-surface">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="border-b border-border text-left text-xs text-foreground-muted">
-                <th class="w-[160px] px-4 py-3 font-medium">{m.oryxel_notes_col_note()}</th>
-                <th class="w-[140px] px-4 py-3 font-medium">{m.oryxel_notes_col_sentiment()}</th>
-                <th class="px-4 py-3 font-medium">{m.oryxel_notes_col_comment()}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {#each localNotes as r (r.note)}
-                {@const SentIcon = sentimentIcon(r.sentiment)}
-                <tr class="border-b border-border/50 last:border-0">
-                  <td class="px-4 py-3">
-                    <div class="flex flex-col gap-0.5">
-                      <span class="text-sm font-medium text-foreground">{r.translatedNote ?? r.note}</span>
-                      {#if r.translatedNote}
-                        <span class="font-mono text-[11px] text-foreground-muted">{r.note}</span>
-                      {/if}
-                    </div>
-                  </td>
-                  <td class="px-4 py-3">
-                    <DropdownMenu.Root>
-                      <DropdownMenu.Trigger
-                        class="oryx-transition flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium outline-none {sentimentColor(
-                          r.sentiment,
-                        )} hover:opacity-80"
-                      >
-                        <SentIcon class="size-3.5 shrink-0" />
-                        <span>{sentimentLabel(r.sentiment)}</span>
-                        {#if r.lockedByUser}
-                          <Lock class="size-3 shrink-0 opacity-60" />
-                        {:else}
-                          <ChevronDown class="size-3 shrink-0 opacity-50" />
-                        {/if}
-                      </DropdownMenu.Trigger>
-                      <DropdownMenu.Portal>
-                        <DropdownMenu.Content
-                          class="oryx-dropdown-content z-50 min-w-40 rounded-lg border border-border bg-surface p-1 shadow-card"
-                          sideOffset={4}
-                        >
-                          {#each sentimentOptions as s (s)}
-                            {@const Ico = sentimentIcon(s)}
-                            <DropdownMenu.Item
-                              class="oryx-transition flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground outline-none select-none hover:bg-muted data-highlighted:bg-muted"
-                              onSelect={() => patchNote(r.note, { sentiment: s })}
-                            >
-                              <Ico class="size-4 shrink-0 {sentimentIconColor(s)}" />
-                              {sentimentLabel(s)}
-                            </DropdownMenu.Item>
-                          {/each}
-                        </DropdownMenu.Content>
-                      </DropdownMenu.Portal>
-                    </DropdownMenu.Root>
-                  </td>
-                  <td class="max-w-[200px] px-4 py-3 text-xs leading-relaxed text-foreground-muted">
-                    {r.agentComment ?? ''}
-                  </td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
+      <!-- View toggle -->
+      <div class="mb-3 flex items-center justify-end">
+        <div class="flex gap-0.5 rounded-lg border border-border bg-muted p-0.5">
+          <button
+            onclick={() => (notesViewMode = 'list')}
+            class="oryx-transition rounded-md px-3 py-1 text-xs font-medium {notesViewMode === 'list'
+              ? 'bg-surface text-foreground shadow-sm'
+              : 'text-foreground-muted hover:text-foreground'}"
+          >
+            {m.oryxel_notes_view_list()}
+          </button>
+          <button
+            onclick={() => (notesViewMode = 'graph')}
+            class="oryx-transition rounded-md px-3 py-1 text-xs font-medium {notesViewMode === 'graph'
+              ? 'bg-surface text-foreground shadow-sm'
+              : 'text-foreground-muted hover:text-foreground'}"
+          >
+            {m.oryxel_notes_view_graph()}
+          </button>
         </div>
+      </div>
+
+      {#if notesViewMode === 'list'}
+        {#if localNotes.length === 0}
+          <p class="text-sm text-foreground-muted">{m.oryxel_notes_empty()}</p>
+        {:else}
+          <div class="overflow-x-auto rounded-xl border border-border bg-surface">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-border text-left text-xs text-foreground-muted">
+                  <th class="w-[160px] px-4 py-3 font-medium">{m.oryxel_notes_col_note()}</th>
+                  <th class="w-[140px] px-4 py-3 font-medium">{m.oryxel_notes_col_sentiment()}</th>
+                  <th class="px-4 py-3 font-medium">{m.oryxel_notes_col_comment()}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each localNotes as r (r.note)}
+                  {@const SentIcon = sentimentIcon(r.sentiment)}
+                  <tr class="border-b border-border/50 last:border-0">
+                    <td class="px-4 py-3">
+                      <div class="flex flex-col gap-0.5">
+                        <span class="text-sm font-medium text-foreground">{r.translatedNote ?? r.note}</span>
+                        {#if r.translatedNote}
+                          <span class="font-mono text-[11px] text-foreground-muted">{r.note}</span>
+                        {/if}
+                      </div>
+                    </td>
+                    <td class="px-4 py-3">
+                      <DropdownMenu.Root>
+                        <DropdownMenu.Trigger
+                          class="oryx-transition flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium outline-none {sentimentColor(
+                            r.sentiment,
+                          )} hover:opacity-80"
+                        >
+                          <SentIcon class="size-3.5 shrink-0" />
+                          <span>{sentimentLabel(r.sentiment)}</span>
+                          {#if r.lockedByUser}
+                            <Lock class="size-3 shrink-0 opacity-60" />
+                          {:else}
+                            <ChevronDown class="size-3 shrink-0 opacity-50" />
+                          {/if}
+                        </DropdownMenu.Trigger>
+                        <DropdownMenu.Portal>
+                          <DropdownMenu.Content
+                            class="oryx-dropdown-content z-50 min-w-40 rounded-lg border border-border bg-surface p-1 shadow-card"
+                            sideOffset={4}
+                          >
+                            {#each sentimentOptions as s (s)}
+                              {@const Ico = sentimentIcon(s)}
+                              <DropdownMenu.Item
+                                class="oryx-transition flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground outline-none select-none hover:bg-muted data-highlighted:bg-muted"
+                                onSelect={() => patchNote(r.note, { sentiment: s })}
+                              >
+                                <Ico class="size-4 shrink-0 {sentimentIconColor(s)}" />
+                                {sentimentLabel(s)}
+                              </DropdownMenu.Item>
+                            {/each}
+                          </DropdownMenu.Content>
+                        </DropdownMenu.Portal>
+                      </DropdownMenu.Root>
+                    </td>
+                    <td class="max-w-[200px] px-4 py-3 text-xs leading-relaxed text-foreground-muted">
+                      {r.agentComment ?? ''}
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        {/if}
+      {:else}
+        <NoteGraph graph={noteGraph} onNodeClick={handleGraphNodeClick} height={420} />
       {/if}
     </Tabs.Content>
     <Tabs.Content value="guide" class={panelClass}>
@@ -960,3 +1025,13 @@
     </Tabs.Content>
   {/if}
 </Tabs.Root>
+
+<NoteFragrancesModal
+  bind:open={graphModalOpen}
+  node={graphModalNode}
+  diaryData={diaryState}
+  onClose={() => {
+    graphModalOpen = false
+    graphModalNode = null
+  }}
+/>

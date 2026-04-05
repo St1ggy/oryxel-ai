@@ -347,5 +347,13 @@
   "oryxel_guide_family_gourmand_name": "Gourmand",
   "oryxel_guide_family_gourmand_desc": "Dulce y apetitoso. Vainilla, caramelo, praliné.",
   "oryxel_status_expand": "Mostrar detalles",
-  "oryxel_status_collapse": "Ocultar"
+  "oryxel_status_collapse": "Ocultar",
+  "oryxel_notes_view_list": "Lista",
+  "oryxel_notes_view_graph": "Gráfico",
+  "oryxel_note_graph_empty": "Añade fragancias para ver el gráfico de notas",
+  "oryxel_note_graph_tooltip_count": "{count} fragancias",
+  "oryxel_note_graph_modal_title": "{note}",
+  "oryxel_note_graph_list_liked": "Me gusta",
+  "oryxel_note_graph_list_owned": "Tengo",
+  "oryxel_note_graph_list_neutral": "Neutral"
 }

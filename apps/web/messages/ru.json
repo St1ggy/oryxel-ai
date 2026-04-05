@@ -347,5 +347,13 @@
   "oryxel_guide_family_gourmand_name": "Гурманские",
   "oryxel_guide_family_gourmand_desc": "Сладкие и аппетитные. Ваниль, карамель, пралине.",
   "oryxel_status_expand": "Подробнее",
-  "oryxel_status_collapse": "Скрыть"
+  "oryxel_status_collapse": "Скрыть",
+  "oryxel_notes_view_list": "Список",
+  "oryxel_notes_view_graph": "Граф",
+  "oryxel_note_graph_empty": "Добавьте ароматы, чтобы увидеть граф нот",
+  "oryxel_note_graph_tooltip_count": "{count} аромата(-ов)",
+  "oryxel_note_graph_modal_title": "{note}",
+  "oryxel_note_graph_list_liked": "Нравится",
+  "oryxel_note_graph_list_owned": "В коллекции",
+  "oryxel_note_graph_list_neutral": "Нейтральный"
 }
