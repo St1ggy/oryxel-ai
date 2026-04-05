@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Activity, ChevronRight, Heart, Sparkles } from '@lucide/svelte'
+  import { Activity, ChevronDown, ChevronRight, Heart, Sparkles } from '@lucide/svelte'
 
   import ActivityLog from '$lib/components/app/activity-log.svelte'
   import DiaryHeaderControls from '$lib/components/app/diary-header-controls.svelte'
@@ -10,6 +10,8 @@
   import { cn } from '$lib/utils/cn'
 
   import type { ActivityEntry, RadarAxis } from '$lib/types/diary'
+
+  type DiaryCounts = { owned: number; to_try: number; liked: number; neutral: number; disliked: number }
 
   import { resolve } from '$app/paths'
 
@@ -27,9 +29,10 @@
     profile?: ProfileData
     onProfileSync?: () => void
     recentActivity?: ActivityEntry[]
+    diaryCounts?: DiaryCounts
   }
 
-  const { variant, profile, onProfileSync, recentActivity = [] }: Props = $props()
+  const { variant, profile, onProfileSync, recentActivity = [], diaryCounts }: Props = $props()
   const safeProfile = $derived<ProfileData>(
     profile ?? {
       displayName: m.oryxel_profile_default_user(),
@@ -43,6 +46,7 @@
 
   const isMobile = $derived(variant === 'mobile')
   let activityOpen = $state(false)
+  let countOpen = $state(false)
 </script>
 
 <div class="flex flex-col gap-5">
@@ -136,10 +140,51 @@
       <RadarChart axes={safeProfile.radarAxes} size={isMobile ? 240 : 300} />
     </div>
     <div class="mt-4 mb-2 divide-y divide-border">
-      <div class="flex items-center gap-3 py-3">
-        <Activity class="size-4 shrink-0 text-foreground-muted" />
-        <span class="text-sm text-foreground-muted">{m.oryxel_stat_total()}</span>
-        <span class="ml-auto text-sm font-semibold text-foreground">{safeProfile.totalCount}</span>
+      <div class="py-1">
+        <button
+          type="button"
+          class="oryx-transition flex w-full items-center gap-3 rounded-md py-2 hover:bg-muted/50"
+          onclick={() => (countOpen = !countOpen)}
+          aria-expanded={countOpen}
+        >
+          <Activity class="size-4 shrink-0 text-foreground-muted" />
+          <span class="text-sm text-foreground-muted">{m.oryxel_stat_total()}</span>
+          <span class="ml-auto text-sm font-semibold text-foreground">{safeProfile.totalCount}</span>
+          {#if diaryCounts}
+            <ChevronDown
+              class={cn('size-3.5 shrink-0 text-foreground-muted transition-transform', countOpen && 'rotate-180')}
+            />
+          {/if}
+        </button>
+        {#if countOpen && diaryCounts}
+          <div class="mb-1 ml-7 space-y-1 text-xs text-foreground-muted">
+            <div class="flex justify-between">
+              <span>{m.oryxel_tab_collection()}</span><span class="font-medium text-foreground tabular-nums"
+                >{diaryCounts.owned}</span
+              >
+            </div>
+            <div class="flex justify-between">
+              <span>{m.oryxel_tab_liked()}</span><span class="font-medium text-foreground tabular-nums"
+                >{diaryCounts.liked}</span
+              >
+            </div>
+            <div class="flex justify-between">
+              <span>{m.oryxel_tab_neutral()}</span><span class="font-medium text-foreground tabular-nums"
+                >{diaryCounts.neutral}</span
+              >
+            </div>
+            <div class="flex justify-between">
+              <span>{m.oryxel_tab_disliked()}</span><span class="font-medium text-foreground tabular-nums"
+                >{diaryCounts.disliked}</span
+              >
+            </div>
+            <div class="flex justify-between">
+              <span>{m.oryxel_tab_try()}</span><span class="font-medium text-foreground tabular-nums"
+                >{diaryCounts.to_try}</span
+              >
+            </div>
+          </div>
+        {/if}
       </div>
       <div class="flex items-center gap-3 py-3">
         <Heart class="size-4 shrink-0 text-foreground-muted" />

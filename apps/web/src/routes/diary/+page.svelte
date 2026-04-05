@@ -526,6 +526,13 @@
             profile={profileData}
             onProfileSync={handleProfileSyncClick}
             recentActivity={resolvedRecentActivity}
+            diaryCounts={{
+              owned: diaryState.owned.length,
+              to_try: diaryState.to_try.length,
+              liked: diaryState.liked.length,
+              neutral: diaryState.neutral.length,
+              disliked: diaryState.disliked.length,
+            }}
           />
         </div>
       {:else}

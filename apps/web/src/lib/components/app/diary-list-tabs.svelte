@@ -496,7 +496,19 @@
           {#if loading}
             <DiaryProfileSkeleton variant="desktop" />
           {:else}
-            <DiaryProfileTab variant="desktop" {profile} {onProfileSync} {recentActivity} />
+            <DiaryProfileTab
+              variant="desktop"
+              {profile}
+              {onProfileSync}
+              {recentActivity}
+              diaryCounts={tabCounts as {
+                owned: number
+                to_try: number
+                liked: number
+                neutral: number
+                disliked: number
+              }}
+            />
           {/if}
         </Tabs.Content>
         <Tabs.Content value="notes" class={panelClass}>
@@ -749,7 +761,13 @@
       {#if loading}
         <DiaryProfileSkeleton variant="mobile" />
       {:else}
-        <DiaryProfileTab variant="mobile" {profile} {onProfileSync} {recentActivity} />
+        <DiaryProfileTab
+          variant="mobile"
+          {profile}
+          {onProfileSync}
+          {recentActivity}
+          diaryCounts={tabCounts as { owned: number; to_try: number; liked: number; neutral: number; disliked: number }}
+        />
       {/if}
     </Tabs.Content>
   {/if}
