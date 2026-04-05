@@ -20,7 +20,7 @@
   import type { ChatMessage, DiaryData, DiaryMobileTab, DiaryRow, FragranceListType } from '$lib/types/diary'
   import type { PageData } from './$types'
 
-  import { goto, invalidateAll } from '$app/navigation'
+  import { invalidateAll } from '$app/navigation'
 
   const { data }: { data: PageData } = $props()
 
@@ -34,8 +34,12 @@
   let detailContext = $state<'diary' | 'to_try'>('diary')
 
   $effect(() => {
-    // eslint-disable-next-line svelte/no-navigation-without-resolve
-    void goto(`?tab=${listTab}`, { replaceState: true, noScroll: true, keepFocus: true })
+    // Use history.replaceState directly — SvelteKit's goto() re-runs the load function
+    // even with replaceState:true, triggering a full server round-trip on every tab switch.
+    const url = new URL(location.href)
+
+    url.searchParams.set('tab', listTab)
+    history.replaceState({}, '', url)
   })
   let editOpen = $state(false)
 
@@ -170,7 +174,9 @@
   const abortOnDestroy = () => pageAbort.abort()
   $effect(() => abortOnDestroy)
 
-  // Resume polling for jobs that were still running when the page was last closed/refreshed
+  // Resume polling for jobs that were still running when the page was last closed/refreshed.
+  // Uses untrack() so data changes from invalidateAll() don't re-run this effect and re-trigger
+  // the cleanup — which would cause an abort → invalidateAll → abort infinite loop.
   let jobsResumed = false
 
   $effect(() => {
@@ -178,7 +184,10 @@
 
     jobsResumed = true
 
-    const syncJob = (data.activeJobs ?? []).find((index) => index.type === 'profile_sync')
+    // untrack: do NOT let data reads here make this effect reactive to data changes
+    const activeJobs = untrack(() => data.activeJobs ?? [])
+
+    const syncJob = activeJobs.find((index) => index.type === 'profile_sync')
 
     if (syncJob) {
       const latest = syncJob.progress.at(-1)
@@ -192,7 +201,7 @@
       })
     }
 
-    const chatJob = (data.activeJobs ?? []).find((index) => index.type === 'agent_chat')
+    const chatJob = activeJobs.find((index) => index.type === 'agent_chat')
 
     if (chatJob) {
       thinking = true
@@ -235,6 +244,8 @@
         }
       })()
     }
+    // No cleanup return here — abortOnDestroy effect handles pageAbort.abort() on unmount.
+    // Returning abort here would call it on every invalidateAll() re-render, killing in-flight polls.
   })
   const hasChatAccess = $derived(data.hasChatAccess)
   const providerOptions = $derived(data.chatProviders ?? [])
