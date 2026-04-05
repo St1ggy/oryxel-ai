@@ -355,5 +355,18 @@
   "oryxel_note_graph_modal_title": "{note}",
   "oryxel_note_graph_list_liked": "好き",
   "oryxel_note_graph_list_owned": "所持",
-  "oryxel_note_graph_list_neutral": "普通"
+  "oryxel_note_graph_list_neutral": "普通",
+  "oryxel_note_family_citrus": "シトラス",
+  "oryxel_note_family_floral": "フローラル",
+  "oryxel_note_family_woody": "ウッディ",
+  "oryxel_note_family_spicy": "スパイシー",
+  "oryxel_note_family_fresh": "フレッシュ",
+  "oryxel_note_family_musky": "ムスキー",
+  "oryxel_note_family_green": "グリーン",
+  "oryxel_note_family_leather": "レザー",
+  "oryxel_note_family_other": "その他",
+  "oryxel_note_tier_top": "トップ",
+  "oryxel_note_tier_heart": "ハート",
+  "oryxel_note_tier_base": "ベース",
+  "oryxel_note_tier_unknown": "—"
 }

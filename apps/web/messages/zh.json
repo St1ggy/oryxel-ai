@@ -355,5 +355,18 @@
   "oryxel_note_graph_modal_title": "{note}",
   "oryxel_note_graph_list_liked": "喜欢",
   "oryxel_note_graph_list_owned": "拥有",
-  "oryxel_note_graph_list_neutral": "中性"
+  "oryxel_note_graph_list_neutral": "中性",
+  "oryxel_note_family_citrus": "柑橘",
+  "oryxel_note_family_floral": "花香",
+  "oryxel_note_family_woody": "木质",
+  "oryxel_note_family_spicy": "辛香",
+  "oryxel_note_family_fresh": "清新",
+  "oryxel_note_family_musky": "麝香",
+  "oryxel_note_family_green": "绿叶",
+  "oryxel_note_family_leather": "皮革",
+  "oryxel_note_family_other": "其他",
+  "oryxel_note_tier_top": "前调",
+  "oryxel_note_tier_heart": "中调",
+  "oryxel_note_tier_base": "后调",
+  "oryxel_note_tier_unknown": "—"
 }

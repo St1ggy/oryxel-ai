@@ -1,5 +1,15 @@
 <script lang="ts">
-  import { AlertTriangle, ChevronDown, Heart, Lock, Minus, ThumbsDown, ThumbsUp } from '@lucide/svelte'
+  import {
+    AlertTriangle,
+    ChevronDown,
+    Heart,
+    LayoutList,
+    Lock,
+    Minus,
+    Network,
+    ThumbsDown,
+    ThumbsUp,
+  } from '@lucide/svelte'
   import { DropdownMenu } from 'bits-ui'
   import { untrack } from 'svelte'
 
@@ -25,7 +35,7 @@
   let graphModalOpen = $state(false)
   let graphModalNode = $state<NoteNode | null>(null)
 
-  const noteGraph = $derived(buildNoteGraph(diaryData))
+  const noteGraph = $derived(buildNoteGraph(diaryData, localNotes))
 
   $effect(() => {
     if (noteRelationships !== lastNoteRelationshipsRef) {
@@ -108,19 +118,23 @@
   <div class="flex gap-0.5 rounded-lg border border-border bg-muted p-0.5">
     <button
       onclick={() => (notesViewMode = 'list')}
-      class="oryx-transition rounded-md px-3 py-1 text-xs font-medium {notesViewMode === 'list'
+      aria-label={m.oryxel_notes_view_list()}
+      title={m.oryxel_notes_view_list()}
+      class="oryx-transition flex h-7 w-8 items-center justify-center rounded-md {notesViewMode === 'list'
         ? 'bg-surface text-foreground shadow-sm'
         : 'text-foreground-muted hover:text-foreground'}"
     >
-      {m.oryxel_notes_view_list()}
+      <LayoutList size={14} strokeWidth={1.75} />
     </button>
     <button
       onclick={() => (notesViewMode = 'graph')}
-      class="oryx-transition rounded-md px-3 py-1 text-xs font-medium {notesViewMode === 'graph'
+      aria-label={m.oryxel_notes_view_graph()}
+      title={m.oryxel_notes_view_graph()}
+      class="oryx-transition flex h-7 w-8 items-center justify-center rounded-md {notesViewMode === 'graph'
         ? 'bg-surface text-foreground shadow-sm'
         : 'text-foreground-muted hover:text-foreground'}"
     >
-      {m.oryxel_notes_view_graph()}
+      <Network size={14} strokeWidth={1.75} />
     </button>
   </div>
 </div>
@@ -200,7 +214,7 @@
     </div>
   {/if}
 {:else}
-  <NoteGraph graph={noteGraph} onNodeClick={handleGraphNodeClick} height={layout === 'desktop' ? 480 : 420} />
+  <NoteGraph graph={noteGraph} onNodeClick={handleGraphNodeClick} height={layout === 'desktop' ? 620 : 500} />
 {/if}
 
 <NoteFragrancesModal

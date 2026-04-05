@@ -355,5 +355,18 @@
   "oryxel_note_graph_modal_title": "{note}",
   "oryxel_note_graph_list_liked": "Me gusta",
   "oryxel_note_graph_list_owned": "Tengo",
-  "oryxel_note_graph_list_neutral": "Neutral"
+  "oryxel_note_graph_list_neutral": "Neutral",
+  "oryxel_note_family_citrus": "Cítrico",
+  "oryxel_note_family_floral": "Floral",
+  "oryxel_note_family_woody": "Amaderado",
+  "oryxel_note_family_spicy": "Especiado",
+  "oryxel_note_family_fresh": "Fresco",
+  "oryxel_note_family_musky": "Almizclado",
+  "oryxel_note_family_green": "Verde",
+  "oryxel_note_family_leather": "Cuero",
+  "oryxel_note_family_other": "Otro",
+  "oryxel_note_tier_top": "Cabeza",
+  "oryxel_note_tier_heart": "Corazón",
+  "oryxel_note_tier_base": "Base",
+  "oryxel_note_tier_unknown": "—"
 }

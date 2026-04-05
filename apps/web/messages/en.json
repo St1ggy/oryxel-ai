@@ -355,5 +355,18 @@
   "oryxel_note_graph_modal_title": "{note}",
   "oryxel_note_graph_list_liked": "Liked",
   "oryxel_note_graph_list_owned": "Owned",
-  "oryxel_note_graph_list_neutral": "Neutral"
+  "oryxel_note_graph_list_neutral": "Neutral",
+  "oryxel_note_family_citrus": "Citrus",
+  "oryxel_note_family_floral": "Floral",
+  "oryxel_note_family_woody": "Woody",
+  "oryxel_note_family_spicy": "Spicy",
+  "oryxel_note_family_fresh": "Fresh",
+  "oryxel_note_family_musky": "Musky",
+  "oryxel_note_family_green": "Green",
+  "oryxel_note_family_leather": "Leather",
+  "oryxel_note_family_other": "Other",
+  "oryxel_note_tier_top": "Top",
+  "oryxel_note_tier_heart": "Heart",
+  "oryxel_note_tier_base": "Base",
+  "oryxel_note_tier_unknown": "—"
 }

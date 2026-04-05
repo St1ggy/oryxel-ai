@@ -1,6 +1,6 @@
 import { detectFamily } from './families'
 
-import type { DiaryData, DiaryRow } from '$lib/types/diary'
+import type { DiaryData, DiaryRow, NoteRelationship, NoteRelationshipSentiment } from '$lib/types/diary'
 import type { NoteGraph, NoteLink, NoteNode } from './types'
 
 export function parseNotes(string_: string | null): string[] {
@@ -15,15 +15,42 @@ export function parseNotes(string_: string | null): string[] {
 function scoreToSize(score: number, maxScore: number): number {
   if (maxScore === 0) return 20
 
-  // Linear interpolation: 1 → 20px, maxScore → 80px
+  // Linear interpolation: min score → 18px, max score → 80px
   const t = Math.min(score / maxScore, 1)
 
-  return Math.round(20 + t * 60)
+  return Math.round(18 + t * 62)
+}
+
+/** Rating multiplier: 0 (unrated) → 1.0 neutral; 1 → 0.4; 3 → 1.0; 5 → 1.6 */
+function ratingMult(rating: number): number {
+  if (rating === 0) return 1
+
+  return 0.4 + (rating - 1) * 0.3
+}
+
+/** User sentiment multiplier: reflects personal preference for this note */
+const SENTIMENT_MULT: Record<NoteRelationshipSentiment, number> = {
+  love: 2,
+  like: 1.5,
+  neutral: 1,
+  dislike: 0.4,
+  redflag: 0.15,
+}
+
+/** Layer multiplier: base notes persist longest and define the fragrance signature */
+const TIER_MULT: Record<NoteNode['tier'], number> = {
+  base: 1.5,
+  heart: 1.2,
+  top: 1,
+  unknown: 1,
 }
 
 type ListEntry = {
   row: DiaryRow
-  weight: number
+  /** Fragrance status weight: liked=3, owned=2, neutral=1 */
+  statusWeight: number
+  /** Rating multiplier from ratingMult(row.rating) */
+  ratingWeight: number
 }
 
 type NodeAccumulator = {
@@ -43,7 +70,7 @@ type LinkAccumulator = {
 function accumulateNotes(entries: ListEntry[]): Map<string, NodeAccumulator> {
   const nodeMap = new Map<string, NodeAccumulator>()
 
-  for (const { row, weight } of entries) {
+  for (const { row, statusWeight, ratingWeight } of entries) {
     const tiers: [string | null, NoteNode['tier']][] = [
       [row.pyramidTop, 'top'],
       [row.pyramidMid, 'heart'],
@@ -53,13 +80,14 @@ function accumulateNotes(entries: ListEntry[]): Map<string, NodeAccumulator> {
     for (const [string_, tier] of tiers) {
       for (const name of parseNotes(string_)) {
         const key = name.toLowerCase()
+        const contribution = statusWeight * ratingWeight * TIER_MULT[tier]
         const existing = nodeMap.get(key)
 
         if (existing) {
-          existing.weightedScore += weight
+          existing.weightedScore += contribution
           existing.fragrances.add(row.fragranceId)
         } else {
-          nodeMap.set(key, { name, tier, weightedScore: weight, fragrances: new Set([row.fragranceId]) })
+          nodeMap.set(key, { name, tier, weightedScore: contribution, fragrances: new Set([row.fragranceId]) })
         }
       }
     }
@@ -71,7 +99,8 @@ function accumulateNotes(entries: ListEntry[]): Map<string, NodeAccumulator> {
 function accumulateLinks(entries: ListEntry[], nodeMap: Map<string, NodeAccumulator>): Map<string, LinkAccumulator> {
   const linkMap = new Map<string, LinkAccumulator>()
 
-  for (const { row, weight } of entries) {
+  for (const { row, statusWeight, ratingWeight } of entries) {
+    const contribution = statusWeight * ratingWeight
     const allNotes = [...parseNotes(row.pyramidTop), ...parseNotes(row.pyramidMid), ...parseNotes(row.pyramidBase)]
       .map((n) => n.toLowerCase())
       .filter((n) => nodeMap.has(n))
@@ -85,10 +114,10 @@ function accumulateLinks(entries: ListEntry[], nodeMap: Map<string, NodeAccumula
         const existing = linkMap.get(key)
 
         if (existing) {
-          existing.weight += weight
+          existing.weight += contribution
           existing.fragrances.add(row.fragranceId)
         } else {
-          linkMap.set(key, { source: a, target: b, weight, fragrances: new Set([row.fragranceId]) })
+          linkMap.set(key, { source: a, target: b, weight: contribution, fragrances: new Set([row.fragranceId]) })
         }
       }
     }
@@ -97,14 +126,29 @@ function accumulateLinks(entries: ListEntry[], nodeMap: Map<string, NodeAccumula
   return linkMap
 }
 
-export function buildNoteGraph(diaryData: DiaryData): NoteGraph {
+export function buildNoteGraph(diaryData: DiaryData, noteRelationships: NoteRelationship[] = []): NoteGraph {
+  // Build a lookup map: note key → sentiment multiplier
+  const sentimentMap = new Map<string, number>()
+
+  for (const relationship of noteRelationships) {
+    sentimentMap.set(relationship.note.toLowerCase(), SENTIMENT_MULT[relationship.sentiment] ?? 1)
+  }
+
   const entries: ListEntry[] = [
-    ...diaryData.liked.map((row) => ({ row, weight: 3 })),
-    ...diaryData.owned.map((row) => ({ row, weight: 2 })),
-    ...diaryData.neutral.map((row) => ({ row, weight: 1 })),
+    ...diaryData.liked.map((row) => ({ row, statusWeight: 3, ratingWeight: ratingMult(row.rating) })),
+    ...diaryData.owned.map((row) => ({ row, statusWeight: 2, ratingWeight: ratingMult(row.rating) })),
+    ...diaryData.neutral.map((row) => ({ row, statusWeight: 1, ratingWeight: ratingMult(row.rating) })),
   ]
 
   const nodeMap = accumulateNotes(entries)
+
+  // Apply per-note sentiment multiplier after accumulation
+  for (const [key, node] of nodeMap) {
+    const sentMult = sentimentMap.get(key) ?? 1
+
+    node.weightedScore *= sentMult
+  }
+
   const maxScore = Math.max(0, ...[...nodeMap.values()].map((n) => n.weightedScore))
 
   const nodes: NoteNode[] = [...nodeMap.entries()].map(([id, data]) => {

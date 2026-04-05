@@ -355,5 +355,18 @@
   "oryxel_note_graph_modal_title": "{note}",
   "oryxel_note_graph_list_liked": "Aimé",
   "oryxel_note_graph_list_owned": "Possédé",
-  "oryxel_note_graph_list_neutral": "Neutre"
+  "oryxel_note_graph_list_neutral": "Neutre",
+  "oryxel_note_family_citrus": "Agrume",
+  "oryxel_note_family_floral": "Floral",
+  "oryxel_note_family_woody": "Boisé",
+  "oryxel_note_family_spicy": "Épicé",
+  "oryxel_note_family_fresh": "Frais",
+  "oryxel_note_family_musky": "Musqué",
+  "oryxel_note_family_green": "Vert",
+  "oryxel_note_family_leather": "Cuir",
+  "oryxel_note_family_other": "Autre",
+  "oryxel_note_tier_top": "Tête",
+  "oryxel_note_tier_heart": "Cœur",
+  "oryxel_note_tier_base": "Fond",
+  "oryxel_note_tier_unknown": "—"
 }

@@ -7,6 +7,25 @@
 
   import type { NoteGraph, NoteNode } from '$lib/utils/note-graph'
 
+  const familyLabel: Record<string, () => string> = {
+    citrus: m.oryxel_note_family_citrus,
+    floral: m.oryxel_note_family_floral,
+    woody: m.oryxel_note_family_woody,
+    spicy: m.oryxel_note_family_spicy,
+    fresh: m.oryxel_note_family_fresh,
+    musky: m.oryxel_note_family_musky,
+    green: m.oryxel_note_family_green,
+    leather: m.oryxel_note_family_leather,
+    other: m.oryxel_note_family_other,
+  }
+
+  const tierLabel: Record<string, () => string> = {
+    top: m.oryxel_note_tier_top,
+    heart: m.oryxel_note_tier_heart,
+    base: m.oryxel_note_tier_base,
+    unknown: m.oryxel_note_tier_unknown,
+  }
+
   type Props = {
     graph: NoteGraph
     onNodeClick: (node: NoteNode) => void
@@ -72,9 +91,9 @@
         </div>
         <div class="mt-0.5 flex items-center gap-1.5 text-xs" style="color:var(--oryx-fg-muted)">
           <span class="inline-block h-2 w-2 flex-shrink-0 rounded-full" style="background:{tooltip.node.color}"></span>
-          {tooltip.node.family}
+          {familyLabel[tooltip.node.family]?.() ?? tooltip.node.family}
           ·
-          {tooltip.node.tier}
+          {tierLabel[tooltip.node.tier]?.() ?? tooltip.node.tier}
         </div>
       </div>
     {/if}

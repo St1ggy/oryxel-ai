@@ -64,6 +64,33 @@
     owned: m.oryxel_note_graph_list_owned,
     neutral: m.oryxel_note_graph_list_neutral,
   }
+
+  const familyLabel: Record<string, () => string> = {
+    citrus: m.oryxel_note_family_citrus,
+    floral: m.oryxel_note_family_floral,
+    woody: m.oryxel_note_family_woody,
+    spicy: m.oryxel_note_family_spicy,
+    fresh: m.oryxel_note_family_fresh,
+    musky: m.oryxel_note_family_musky,
+    green: m.oryxel_note_family_green,
+    leather: m.oryxel_note_family_leather,
+    other: m.oryxel_note_family_other,
+  }
+
+  const tierLabel: Record<string, () => string> = {
+    top: m.oryxel_note_tier_top,
+    heart: m.oryxel_note_tier_heart,
+    base: m.oryxel_note_tier_base,
+    unknown: m.oryxel_note_tier_unknown,
+  }
+
+  function localFamily(family: string): string {
+    return familyLabel[family]?.() ?? family
+  }
+
+  function localTier(tier: string): string {
+    return tierLabel[tier]?.() ?? tier
+  }
 </script>
 
 <Modal bind:open title={node ? m.oryxel_note_graph_modal_title({ note: node.name }) : ''}>
@@ -72,7 +99,9 @@
     <div class="mb-4 flex items-center gap-2">
       <span class="h-3 w-3 shrink-0 rounded-full" style="background:{node.color}"></span>
       <span class="text-sm" style="color:var(--oryx-fg-muted)">
-        {node.family} · {node.tier} · {m.oryxel_note_graph_tooltip_count({ count: fragrances.length })}
+        {localFamily(node.family)} · {localTier(node.tier)} · {m.oryxel_note_graph_tooltip_count({
+          count: fragrances.length,
+        })}
       </span>
     </div>
 
