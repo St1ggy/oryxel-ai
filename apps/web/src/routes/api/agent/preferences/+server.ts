@@ -262,6 +262,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       archetype: profile.archetype ?? undefined,
       favoriteNote: profile.favoriteNote ?? undefined,
       radar: Object.fromEntries(profile.radarAxes.map(({ key, value }) => [key, value])),
+      gender: (profile.gender as 'male' | 'female' | null | undefined) ?? undefined,
+      noteRelationships: profile.noteRelationships.length > 0 ? profile.noteRelationships : undefined,
     },
     diary: {
       // eslint-disable-next-line camelcase

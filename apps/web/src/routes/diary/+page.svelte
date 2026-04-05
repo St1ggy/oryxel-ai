@@ -556,6 +556,7 @@
             onOpenDetail={openDetail}
             onProfileSync={handleProfileSyncClick}
             profile={profileData}
+            noteRelationships={resolvedProfile?.noteRelationships}
             layout="mobile"
           />
         </div>
