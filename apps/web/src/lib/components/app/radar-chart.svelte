@@ -58,9 +58,35 @@
   const vertexPoints = $derived(axes.map(({ value }, index) => pointFor(index, value)))
   const dataPath = $derived(smoothClosedPath(vertexPoints))
 
-  // Spider-web ring paths: curved polygons connecting ring-radius intersections
+  // Spider-web ring paths: straight polygon lines (not curves) for the classic web look
+  // Ring paths: quadratic bezier arcs bowing inward (toward center) — classic spiderweb look.
+  // Control point is pulled from the edge midpoint toward (cx, cy) by factor t.
+  function concaveClosedPath(pts: { x: number; y: number }[], t = 0.22): string {
+    if (pts.length < 3) return ''
+
+    const count = pts.length
+    const parts: string[] = []
+
+    for (let index = 0; index < count; index++) {
+      const p1 = pts[index]
+      const p2 = pts[(index + 1) % count]
+      const mx = (p1.x + p2.x) / 2
+      const my = (p1.y + p2.y) / 2
+      const qx = mx + t * (cx - mx)
+      const qy = my + t * (cy - my)
+
+      if (index === 0) parts.push(`M ${p1.x} ${p1.y}`)
+
+      parts.push(`Q ${qx} ${qy} ${p2.x} ${p2.y}`)
+    }
+
+    parts.push('Z')
+
+    return parts.join(' ')
+  }
+
   const ringPaths = $derived(
-    [0.33, 0.67, 1].map((ring) => smoothClosedPath(axes.map((_, index) => pointFor(index, ring * 100)))),
+    [0.33, 0.67, 1].map((ring) => concaveClosedPath(axes.map((_, index) => pointFor(index, ring * 100)))),
   )
 
   const labelData = $derived(
