@@ -100,6 +100,23 @@ const init = (context: StyleContext): RenderedSelections => {
   // ── Goo group: links + circles rendered together so they merge ────────────
   const gooG = g.append('g').attr('class', 'ink-goo').attr('filter', `url(#${uid}-goo)`)
 
+  // Per-link gradients: desaturated source colour → desaturated target colour
+  const linkGrads = defs
+    .selectAll<SVGLinearGradientElement, NoteLink>('linearGradient')
+    .data(links)
+    .join('linearGradient')
+    .attr('id', (_lk, index) => `${uid}-ilg-${index}`)
+    .attr('gradientUnits', 'userSpaceOnUse')
+
+  linkGrads
+    .append('stop')
+    .attr('offset', '0%')
+    .attr('stop-color', (lk) => desaturate((lk.source as NoteNode).color))
+  linkGrads
+    .append('stop')
+    .attr('offset', '100%')
+    .attr('stop-color', (lk) => desaturate((lk.target as NoteNode).color))
+
   // Links inside the goo group so they dissolve into adjacent circles
   const linkSel = gooG
     .append('g')
@@ -108,7 +125,7 @@ const init = (context: StyleContext): RenderedSelections => {
     .data(links)
     .join('path')
     .attr('fill', 'none')
-    .attr('stroke', (lk) => desaturate((lk.source as NoteNode).color))
+    .attr('stroke', (_lk, index) => `url(#${uid}-ilg-${index})`)
     .attr('stroke-width', (lk) => linkThickness(lk.weight) * 2.5)
     .attr('stroke-opacity', (lk) => linkOpacity(lk.weight) * 1.4)
     .attr('stroke-linecap', 'round')
@@ -163,18 +180,31 @@ const init = (context: StyleContext): RenderedSelections => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     linkSel: linkSel as any,
     nodeGroupSel,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    extras: { labelsG: labelGroupSel as any },
+    extras: {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      labelsG: labelGroupSel as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      linkGrads: linkGrads as any,
+    },
   }
 }
 
-const tick = (sel: RenderedSelections): void => {
+const tick = (sel: RenderedSelections, _nodes: NoteNode[], links: NoteLink[]): void => {
   sel.linkSel.attr('d', (lk, index) => {
     const s = lk.source as NoteNode
     const t = lk.target as NoteNode
 
     return inkPath(s.x ?? 0, s.y ?? 0, t.x ?? 0, t.y ?? 0, wobbleFor(index))
   })
+
+  // Keep gradient endpoints in sync with node positions
+  if (sel.extras?.linkGrads) {
+    sel.extras.linkGrads
+      .attr('x1', (_lk: NoteLink, index: number) => (links[index].source as NoteNode).x ?? 0)
+      .attr('y1', (_lk: NoteLink, index: number) => (links[index].source as NoteNode).y ?? 0)
+      .attr('x2', (_lk: NoteLink, index: number) => (links[index].target as NoteNode).x ?? 0)
+      .attr('y2', (_lk: NoteLink, index: number) => (links[index].target as NoteNode).y ?? 0)
+  }
 
   sel.nodeGroupSel.attr('transform', (d) => `translate(${d.x ?? 0},${d.y ?? 0})`)
   sel.extras?.labelsG?.attr('transform', (d: NoteNode) => `translate(${d.x ?? 0},${d.y ?? 0})`)
