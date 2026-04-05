@@ -87,7 +87,7 @@ function buildBaseInstructions(request: AnalyzePreferencesRequest): string[] {
     'For op=add or op=status: ALWAYS set timeOfDay — comma-separated from: day, evening, night. E.g. "evening,night" for intense/heavy fragrances, "day" for light/fresh ones.',
     'For op=add or op=status: ALWAYS set gender — one of: female, male, unisex. Base on fragrance character and notes, not just marketing. Unisex when it genuinely works for all.',
     'For op=move: set rowId and the new flag values (isOwned/isTried/isLiked/isDisliked).',
-    'For op=rate/status/remove: set rowId to the id from the diary context. Never use op=add for rows that already exist in the diary.',
+    'For op=rate/status/move/remove: rowId MUST be the exact integer id from the diary context below. NEVER guess or invent a rowId. If the fragrance is not listed in the diary, use op=add instead.',
     `OUTPUT SIZE: For bulk imports (many fragrances), omit suggestions.`,
   ]
 }
@@ -145,7 +145,7 @@ function buildContextBlock(request: AnalyzePreferencesRequest): string[] {
 
   if (diary) {
     lines.push(
-      'Diary (use id as rowId for move/rate/status/remove ops; notes/top/mid/base show current data if known):',
+      'Diary — CRITICAL: for op=move/rate/status/remove, rowId MUST be the exact integer id shown below. NEVER invent or guess an id. If a fragrance is not in this list, use op=add. notes/top/mid/base show current data:',
       `- owned: ${formatDiaryList((diary.owned ?? []) as DiaryContextEntry[])}`,
       `- to_try: ${formatDiaryList((diary.to_try ?? []) as DiaryContextEntry[])}`,
       `- liked: ${formatDiaryList((diary.liked ?? []) as DiaryContextEntry[])}`,
@@ -177,7 +177,7 @@ function buildScenarioBlock(request: AnalyzePreferencesRequest): string[] {
       'IMPORTANT: Always populate ALL THREE pyramid fields.',
       `Include a reply in ${language} describing the pyramid in a natural, conversational way.`,
     ].join(' '),
-    recommendation: `Scenario recommendation: suggest fragrances the user would likely enjoy based on their diary and preferences. Set between ${request.minRecommendations ?? 5} and ${request.maxRecommendations ?? 20} recommendations. For each: id (unique string), brand, name, notesSummary (comma-separated lowercase English notes), pyramidTop/Mid/Base if known (lowercase English), tag (plain string in ${language} — WHY this fragrance suits them). This REPLACES the current recommendation list. Update suggestions to exactly 3 short first-person user messages in ${language} (max 60 chars each, e.g. "Find an analog for Santal 33", "What works for date nights?") — these appear as tappable chips the user can send. Include a helpful reply in ${language} presenting your picks.`,
+    recommendation: `Scenario recommendation: suggest fragrances the user would likely enjoy based on their diary and preferences. Set between ${request.minRecommendations ?? 5} and ${request.maxRecommendations ?? 20} recommendations. For each: id (unique string), brand, name, notesSummary (comma-separated lowercase English notes), pyramidTop/Mid/Base if known (lowercase English), tag (plain string in ${language} — WHY this fragrance suits them), gender (one of: female, male, unisex), timeOfDay (comma-separated: day, evening, night), season (comma-separated: spring, summer, autumn, winter). This REPLACES the current recommendation list. Update suggestions to exactly 3 short first-person user messages in ${language} (max 60 chars each, e.g. "Find an analog for Santal 33", "What works for date nights?") — these appear as tappable chips the user can send. Include a helpful reply in ${language} presenting your picks.`,
     comparison: `Scenario comparison: compare two or more fragrances mentioned by the user. Highlight differences in notes, character, and suitability. Update ratings or move rows (using flags) if the user indicates clear preference. Include a reply in ${language} summarizing the comparison.`,
     command: [
       'Scenario command: the user gave a direct instruction OR a structured bulk import. Execute it precisely.',

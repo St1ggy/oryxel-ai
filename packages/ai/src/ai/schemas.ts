@@ -128,6 +128,9 @@ export const structuredPreferencePatchSchema = z.object({
         pyramidMid: z.string().max(300).nullable().optional(),
         pyramidBase: z.string().max(300).nullable().optional(),
         tag: z.string().max(120),
+        gender: z.enum(['female', 'male', 'unisex']).optional(),
+        timeOfDay: z.string().max(40).optional(),
+        season: z.string().max(60).optional(),
       }),
     )
     .max(30)
