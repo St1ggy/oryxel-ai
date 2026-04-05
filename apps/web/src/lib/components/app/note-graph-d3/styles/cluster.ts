@@ -60,7 +60,7 @@ const init = (context: StyleContext): RenderedSelections => {
     .attr('cy', ([, c]) => c.y)
     .attr('r', ([, c]) => 70 + c.count * 10)
     .attr('fill', ([, c]) => c.color)
-    .attr('fill-opacity', 0.06)
+    .attr('fill-opacity', ([, c]) => Math.min(0.03 + c.count * 0.018, 0.22))
     .attr('filter', `url(#${uid}-halo)`)
     .attr('pointer-events', 'none')
 
