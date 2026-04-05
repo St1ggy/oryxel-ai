@@ -115,17 +115,21 @@ const init = (context: StyleContext): RenderedSelections => {
       .attr('pointer-events', 'none')
   }
 
-  // Labels
+  // Labels — dark outline via paint-order:stroke for contrast on dark sky
   nodeGroupSel
     .filter((d) => d.size >= 24)
     .append('text')
     .text((d) => truncateLabel(d.name, d.size))
     .attr('text-anchor', 'middle')
     .attr('dominant-baseline', 'middle')
-    .attr('fill', 'rgba(255,255,255,0.9)')
+    .attr('fill', 'white')
     .attr('font-size', (d) => `${Math.max(9, Math.min(d.size * 0.26, 13))}px`)
     .attr('font-family', 'var(--font-body, Inter, sans-serif)')
-    .attr('font-weight', '400')
+    .attr('font-weight', '600')
+    .attr('paint-order', 'stroke')
+    .attr('stroke', 'rgba(0,5,30,0.85)')
+    .attr('stroke-width', 3)
+    .attr('stroke-linejoin', 'round')
     .attr('pointer-events', 'none')
 
   nodeGroupSel
@@ -134,9 +138,14 @@ const init = (context: StyleContext): RenderedSelections => {
     .text((d) => d.name)
     .attr('text-anchor', 'middle')
     .attr('dy', (d) => d.size + 12)
-    .attr('fill', 'rgba(200,210,255,0.7)')
+    .attr('fill', 'rgba(230,235,255,1)')
     .attr('font-size', '9px')
     .attr('font-family', 'var(--font-body, Inter, sans-serif)')
+    .attr('font-weight', '500')
+    .attr('paint-order', 'stroke')
+    .attr('stroke', 'rgba(0,5,30,0.75)')
+    .attr('stroke-width', 2.5)
+    .attr('stroke-linejoin', 'round')
     .attr('pointer-events', 'none')
 
   const adjacency = buildAdjacency(links)
