@@ -1,6 +1,7 @@
 import { detectFamily } from './families'
 
 import type { DiaryData, DiaryRow, NoteRelationship, NoteRelationshipSentiment } from '$lib/types/diary'
+import type { FamilyDefinition } from './families'
 import type { NoteGraph, NoteLink, NoteNode } from './types'
 
 export function parseNotes(string_: string | null): string[] {
@@ -126,7 +127,11 @@ function accumulateLinks(entries: ListEntry[], nodeMap: Map<string, NodeAccumula
   return linkMap
 }
 
-export function buildNoteGraph(diaryData: DiaryData, noteRelationships: NoteRelationship[] = []): NoteGraph {
+export function buildNoteGraph(
+  diaryData: DiaryData,
+  noteRelationships: NoteRelationship[] = [],
+  families?: FamilyDefinition[],
+): NoteGraph {
   // Build a lookup map: note key → sentiment multiplier
   const sentimentMap = new Map<string, number>()
 
@@ -152,7 +157,7 @@ export function buildNoteGraph(diaryData: DiaryData, noteRelationships: NoteRela
   const maxScore = Math.max(0, ...[...nodeMap.values()].map((n) => n.weightedScore))
 
   const nodes: NoteNode[] = [...nodeMap.entries()].map(([id, data]) => {
-    const { family, color } = detectFamily(data.name)
+    const { family, color } = detectFamily(data.name, families)
 
     return {
       id,

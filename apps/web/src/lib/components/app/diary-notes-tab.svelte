@@ -11,7 +11,7 @@
     ThumbsUp,
   } from '@lucide/svelte'
   import { DropdownMenu } from 'bits-ui'
-  import { untrack } from 'svelte'
+  import { onMount, untrack } from 'svelte'
 
   import NoteFragrancesModal from '$lib/components/app/note-fragrances-modal.svelte'
   import NoteGraph from '$lib/components/app/note-graph.svelte'
@@ -19,7 +19,7 @@
   import { buildNoteGraph } from '$lib/utils/note-graph'
 
   import type { DiaryData, NoteRelationship, NoteRelationshipSentiment } from '$lib/types/diary'
-  import type { NoteNode } from '$lib/utils/note-graph'
+  import type { FamilyDefinition, NoteNode } from '$lib/utils/note-graph'
 
   type Props = {
     diaryData: DiaryData
@@ -34,8 +34,33 @@
   let notesViewMode = $state<'list' | 'graph'>('list')
   let graphModalOpen = $state(false)
   let graphModalNode = $state<NoteNode | null>(null)
+  let databaseFamilies = $state<FamilyDefinition[] | undefined>()
 
-  const noteGraph = $derived(buildNoteGraph(diaryData, localNotes))
+  const noteGraph = $derived(buildNoteGraph(diaryData, localNotes, databaseFamilies))
+
+  onMount(async () => {
+    try {
+      const response = await fetch('/api/note-families')
+
+      if (response.ok) {
+        const data = (await response.json()) as {
+          name: string
+          color: string
+          keywords: string[]
+          translations: Record<string, string>
+        }[]
+
+        databaseFamilies = data.map((f) => ({
+          family: f.name,
+          color: f.color,
+          keywords: f.keywords,
+          translations: f.translations,
+        }))
+      }
+    } catch {
+      // falls back to built-in FAMILY_DEFS via undefined families param
+    }
+  })
 
   $effect(() => {
     if (noteRelationships !== lastNoteRelationshipsRef) {
