@@ -13,13 +13,12 @@
   import { DropdownMenu } from 'bits-ui'
   import { onMount, untrack } from 'svelte'
 
-  import NoteFragrancesModal from '$lib/components/app/note-fragrances-modal.svelte'
   import NoteGraph from '$lib/components/app/note-graph.svelte'
   import * as m from '$lib/paraglide/messages.js'
   import { buildNoteGraph } from '$lib/utils/note-graph'
 
   import type { DiaryData, NoteRelationship, NoteRelationshipSentiment } from '$lib/types/diary'
-  import type { FamilyDefinition, NoteNode } from '$lib/utils/note-graph'
+  import type { FamilyDefinition } from '$lib/utils/note-graph'
 
   type Props = {
     diaryData: DiaryData
@@ -32,8 +31,6 @@
   let lastNoteRelationshipsRef: NoteRelationship[] | null = null
   let localNotes = $state<NoteRelationship[]>(untrack(() => [...noteRelationships]))
   let notesViewMode = $state<'list' | 'graph'>('list')
-  let graphModalOpen = $state(false)
-  let graphModalNode = $state<NoteNode | null>(null)
   let databaseFamilies = $state<FamilyDefinition[] | undefined>()
 
   const noteGraph = $derived(buildNoteGraph(diaryData, localNotes, databaseFamilies))
@@ -68,11 +65,6 @@
       localNotes = [...noteRelationships]
     }
   })
-
-  function handleGraphNodeClick(node: NoteNode) {
-    graphModalNode = node
-    graphModalOpen = true
-  }
 
   const sentimentOptions: NoteRelationshipSentiment[] = ['love', 'like', 'neutral', 'dislike', 'redflag']
 
@@ -239,15 +231,5 @@
     </div>
   {/if}
 {:else}
-  <NoteGraph graph={noteGraph} onNodeClick={handleGraphNodeClick} height={layout === 'desktop' ? 820 : 520} />
+  <NoteGraph graph={noteGraph} {diaryData} height={layout === 'desktop' ? 820 : 520} />
 {/if}
-
-<NoteFragrancesModal
-  bind:open={graphModalOpen}
-  node={graphModalNode}
-  {diaryData}
-  onClose={() => {
-    graphModalOpen = false
-    graphModalNode = null
-  }}
-/>
