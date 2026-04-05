@@ -88,14 +88,14 @@ const init = (context: StyleContext): RenderedSelections => {
     .attr('width', '180%')
     .attr('height', '180%')
 
-  gooFilter.append('feGaussianBlur').attr('in', 'SourceGraphic').attr('stdDeviation', 6).attr('result', 'blur')
+  gooFilter.append('feGaussianBlur').attr('in', 'SourceGraphic').attr('stdDeviation', 3).attr('result', 'blur')
 
   gooFilter
     .append('feColorMatrix')
     .attr('in', 'blur')
     .attr('mode', 'matrix')
-    // Alpha ×14 − 4: areas with blurred alpha > 0.29 become fully opaque blobs
-    .attr('values', '1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 14 -4')
+    // Alpha ×10 − 2.5: minimal blur, just enough to merge overlapping edges
+    .attr('values', '1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 10 -2.5')
 
   // ── Goo group: links + circles rendered together so they merge ────────────
   const gooG = g.append('g').attr('class', 'ink-goo').attr('filter', `url(#${uid}-goo)`)
