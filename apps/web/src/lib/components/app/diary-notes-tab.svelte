@@ -24,9 +24,10 @@
     diaryData: DiaryData
     noteRelationships: NoteRelationship[]
     layout: 'desktop' | 'mobile'
+    graphStyle?: string
   }
 
-  let { diaryData, noteRelationships, layout }: Props = $props()
+  let { diaryData, noteRelationships, layout, graphStyle = 'default' }: Props = $props()
 
   let lastNoteRelationshipsRef: NoteRelationship[] | null = null
   let localNotes = $state<NoteRelationship[]>(untrack(() => [...noteRelationships]))
@@ -231,5 +232,5 @@
     </div>
   {/if}
 {:else}
-  <NoteGraph graph={noteGraph} {diaryData} height={layout === 'desktop' ? 820 : 520} />
+  <NoteGraph graph={noteGraph} {diaryData} height={layout === 'desktop' ? 820 : 520} initialStyle={graphStyle} />
 {/if}

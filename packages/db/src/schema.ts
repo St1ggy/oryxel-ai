@@ -56,6 +56,7 @@ export const userAiPreferences = pgTable('user_ai_preferences', {
   maxPyramidNotes: integer('max_pyramid_notes').notNull().default(5),
   minRecommendations: integer('min_recommendations').notNull().default(5),
   maxRecommendations: integer('max_recommendations').notNull().default(20),
+  graphStyle: text('graph_style').notNull().default('default'),
 })
 
 export const userAiProviderKey = pgTable(

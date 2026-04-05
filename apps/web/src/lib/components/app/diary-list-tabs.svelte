@@ -38,6 +38,7 @@
     }
     recentActivity?: ActivityEntry[]
     noteRelationships?: NoteRelationship[]
+    graphStyle?: string
   }
 
   let {
@@ -55,6 +56,7 @@
     profile,
     recentActivity,
     noteRelationships = [],
+    graphStyle = 'default',
   }: Props = $props()
 
   /* eslint-disable camelcase */
@@ -286,7 +288,7 @@
           {/if}
         </Tabs.Content>
         <Tabs.Content value="notes" class={panelClass}>
-          <DiaryNotesTab diaryData={diaryState} {noteRelationships} layout="desktop" />
+          <DiaryNotesTab diaryData={diaryState} {noteRelationships} layout="desktop" {graphStyle} />
         </Tabs.Content>
         <Tabs.Content value="guide" class={panelClass}>
           <DiaryGuideTab layout="desktop" />
@@ -375,7 +377,7 @@
       {/if}
     </Tabs.Content>
     <Tabs.Content value="notes" class={panelClass}>
-      <DiaryNotesTab diaryData={diaryState} {noteRelationships} layout="mobile" />
+      <DiaryNotesTab diaryData={diaryState} {noteRelationships} layout="mobile" {graphStyle} />
     </Tabs.Content>
     <Tabs.Content value="guide" class={panelClass}>
       <DiaryGuideTab layout="mobile" />

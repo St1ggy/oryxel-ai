@@ -492,6 +492,7 @@
         noteRelationships={resolvedProfile?.noteRelationships}
         layout="desktop"
         contentWidthClass={desktopContentWidthClass}
+        graphStyle={data.graphStyle}
       >
         {#snippet headerStart()}
           <Button variant="ghost" size="sm" class="shrink-0 p-2" onclick={() => (chatOpen = !chatOpen)}>
@@ -558,6 +559,7 @@
             profile={profileData}
             noteRelationships={resolvedProfile?.noteRelationships}
             layout="mobile"
+            graphStyle={data.graphStyle}
           />
         </div>
       {/if}

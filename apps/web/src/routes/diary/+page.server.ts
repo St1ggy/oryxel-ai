@@ -14,7 +14,7 @@ import {
 } from '$lib/server/ai/keys/service'
 import { getLatestPendingPatches, listLatestChatMessages, updatePatchStatus } from '$lib/server/ai/storage'
 import { db } from '$lib/server/db'
-import { aiPendingPatch } from '$lib/server/db/schema'
+import { aiPendingPatch, userAiPreferences } from '$lib/server/db/schema'
 import { loadRecentActivity } from '$lib/server/diary/activity'
 import { loadDiaryForUser } from '$lib/server/diary/load'
 import { loadProfileForUser } from '$lib/server/profile/load'
@@ -59,13 +59,22 @@ export const load: PageServerLoad = async ({ locals, url, cookies }) => {
   const recentActivity = loadRecentActivity(userId, 30)
 
   // Fast queries — resolved before the shell renders
-  const [pendingPatches, activeJobs, configuredProviders, providerRows, defaultProvider] = await Promise.all([
-    getLatestPendingPatches(userId, 3),
-    getActiveJobsForUser(userId),
-    listConfiguredProviders(userId),
-    listUserProviderKeys(userId),
-    getUserDefaultProvider(userId),
-  ])
+  const [pendingPatches, activeJobs, configuredProviders, providerRows, defaultProvider, prefsRows] = await Promise.all(
+    [
+      getLatestPendingPatches(userId, 3),
+      getActiveJobsForUser(userId),
+      listConfiguredProviders(userId),
+      listUserProviderKeys(userId),
+      getUserDefaultProvider(userId),
+      db
+        .select({ graphStyle: userAiPreferences.graphStyle })
+        .from(userAiPreferences)
+        .where(eq(userAiPreferences.userId, userId))
+        .limit(1),
+    ],
+  )
+
+  const graphStyle = prefsRows[0]?.graphStyle ?? 'default'
 
   const labelMap = new Map(providerRows.map((r) => [r.provider, r.label]))
   const chatProviders = configuredProviders.map((p, index) => ({
@@ -97,5 +106,6 @@ export const load: PageServerLoad = async ({ locals, url, cookies }) => {
     chatProviders,
     chatHistory,
     initialTab,
+    graphStyle,
   }
 }

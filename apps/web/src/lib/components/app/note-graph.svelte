@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Disc, Hexagon, Layers, Pen, Sparkles, Star } from '@lucide/svelte'
-  import { onDestroy } from 'svelte'
+  import { onDestroy, untrack } from 'svelte'
 
   import * as m from '$lib/paraglide/messages.js'
 
@@ -17,9 +17,10 @@
     diaryData: DiaryData
     onNodeClick?: (node: NoteNode) => void
     height?: number
+    initialStyle?: string
   }
 
-  const { graph, diaryData, onNodeClick, height = 480 }: Props = $props()
+  const { graph, diaryData, onNodeClick, height = 480, initialStyle = 'default' }: Props = $props()
 
   // Families present in the current graph — derived for the legend
   const legendFamilies = $derived(
@@ -82,7 +83,34 @@
   let controls: GraphControls | null = null
   let tooltip: TooltipState | null = $state(null)
   let panelNode: NoteNode | null = $state(null)
-  let activeStyle = $state<GraphStyle>('default')
+
+  const VALID_STYLES: GraphStyle[] = ['default', 'constellation', 'bubble', 'ink', 'cluster', 'timeline']
+
+  function coerceStyle(s: string): GraphStyle {
+    return (VALID_STYLES as string[]).includes(s) ? (s as GraphStyle) : 'default'
+  }
+
+  let activeStyle = $state<GraphStyle>(untrack(() => coerceStyle(initialStyle)))
+
+  let saveTimeout: ReturnType<typeof setTimeout> | null = null
+
+  function persistStyle(style: GraphStyle): void {
+    if (saveTimeout) clearTimeout(saveTimeout)
+
+    saveTimeout = setTimeout(() => {
+      fetch('/api/ai/preferences', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ graphStyle: style }),
+      }).catch(() => {
+        // Non-critical — ignore network errors
+      })
+    }, 600)
+  }
+
+  $effect(() => {
+    persistStyle(activeStyle)
+  })
 
   // Fragrances containing the selected note
 

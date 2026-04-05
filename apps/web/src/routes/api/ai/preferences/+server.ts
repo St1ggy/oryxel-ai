@@ -17,6 +17,7 @@ const bodySchema = z.object({
   tone: z.string().max(200).optional(),
   depth: z.string().max(200).optional(),
   rememberContext: z.boolean().optional(),
+  graphStyle: z.enum(['default', 'constellation', 'bubble', 'ink', 'cluster', 'timeline']).optional(),
 })
 
 export const GET: RequestHandler = async ({ locals }) => {
@@ -34,6 +35,7 @@ export const GET: RequestHandler = async ({ locals }) => {
       tone: userAiPreferences.tone,
       depth: userAiPreferences.depth,
       rememberContext: userAiPreferences.rememberContext,
+      graphStyle: userAiPreferences.graphStyle,
     })
     .from(userAiPreferences)
     .where(eq(userAiPreferences.userId, locals.user.id))
@@ -48,6 +50,7 @@ export const GET: RequestHandler = async ({ locals }) => {
     tone: prefs?.tone ?? null,
     depth: prefs?.depth ?? null,
     rememberContext: prefs?.rememberContext ?? true,
+    graphStyle: prefs?.graphStyle ?? 'default',
   })
 }
 
@@ -77,6 +80,8 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
   if (body.depth !== undefined) displayUpdates['depth'] = body.depth
 
   if (body.rememberContext !== undefined) displayUpdates['rememberContext'] = body.rememberContext
+
+  if (body.graphStyle !== undefined) displayUpdates['graphStyle'] = body.graphStyle
 
   if (Object.keys(displayUpdates).length > 0) {
     await db
