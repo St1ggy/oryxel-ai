@@ -14,8 +14,8 @@ export const DIARY_LIST_TAB_VALUES = [
 
 export type DiaryListTabValue = (typeof DIARY_LIST_TAB_VALUES)[number]
 
-/** Tabs shown on desktop (all). Mobile omits profile, notes, guide. */
-export const MOBILE_EXCLUDED_TABS: DiaryListTabValue[] = ['profile', 'notes', 'guide']
+/** Profile has its own dedicated mobile nav tab — exclude it from the lists tab bar on mobile. */
+export const MOBILE_EXCLUDED_TABS: DiaryListTabValue[] = ['profile']
 
 export function diaryListTabItems(): { value: DiaryListTabValue; label: string }[] {
   return [

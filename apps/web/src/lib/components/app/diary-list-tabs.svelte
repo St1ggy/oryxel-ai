@@ -97,34 +97,105 @@
     ),
   )
 
-  // Animated indicator state
+  // Animated indicator + scroll-fade state
   let tabsListElement = $state<HTMLElement | null>(null)
+  let mobileTabsListElement = $state<HTMLElement | null>(null)
   let indicatorLeft = $state(0)
   let indicatorWidth = $state(0)
   let indicatorReady = $state(false)
+  let desktopCanScrollLeft = $state(false)
+  let desktopCanScrollRight = $state(false)
+  let mobileCanScrollLeft = $state(false)
+  let mobileCanScrollRight = $state(false)
+
+  function checkScrollEdges(element: HTMLElement) {
+    return {
+      left: element.scrollLeft > 0,
+      right: element.scrollLeft + element.clientWidth < element.scrollWidth - 1,
+    }
+  }
 
   $effect(() => {
-    // Depend on listTab so this re-runs on every change
+    const element = tabsListElement
+
+    if (!element) return
+
+    const update = () => {
+      const edges = checkScrollEdges(element)
+
+      desktopCanScrollLeft = edges.left
+      desktopCanScrollRight = edges.right
+    }
+
+    requestAnimationFrame(update)
+    element.addEventListener('scroll', update, { passive: true })
+
+    return () => element.removeEventListener('scroll', update)
+  })
+
+  $effect(() => {
+    const element = mobileTabsListElement
+
+    if (!element) return
+
+    const update = () => {
+      const edges = checkScrollEdges(element)
+
+      mobileCanScrollLeft = edges.left
+      mobileCanScrollRight = edges.right
+    }
+
+    requestAnimationFrame(update)
+    element.addEventListener('scroll', update, { passive: true })
+
+    return () => element.removeEventListener('scroll', update)
+  })
+
+  function scrollMaskStyle(canLeft: boolean, canRight: boolean): string {
+    if (!canLeft && !canRight) return ''
+
+    let gradient: string
+
+    if (canLeft && canRight) {
+      gradient = 'linear-gradient(to right, transparent, black 36px, black calc(100% - 36px), transparent)'
+    } else if (canLeft) {
+      gradient = 'linear-gradient(to right, transparent, black 36px)'
+    } else {
+      gradient = 'linear-gradient(to right, black calc(100% - 36px), transparent)'
+    }
+
+    return `-webkit-mask-image: ${gradient}; mask-image: ${gradient};`
+  }
+
+  const desktopMaskStyle = $derived(scrollMaskStyle(desktopCanScrollLeft, desktopCanScrollRight))
+  const mobileMaskStyle = $derived(scrollMaskStyle(mobileCanScrollLeft, mobileCanScrollRight))
+
+  function updateIndicator() {
+    if (!tabsListElement) return
+
+    const active = tabsListElement.querySelector('[data-state="active"]') as HTMLElement | null
+
+    if (active) {
+      indicatorLeft = active.offsetLeft
+      indicatorWidth = active.offsetWidth
+      indicatorReady = true
+    }
+  }
+
+  $effect(() => {
+    // Depend on listTab and tabsListElement so this re-runs on change or first mount.
     // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     listTab
-    void tick().then(() => {
-      if (!tabsListElement) return
-
-      const active = tabsListElement.querySelector('[data-state="active"]') as HTMLElement | null
-
-      if (active) {
-        indicatorLeft = active.offsetLeft
-        indicatorWidth = active.offsetWidth
-        indicatorReady = true
-      }
-    })
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+    tabsListElement
+    // tick() flushes Svelte DOM updates; rAF ensures the browser has done a layout pass
+    // before we read offsetLeft/offsetWidth (fixes misposition on initial page load).
+    void tick().then(() => requestAnimationFrame(updateIndicator))
   })
 
   const shellClass = $derived(cn('flex min-h-0 flex-col', layout === 'desktop' ? 'flex-1' : 'gap-3'))
 
-  const listClassMobile = cn(
-    'flex gap-1 overflow-x-auto rounded-lg border border-border bg-muted/50 p-1 scrollbar-hide',
-  )
+  const listClassMobile = cn('flex gap-1 rounded-lg border border-border bg-muted/50 p-1')
 
   const triggerMobile = cn(
     'oryx-transition shrink-0 whitespace-nowrap rounded-md px-3 py-2 text-xs font-medium text-foreground-muted data-[state=active]:bg-surface data-[state=active]:text-foreground data-[state=active]:shadow-sm',
@@ -394,6 +465,7 @@
       <div
         bind:this={tabsListElement}
         class="scrollbar-hide relative flex min-w-0 flex-1 items-center gap-5 overflow-x-auto md:gap-7"
+        style={desktopMaskStyle}
       >
         <Tabs.List class="contents" aria-label={m.oryxel_diary_lists_aria()}>
           {#each tabItems as { value, label } (value)}
@@ -656,16 +728,18 @@
       </div>
     </div>
   {:else}
-    <Tabs.List class={listClassMobile}>
-      {#each tabItems as { value, label } (value)}
-        <Tabs.Trigger {value} class={triggerMobile}>
-          {label}
-          {#if !loading && tabCounts[value] !== undefined}
-            <span class="ml-1 font-mono text-[10px] tabular-nums opacity-60">{tabCounts[value]}</span>
-          {/if}
-        </Tabs.Trigger>
-      {/each}
-    </Tabs.List>
+    <div bind:this={mobileTabsListElement} class="scrollbar-hide overflow-x-auto" style={mobileMaskStyle}>
+      <Tabs.List class={listClassMobile}>
+        {#each tabItems as { value, label } (value)}
+          <Tabs.Trigger {value} class={triggerMobile}>
+            {label}
+            {#if !loading && tabCounts[value] !== undefined}
+              <span class="ml-1 font-mono text-[10px] tabular-nums opacity-60">{tabCounts[value]}</span>
+            {/if}
+          </Tabs.Trigger>
+        {/each}
+      </Tabs.List>
+    </div>
     <Tabs.Content value="owned" class={panelClass}>
       {#if loading}
         <DiaryTableSkeleton />
