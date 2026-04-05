@@ -166,8 +166,8 @@ const init = (context: StyleContext): RenderedSelections => {
     .attr('font-style', 'italic')
     .attr('font-weight', '600')
     .attr('paint-order', 'stroke')
-    .attr('stroke', 'rgba(255,250,240,0.9)')
-    .attr('stroke-width', 1.5)
+    .attr('stroke', 'rgba(0,0,0,0.55)')
+    .attr('stroke-width', 0.5)
     .attr('stroke-linejoin', 'round')
 
   labelGroupSel
@@ -181,8 +181,8 @@ const init = (context: StyleContext): RenderedSelections => {
     .attr('font-family', '"Georgia", serif')
     .attr('font-style', 'italic')
     .attr('paint-order', 'stroke')
-    .attr('stroke', 'rgba(255,250,240,0.85)')
-    .attr('stroke-width', 1.5)
+    .attr('stroke', 'rgba(0,0,0,0.55)')
+    .attr('stroke-width', 0.5)
     .attr('stroke-linejoin', 'round')
 
   return {
