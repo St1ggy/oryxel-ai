@@ -1,0 +1,170 @@
+/**
+ * Built-in note family definitions.
+ * Used to seed the `note_family` table on first access.
+ * Edit this file to change default families; the next deployment will pick up
+ * changes for rows not yet in the DB (onConflictDoNothing preserves manual edits).
+ */
+
+type FamilySeed = {
+  name: string
+  color: string
+  keywords: string[]
+  translations: Record<string, string>
+  sortOrder: number
+}
+
+export const BUILTIN_FAMILIES: FamilySeed[] = [
+  {
+    name: 'citrus',
+    color: '#FFB347',
+    sortOrder: 1,
+    translations: { en: 'Citrus', ru: 'Цитрус', es: 'Cítrico', fr: 'Agrume', jp: 'シトラス', zh: '柑橘' },
+    keywords: [
+      'bergamot', 'lemon', 'lime', 'orange', 'grapefruit', 'mandarin', 'tangerine', 'yuzu',
+      'citrus', 'citron', 'kumquat', 'neroli', 'petitgrain', 'clementine', 'blood orange',
+      'pomelo', 'satsuma', 'nectarine', 'lemon verbena', 'verbena', 'melissa', 'lemon balm',
+      'lemon zest', 'orange zest', 'citrus peel', 'orange blossom', 'orange flower',
+      'calabrian', 'amalfi', 'sicilian', 'cedrat', 'bigarade', 'combava', 'sudachi',
+      'citronella', 'litsea cubeba', 'petitgrain bigarade', 'hesperides', 'hesperidic',
+      'бергамот', 'лимон', 'апельсин', 'мандарин', 'грейпфрут', 'юзу', 'лайм', 'помело',
+      'клементин', 'цитрон', 'цитрус', 'вербена', 'мелисса', 'лимонная вербена',
+      'нероли', 'цедрат', 'кожура цитруса', 'цветок апельсина', 'цитронелла',
+    ],
+  },
+  {
+    name: 'floral',
+    color: '#FF69B4',
+    sortOrder: 2,
+    translations: { en: 'Floral', ru: 'Флоральный', es: 'Floral', fr: 'Floral', jp: 'フローラル', zh: '花香' },
+    keywords: [
+      'rose', 'jasmine', 'lavender', 'violet', 'lily', 'iris', 'peony', 'magnolia',
+      'gardenia', 'tuberose', 'ylang', 'osmanthus', 'freesia', 'carnation', 'geranium',
+      'heliotrope', 'mimosa', 'narcissus', 'orris', 'cherry blossom', 'lotus',
+      'water lily', 'wisteria', 'honeysuckle', 'elderflower', 'lily of the valley',
+      'muguet', 'tiare', 'frangipani', 'hyacinth', 'dahlia', 'edelweiss', 'acacia',
+      'immortelle', 'everlasting', 'peach blossom', 'rose water', 'rose absolute',
+      'sambac', 'grandiflorum', 'heliotropin', 'floral', 'flower', 'blossom', 'bloom',
+      'wallflower', 'sweet pea', 'clary sage', 'jonquil', 'chrysanthemum', 'lilac',
+      'hawthorn', 'blackcurrant bud', 'cassis bud', 'boronia', 'calycanthus',
+      'роза', 'жасмин', 'лаванда', 'фиалка', 'лилия', 'ирис', 'пион', 'магнолия',
+      'гардения', 'тубероза', 'иланг', 'османтус', 'фрезия', 'гвоздика', 'герань',
+      'гелиотроп', 'мимоза', 'нарцисс', 'оррис', 'цветок вишни', 'лотос', 'кувшинка',
+      'глициния', 'жимолость', 'бузина', 'ландыш', 'тиаре', 'плюмерия', 'гиацинт',
+      'хризантема', 'сирень', 'боярышник', 'цветочный', 'цветы', 'цветок',
+    ],
+  },
+  {
+    name: 'woody',
+    color: '#8B4513',
+    sortOrder: 3,
+    translations: { en: 'Woody', ru: 'Древесный', es: 'Amaderado', fr: 'Boisé', jp: 'ウッディ', zh: '木质' },
+    keywords: [
+      'cedar', 'sandalwood', 'vetiver', 'oud', 'agarwood', 'guaiac', 'patchouli',
+      'oakmoss', 'birch', 'pine', 'fir', 'rosewood', 'teak', 'ebony', 'mahogany',
+      'bark', 'driftwood', 'wood', 'woody', 'timber', 'amyris', 'elemi',
+      'frankincense', 'incense', 'myrrh', 'olibanum', 'benzoin', 'labdanum',
+      'cypress', 'juniper', 'spruce', 'fir needle', 'pine needle', 'gaiac wood',
+      'clearwood', 'javanol', 'timberol', 'sandalore', 'cashmeran', 'cedarwood',
+      'hinoki', 'cryptomeria', 'maple wood', 'elm', 'styrax', 'balsam',
+      'peru balsam', 'tolu balsam', 'tree moss', 'oakwood', 'poplar', 'bamboo', 'woody amber',
+      'кедр', 'сандал', 'ветивер', 'уд', 'пачули', 'дубовый мох', 'береза', 'сосна',
+      'дерево', 'кора', 'ладан', 'мирра', 'смирна', 'бензоин', 'лабданум', 'смола',
+      'можжевельник', 'кипарис', 'ель', 'пихта', 'древесный', 'древесина',
+      'франкинсенс', 'элеми', 'амирис', 'тик', 'эбен', 'гваяк', 'хиноки',
+    ],
+  },
+  {
+    name: 'spicy',
+    color: '#D2691E',
+    sortOrder: 4,
+    translations: { en: 'Spicy', ru: 'Пряный', es: 'Especiado', fr: 'Épicé', jp: 'スパイシー', zh: '辛香' },
+    keywords: [
+      'pepper', 'cardamom', 'cinnamon', 'clove', 'nutmeg', 'ginger', 'saffron',
+      'cumin', 'coriander', 'star anise', 'pink pepper', 'black pepper', 'red pepper',
+      'white pepper', 'allspice', 'mace', 'bay leaf', 'bay rum', 'fenugreek',
+      'turmeric', 'galangal', 'wasabi', 'horseradish', 'chili', 'cayenne', 'paprika',
+      'szechuan', 'anise', 'fennel', 'caraway', 'dill seed', 'spice', 'spicy',
+      'artemisia', 'wormwood', 'absinthe', 'tarragon', 'clove bud', 'ginger root',
+      'dried cloves', 'pepper berry', 'long pepper',
+      'перец', 'кардамон', 'корица', 'гвоздика', 'мускатный', 'имбирь', 'шафран',
+      'тмин', 'кориандр', 'бадьян', 'розовый перец', 'черный перец', 'красный перец',
+      'анис', 'фенхель', 'лавр', 'куркума', 'паприка', 'перец чили', 'перец кайенский',
+      'специи', 'пряности', 'пряный', 'полынь', 'абсент', 'эстрагон',
+    ],
+  },
+  {
+    name: 'musky',
+    color: '#DDA0DD',
+    sortOrder: 5,
+    translations: { en: 'Musky', ru: 'Мускусный', es: 'Almizclado', fr: 'Musqué', jp: 'ムスキー', zh: '麝香' },
+    keywords: [
+      'musk', 'ambroxan', 'ambergris', 'amber', 'civet', 'castoreum',
+      'galaxolide', 'habanolide', 'ethylene brassylate', 'iso e super',
+      'clean musk', 'white musk', 'skin musk', 'powdery musk', 'musks',
+      'ambrette', 'muscone', 'exaltolide', 'hedione',
+      'vanilla', 'tonka bean', 'tonka', 'coumarin', 'beeswax', 'lactone', 'lactonic',
+      'honey', 'honeycomb', 'sugar', 'caramel', 'praline', 'chocolate', 'cocoa', 'cacao',
+      'coffee', 'espresso', 'almond', 'marzipan', 'coconut', 'nougat', 'maple',
+      'rum', 'bourbon', 'whiskey', 'cognac', 'powder', 'powdery', 'talc', 'soft',
+      'gourmand', 'sweet', 'warm', 'sensual',
+      'мускус', 'амбра', 'амброксан', 'цивет', 'ваниль', 'тонка', 'кумарин',
+      'пчелиный воск', 'мёд', 'сахар', 'карамель', 'шоколад', 'кофе', 'миндаль',
+      'кокос', 'пралине', 'нуга', 'ром', 'пудровый', 'пудра', 'тальк',
+      'белый мускус', 'чистый мускус', 'мускусный', 'сладкий', 'теплый',
+    ],
+  },
+  {
+    name: 'green',
+    color: '#7CB342',
+    sortOrder: 6,
+    translations: { en: 'Green', ru: 'Зелёный', es: 'Verde', fr: 'Vert', jp: 'グリーン', zh: '绿叶' },
+    keywords: [
+      'basil', 'mint', 'rosemary', 'thyme', 'sage', 'tarragon', 'tea', 'fig',
+      'tomato leaf', 'violet leaf', 'galbanum', 'grass', 'green', 'herb', 'herbal',
+      'leaf', 'leaves', 'vine', 'nettle', 'veronica', 'green tea', 'matcha',
+      'cut grass', 'hay', 'seaweed', 'algae', 'kelp', 'moss', 'vetiver leaf',
+      'cannabis', 'hemp', 'artichoke', 'lovage', 'parsley', 'hyssop', 'marjoram',
+      'oregano', 'green accord', 'green note', 'stem', 'bud', 'shoot',
+      'базилик', 'мята', 'розмарин', 'тимьян', 'шалфей', 'чай', 'инжир',
+      'трава', 'зеленый', 'лист', 'листья', 'зелень', 'зеленый чай', 'матча',
+      'камыш', 'водоросли', 'мох', 'крапива', 'петрушка', 'мята перечная',
+      'зеленые ноты', 'побег', 'бутон', 'стебель',
+    ],
+  },
+  {
+    name: 'fresh',
+    color: '#5DADE2',
+    sortOrder: 7,
+    translations: { en: 'Fresh', ru: 'Свежий', es: 'Fresco', fr: 'Frais', jp: 'フレッシュ', zh: '清新' },
+    keywords: [
+      'aquatic', 'marine', 'sea', 'ocean', 'water', 'ozone', 'aldehydic', 'ozonic',
+      'rain', 'air', 'breeze', 'fresh', 'marine accord', 'sea spray', 'sea salt',
+      'salt', 'mineral', 'chalk', 'snow', 'ice', 'frost', 'arctic', 'glacial',
+      'calone', 'crystal', 'clean',
+      'apple', 'green apple', 'pear', 'peach', 'apricot', 'plum', 'watermelon',
+      'melon', 'lychee', 'rhubarb', 'raspberry', 'strawberry', 'blackberry',
+      'blueberry', 'currant', 'cassis', 'berry', 'red berries', 'white peach',
+      'passion fruit', 'guava', 'mango', 'pineapple', 'kiwi',
+      'морская', 'океан', 'вода', 'озон', 'свежий', 'огурец', 'морской',
+      'морская соль', 'соль', 'снег', 'лёд', 'минеральный', 'чистый',
+      'яблоко', 'груша', 'персик', 'абрикос', 'арбуз', 'дыня', 'ревень',
+      'личи', 'малина', 'клубника', 'ежевика', 'черника', 'смородина', 'ягода',
+    ],
+  },
+  {
+    name: 'leather',
+    color: '#5D4037',
+    sortOrder: 8,
+    translations: { en: 'Leather', ru: 'Кожаный', es: 'Cuero', fr: 'Cuir', jp: 'レザー', zh: '皮革' },
+    keywords: [
+      'leather', 'tobacco', 'suede', 'smoke', 'tar', 'birch tar', 'chamois',
+      'ink', 'rubber', 'gasoline', 'petrol', 'gunpowder', 'metal', 'iron',
+      'mushroom', 'truffle', 'earth', 'dirt', 'soil', 'papyrus',
+      'tobacco leaf', 'virginia tobacco', 'pipe tobacco', 'oud leather',
+      'smoky', 'dark', 'animalic', 'earthy',
+      'кожа', 'табак', 'замша', 'дым', 'деготь', 'чернила', 'резина',
+      'бензин', 'металл', 'железо', 'грибы', 'трюфель', 'земля', 'почва',
+      'табачный', 'дымный', 'животный', 'землистый', 'кожаный',
+    ],
+  },
+]
