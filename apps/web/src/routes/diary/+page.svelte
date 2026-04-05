@@ -12,6 +12,7 @@
   import FragranceDetailModal from '$lib/components/app/fragrance-detail-modal.svelte'
   import MobilePrimaryNav from '$lib/components/app/mobile-primary-nav.svelte'
   import Button from '$lib/components/ui/button.svelte'
+  import Modal from '$lib/components/ui/modal.svelte'
   import * as m from '$lib/paraglide/messages.js'
   import { cn } from '$lib/utils/cn'
 
@@ -160,6 +161,7 @@
 
   let syncProgress = $state<SyncProgress>(null)
   let patchProgress = $state<PatchProgress>(null)
+  let syncConfirmOpen = $state(false)
   let thinking = $state(false)
 
   // Resume polling for jobs that were still running when the page was last closed/refreshed
@@ -272,6 +274,14 @@
           phase: latest.phase as NonNullable<SyncProgress>['phase'],
         }
       }
+    }
+  }
+
+  function handleProfileSyncClick() {
+    if (syncProgress === null) {
+      void triggerProfileSync()
+    } else {
+      syncConfirmOpen = true
     }
   }
 
@@ -458,7 +468,7 @@
         loading={diaryLoading}
         {onRatingChange}
         onOpenDetail={openDetail}
-        onProfileSync={triggerProfileSync}
+        onProfileSync={handleProfileSyncClick}
         profile={profileData}
         recentActivity={resolvedRecentActivity}
         noteRelationships={resolvedProfile?.noteRelationships}
@@ -507,7 +517,7 @@
           <DiaryProfileTab
             variant="mobile"
             profile={profileData}
-            onProfileSync={triggerProfileSync}
+            onProfileSync={handleProfileSyncClick}
             recentActivity={resolvedRecentActivity}
           />
         </div>
@@ -519,7 +529,7 @@
             loading={diaryLoading}
             {onRatingChange}
             onOpenDetail={openDetail}
-            onProfileSync={triggerProfileSync}
+            onProfileSync={handleProfileSyncClick}
             profile={profileData}
             layout="mobile"
           />
@@ -531,6 +541,23 @@
   <MobilePrimaryNav active={mobileTab} onSelect={onMobileNav} />
 </div>
 
+<Modal
+  bind:open={syncConfirmOpen}
+  title={m.oryxel_profile_sync_confirm_title()}
+  description={m.oryxel_profile_sync_confirm_desc()}
+>
+  {#snippet footer()}
+    <Button variant="secondary" onclick={() => (syncConfirmOpen = false)}>{m.oryxel_cancel()}</Button>
+    <Button
+      onclick={() => {
+        syncConfirmOpen = false
+        void triggerProfileSync()
+      }}
+    >
+      {m.oryxel_profile_sync_confirm_cta()}
+    </Button>
+  {/snippet}
+</Modal>
 <DiaryEditModal bind:open={editOpen} row={editRow} onSave={onSaveEdit} />
 <FragranceDetailModal
   bind:open={detailOpen}
