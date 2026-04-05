@@ -49,7 +49,7 @@ const init = (context: StyleContext): RenderedSelections => {
     .attr('fill-opacity', (s) => s.op)
     .attr('pointer-events', 'none')
 
-  // Links — simple bezier arcs, no expensive filter
+  // Links — white/silver on dark background, bezier arcs
   const linkSel = g
     .append('g')
     .attr('class', 'links')
@@ -57,9 +57,9 @@ const init = (context: StyleContext): RenderedSelections => {
     .data(links)
     .join('path')
     .attr('fill', 'none')
-    .attr('stroke', (lk) => lightenHex((lk.source as NoteNode).color, 0.35))
+    .attr('stroke', 'rgba(180,200,255,0.9)')
     .attr('stroke-width', (lk) => linkThickness(lk.weight))
-    .attr('stroke-opacity', (lk) => linkOpacity(lk.weight))
+    .attr('stroke-opacity', (lk) => linkOpacity(lk.weight) * 1.4)
     .attr('stroke-linecap', 'round')
 
   const nodeGroupSel = g

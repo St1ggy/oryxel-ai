@@ -63,10 +63,14 @@ export async function initNoteGraphD3(
   style: GraphStyle = 'default',
 ): Promise<GraphControls> {
   const nodes: NoteNode[] = graph.nodes.map((n) => ({ ...n }))
+
+  // Pre-resolve link sources/targets to NoteNode objects so that renderers
+  // can read .color in their init() before the simulation starts.
+  const nodeMap = new Map(nodes.map((n) => [n.id, n]))
   const links: NoteLink[] = graph.links.map((l) => ({
     ...l,
-    source: l.source as string,
-    target: l.target as string,
+    source: nodeMap.get(l.source as string) ?? (l.source as NoteNode),
+    target: nodeMap.get(l.target as string) ?? (l.target as NoteNode),
   }))
 
   const svg = d3.select(svgElement)
