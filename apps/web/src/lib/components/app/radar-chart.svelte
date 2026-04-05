@@ -24,39 +24,9 @@
     return { x: cx + rad * Math.cos(angle), y: cy + rad * Math.sin(angle) }
   }
 
-  // Build a smooth closed curve through pts using Catmull-Rom → cubic bezier conversion.
-  // alpha controls tension: 0 = angular, 0.5 = natural spline.
-  function smoothClosedPath(pts: { x: number; y: number }[], alpha = 0.38): string {
-    const length = pts.length
-
-    if (length < 3) return ''
-
-    const parts: string[] = []
-
-    for (let index = 0; index < length; index++) {
-      const p0 = pts[(index - 1 + length) % length]
-      const p1 = pts[index]
-      const p2 = pts[(index + 1) % length]
-      const p3 = pts[(index + 2) % length]
-
-      const cp1x = p1.x + (alpha * (p2.x - p0.x)) / 2
-      const cp1y = p1.y + (alpha * (p2.y - p0.y)) / 2
-      const cp2x = p2.x - (alpha * (p3.x - p1.x)) / 2
-      const cp2y = p2.y - (alpha * (p3.y - p1.y)) / 2
-
-      if (index === 0) parts.push(`M ${p1.x} ${p1.y}`)
-
-      parts.push(`C ${cp1x} ${cp1y} ${cp2x} ${cp2y} ${p2.x} ${p2.y}`)
-    }
-
-    parts.push('Z')
-
-    return parts.join(' ')
-  }
-
   const spokeEndpoints = $derived(axes.map((_, index) => pointFor(index, 100)))
   const vertexPoints = $derived(axes.map(({ value }, index) => pointFor(index, value)))
-  const dataPath = $derived(smoothClosedPath(vertexPoints))
+  const dataPath = $derived(concaveClosedPath(vertexPoints))
 
   // Spider-web ring paths: straight polygon lines (not curves) for the classic web look
   // Ring paths: quadratic bezier arcs bowing inward (toward center) — classic spiderweb look.

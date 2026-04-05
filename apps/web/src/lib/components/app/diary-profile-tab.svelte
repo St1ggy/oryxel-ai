@@ -157,7 +157,7 @@
           {/if}
         </button>
         {#if countOpen && diaryCounts}
-          <div class="mb-1 ml-7 space-y-1 text-xs text-foreground-muted">
+          <div class="ml-7 space-y-1.5 pr-[26px] pb-2 text-xs text-foreground-muted">
             <div class="flex justify-between">
               <span>{m.oryxel_tab_collection()}</span><span class="font-medium text-foreground tabular-nums"
                 >{diaryCounts.owned}</span
