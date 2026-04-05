@@ -15,6 +15,13 @@
       "when": 1775376500000,
       "tag": "0001_is_disliked",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1775406463166,
+      "tag": "0002_careful_marvel_zombies",
+      "breakpoints": true
     }
   ]
 }

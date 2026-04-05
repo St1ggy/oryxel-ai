@@ -204,6 +204,21 @@ export const backgroundJob = pgTable('background_job', {
 // key    = canonical English text stored in the fragrance / profile tables
 // locale = target locale code (es, fr, jp, ru, zh)
 // value  = translated text
+/** Note olfactive family — defines detection keywords, color, and display name translations. */
+export const noteFamily = pgTable('note_family', {
+  id: serial('id').primaryKey(),
+  /** Stable machine key, e.g. 'citrus', 'floral', 'woody' */
+  name: text('name').notNull().unique(),
+  /** Hex display color for graph nodes, e.g. '#FFB347' */
+  color: text('color').notNull(),
+  /** List of lowercase keywords used for detection (substring match) */
+  keywords: jsonb('keywords').$type<string[]>().notNull().default([]),
+  /** Per-locale display names, e.g. {"en": "Citrus", "ru": "Цитрус"} */
+  translations: jsonb('translations').$type<Record<string, string>>().notNull().default({}),
+  /** Display order in the UI */
+  sortOrder: integer('sort_order').notNull().default(0),
+})
+
 export const translations = pgTable(
   'translations',
   {

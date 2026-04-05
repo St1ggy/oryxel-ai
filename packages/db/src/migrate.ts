@@ -64,7 +64,7 @@ async function run() {
       }
 
       console.log(`apply ${file}`)
-      const sql = readFileSync(join(migrationsDirectory, file), 'utf8')
+      const sql = readFileSync(nodePath.join(migrationsDirectory, file), 'utf8')
       const statements = sql
         .split('--> statement-breakpoint')
         .map((s) => s.trim())
