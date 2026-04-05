@@ -26,28 +26,44 @@
 
   const spokeEndpoints = $derived(axes.map((_, index) => pointFor(index, 100)))
   const vertexPoints = $derived(axes.map(({ value }, index) => pointFor(index, value)))
-  const dataPath = $derived(concaveClosedPath(vertexPoints))
 
-  // Spider-web ring paths: straight polygon lines (not curves) for the classic web look
-  // Ring paths: quadratic bezier arcs bowing inward (toward center) — classic spiderweb look.
-  // Control point is pulled from the edge midpoint toward (cx, cy) by factor t.
-  function concaveClosedPath(pts: { x: number; y: number }[], t = 0.22): string {
+  // Straight polygon path for ring backgrounds.
+  function polygonPath(pts: { x: number; y: number }[]): string {
+    if (pts.length < 3) return ''
+
+    const segments = pts.map((p, index) => [index === 0 ? 'M' : 'L', p.x, p.y].join(' '))
+
+    return [...segments, 'Z'].join(' ')
+  }
+
+  // Straight-edge polygon with small rounded corners at each vertex.
+  function roundedPolygonPath(pts: { x: number; y: number }[], cornerR = 6): string {
     if (pts.length < 3) return ''
 
     const count = pts.length
     const parts: string[] = []
 
     for (let index = 0; index < count; index++) {
-      const p1 = pts[index]
-      const p2 = pts[(index + 1) % count]
-      const mx = (p1.x + p2.x) / 2
-      const my = (p1.y + p2.y) / 2
-      const qx = mx + t * (cx - mx)
-      const qy = my + t * (cy - my)
+      const previous = pts[(index - 1 + count) % count]
+      const current = pts[index]
+      const next = pts[(index + 1) % count]
 
-      if (index === 0) parts.push(`M ${p1.x} ${p1.y}`)
+      const dx1 = current.x - previous.x
+      const dy1 = current.y - previous.y
+      const length1 = Math.hypot(dx1, dy1)
 
-      parts.push(`Q ${qx} ${qy} ${p2.x} ${p2.y}`)
+      const dx2 = next.x - current.x
+      const dy2 = next.y - current.y
+      const length2 = Math.hypot(dx2, dy2)
+
+      const clampedR = Math.min(cornerR, length1 / 2, length2 / 2)
+      const before = { x: current.x - (dx1 / length1) * clampedR, y: current.y - (dy1 / length1) * clampedR }
+      const after = { x: current.x + (dx2 / length2) * clampedR, y: current.y + (dy2 / length2) * clampedR }
+
+      if (index === 0) parts.push(`M ${before.x} ${before.y}`)
+      else parts.push(`L ${before.x} ${before.y}`)
+
+      parts.push(`Q ${current.x} ${current.y} ${after.x} ${after.y}`)
     }
 
     parts.push('Z')
@@ -55,8 +71,10 @@
     return parts.join(' ')
   }
 
+  const dataPath = $derived(roundedPolygonPath(vertexPoints))
+
   const ringPaths = $derived(
-    [0.33, 0.67, 1].map((ring) => concaveClosedPath(axes.map((_, index) => pointFor(index, ring * 100)))),
+    [0.33, 0.67, 1].map((ring) => polygonPath(axes.map((_, index) => pointFor(index, ring * 100)))),
   )
 
   const labelData = $derived(
