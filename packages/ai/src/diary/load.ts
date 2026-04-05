@@ -114,10 +114,6 @@ export async function loadDiaryForUser(userId: string, locale = 'en'): Promise<D
     const allKeys = rows.flatMap((r) => collectKeys(r))
     const translationsMap = await lookupTranslations(allKeys, locale)
 
-    console.log('§§§ rows', rows)
-    console.log('§§§ translationsMap', translationsMap)
-    console.log('§§§ allKeys', allKeys)
-
     const result: DiaryData = {
       to_try: [],
       liked: [],

@@ -77,6 +77,21 @@
   let scrollElement = $state<HTMLDivElement | null>(null)
   let draftElement = $state<HTMLTextAreaElement | null>(null)
 
+  let chipsElement = $state<HTMLDivElement | null>(null)
+  let chipsAtStart = $state(true)
+  let chipsAtEnd = $state(true)
+
+  function updateChipsFade() {
+    if (!chipsElement) return
+
+    chipsAtStart = chipsElement.scrollLeft <= 2
+    chipsAtEnd = chipsElement.scrollLeft + chipsElement.clientWidth >= chipsElement.scrollWidth - 2
+  }
+
+  $effect(() => {
+    updateChipsFade()
+  })
+
   const MAX_TEXTAREA_HEIGHT = 144 // ~5 lines
 
   function resizeDraft() {
@@ -125,8 +140,12 @@
       class="shrink-0 space-y-2 border-t border-border bg-[color-mix(in_srgb,var(--oryx-bg-page)_58%,transparent)] px-4 pt-3 pb-3 backdrop-blur-sm"
     >
       <div
+        bind:this={chipsElement}
         class="scrollbar-hide flex gap-2 overflow-x-auto"
-        style="mask-image: linear-gradient(to right, transparent 0, black 12px, black calc(100% - 28px), transparent 100%)"
+        style="mask-image: linear-gradient(to right, {chipsAtStart
+          ? 'black 0'
+          : 'transparent 0, black 12px'}, {chipsAtEnd ? 'black 100%' : 'black calc(100% - 28px), transparent 100%'})"
+        onscroll={updateChipsFade}
       >
         {#each displayChips as chip, index (chip)}
           <div in:fade={{ duration: 200, delay: index * 40 }} out:fade={{ duration: 150 }}>
