@@ -195,7 +195,7 @@
 
   const shellClass = $derived(cn('flex min-h-0 flex-col', layout === 'desktop' ? 'flex-1' : 'gap-3'))
 
-  const listClassMobile = cn('flex gap-1 rounded-lg border border-border bg-muted/50 p-1')
+  const listClassMobile = cn('flex gap-1 p-1')
 
   const triggerMobile = cn(
     'oryx-transition shrink-0 whitespace-nowrap rounded-md px-3 py-2 text-xs font-medium text-foreground-muted data-[state=active]:bg-surface data-[state=active]:text-foreground data-[state=active]:shadow-sm',
@@ -728,7 +728,11 @@
       </div>
     </div>
   {:else}
-    <div bind:this={mobileTabsListElement} class="scrollbar-hide overflow-x-auto" style={mobileMaskStyle}>
+    <div
+      bind:this={mobileTabsListElement}
+      class="scrollbar-hide overflow-x-auto rounded-lg border border-border bg-muted/50"
+      style={mobileMaskStyle}
+    >
       <Tabs.List class={listClassMobile}>
         {#each tabItems as { value, label } (value)}
           <Tabs.Trigger {value} class={triggerMobile}>
@@ -803,6 +807,156 @@
           diaryCounts={tabCounts as { owned: number; to_try: number; liked: number; neutral: number; disliked: number }}
         />
       {/if}
+    </Tabs.Content>
+    <Tabs.Content value="notes" class={panelClass}>
+      {#if localNotes.length === 0}
+        <p class="text-sm text-foreground-muted">{m.oryxel_notes_empty()}</p>
+      {:else}
+        <div class="overflow-x-auto rounded-xl border border-border bg-surface">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-border text-left text-xs text-foreground-muted">
+                <th class="w-[160px] px-4 py-3 font-medium">{m.oryxel_notes_col_note()}</th>
+                <th class="w-[140px] px-4 py-3 font-medium">{m.oryxel_notes_col_sentiment()}</th>
+                <th class="px-4 py-3 font-medium">{m.oryxel_notes_col_comment()}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {#each localNotes as r (r.note)}
+                {@const SentIcon = sentimentIcon(r.sentiment)}
+                <tr class="border-b border-border/50 last:border-0">
+                  <td class="px-4 py-3">
+                    <div class="flex flex-col gap-0.5">
+                      <span class="text-sm font-medium text-foreground">{r.translatedNote ?? r.note}</span>
+                      {#if r.translatedNote}
+                        <span class="font-mono text-[11px] text-foreground-muted">{r.note}</span>
+                      {/if}
+                    </div>
+                  </td>
+                  <td class="px-4 py-3">
+                    <DropdownMenu.Root>
+                      <DropdownMenu.Trigger
+                        class="oryx-transition flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium outline-none {sentimentColor(
+                          r.sentiment,
+                        )} hover:opacity-80"
+                      >
+                        <SentIcon class="size-3.5 shrink-0" />
+                        <span>{sentimentLabel(r.sentiment)}</span>
+                        {#if r.lockedByUser}
+                          <Lock class="size-3 shrink-0 opacity-60" />
+                        {:else}
+                          <ChevronDown class="size-3 shrink-0 opacity-50" />
+                        {/if}
+                      </DropdownMenu.Trigger>
+                      <DropdownMenu.Portal>
+                        <DropdownMenu.Content
+                          class="oryx-dropdown-content z-50 min-w-40 rounded-lg border border-border bg-surface p-1 shadow-card"
+                          sideOffset={4}
+                        >
+                          {#each sentimentOptions as s (s)}
+                            {@const Ico = sentimentIcon(s)}
+                            <DropdownMenu.Item
+                              class="oryx-transition flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground outline-none select-none hover:bg-muted data-highlighted:bg-muted"
+                              onSelect={() => patchNote(r.note, { sentiment: s })}
+                            >
+                              <Ico class="size-4 shrink-0 {sentimentIconColor(s)}" />
+                              {sentimentLabel(s)}
+                            </DropdownMenu.Item>
+                          {/each}
+                        </DropdownMenu.Content>
+                      </DropdownMenu.Portal>
+                    </DropdownMenu.Root>
+                  </td>
+                  <td class="max-w-[200px] px-4 py-3 text-xs leading-relaxed text-foreground-muted">
+                    {r.agentComment ?? ''}
+                  </td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
+      {/if}
+    </Tabs.Content>
+    <Tabs.Content value="guide" class={panelClass}>
+      <div class="space-y-6">
+        <section>
+          <div class="mb-3 space-y-1">
+            <h2 class="oryx-heading text-base font-semibold">{m.oryxel_guide_subtitle()}</h2>
+          </div>
+          <div class="space-y-3">
+            {#each concentrations as c (c.abbr)}
+              <div class="rounded-xl border border-border bg-surface p-4">
+                <div class="flex items-start gap-4">
+                  <div class="mt-0.5 flex shrink-0 flex-col items-center gap-1">
+                    {#each [100, 75, 55, 25, 12] as level (level)}
+                      <div
+                        class="size-2 rounded-full transition-colors"
+                        style="background-color: {c.strength >= level ? 'var(--color-accent)' : 'var(--oryx-bg-muted)'}"
+                      ></div>
+                    {/each}
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <div class="mb-1.5 flex flex-wrap items-baseline gap-2">
+                      <h3 class="oryx-heading text-sm font-semibold">{c.name}</h3>
+                      <span
+                        class="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground-muted"
+                        >{c.abbr}</span
+                      >
+                      <span class="text-xs text-foreground-muted">{c.range}</span>
+                    </div>
+                    <div class="mb-3 h-1 w-full overflow-hidden rounded-full bg-muted">
+                      <div class="h-full rounded-full bg-accent transition-[width]" style="width: {c.strength}%"></div>
+                    </div>
+                    <div class="mb-2.5 flex flex-wrap gap-4 text-xs text-foreground-muted">
+                      <span class="flex items-center gap-1">
+                        <Clock class="size-3.5 shrink-0 opacity-60" />
+                        {c.longevity}
+                      </span>
+                      <span class="flex items-center gap-1">
+                        <Waves class="size-3.5 shrink-0 opacity-60" />
+                        {c.sillage}
+                      </span>
+                    </div>
+                    <p class="text-sm leading-relaxed text-foreground-muted">{c.desc()}</p>
+                  </div>
+                </div>
+              </div>
+            {/each}
+          </div>
+        </section>
+        <section>
+          <h2 class="oryx-heading mb-3 text-base font-semibold">{m.oryxel_guide_tips_title()}</h2>
+          <div class="grid grid-cols-1 gap-3">
+            {#each tips as tip (tip.title())}
+              <div class="flex gap-3 rounded-xl border border-border bg-surface p-4">
+                <div class="mt-0.5 shrink-0 rounded-lg bg-accent/10 p-2">
+                  <tip.icon class="size-4 text-accent" />
+                </div>
+                <div>
+                  <p class="mb-1 text-sm font-medium text-foreground">{tip.title()}</p>
+                  <p class="text-xs leading-relaxed text-foreground-muted">{tip.desc()}</p>
+                </div>
+              </div>
+            {/each}
+          </div>
+        </section>
+        <section>
+          <h2 class="oryx-heading mb-3 text-base font-semibold">{m.oryxel_guide_families_title()}</h2>
+          <div class="grid grid-cols-1 gap-3">
+            {#each families as fam (fam.name())}
+              <div class="flex gap-3 rounded-xl border border-border bg-surface p-4">
+                <div class="mt-0.5 shrink-0 rounded-lg p-2 {fam.bg}">
+                  <fam.icon class="size-4 {fam.iconColor}" />
+                </div>
+                <div>
+                  <p class="mb-1 text-sm font-medium text-foreground">{fam.name()}</p>
+                  <p class="text-xs leading-relaxed text-foreground-muted">{fam.desc()}</p>
+                </div>
+              </div>
+            {/each}
+          </div>
+        </section>
+      </div>
     </Tabs.Content>
   {/if}
 </Tabs.Root>
