@@ -239,7 +239,7 @@
     </div>
   {/if}
 {:else}
-  <NoteGraph graph={noteGraph} onNodeClick={handleGraphNodeClick} height={layout === 'desktop' ? 620 : 500} />
+  <NoteGraph graph={noteGraph} onNodeClick={handleGraphNodeClick} height={layout === 'desktop' ? 820 : 520} />
 {/if}
 
 <NoteFragrancesModal

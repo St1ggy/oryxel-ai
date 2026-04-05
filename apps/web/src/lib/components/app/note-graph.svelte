@@ -34,6 +34,14 @@
 
   const { graph, onNodeClick, height = 480 }: Props = $props()
 
+  // Families present in the current graph — derived for the legend
+  const legendFamilies = $derived(
+    [...new Map(graph.nodes.map((n) => [n.family, n.color])).entries()].map(([family, color]) => ({
+      family,
+      color,
+    })),
+  )
+
   let containerElement: HTMLDivElement | undefined = $state()
   let svgElement: SVGSVGElement | undefined = $state()
   let controls: GraphControls | null = null
@@ -59,6 +67,33 @@
     return `left:${x + 14}px;top:${y - 8}px`
   }
 </script>
+
+{#if graph.nodes.length > 0}
+  <!-- Legend -->
+  <div
+    class="mb-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs"
+    style="color:var(--oryx-fg-muted)"
+  >
+    <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
+      <span class="flex items-center gap-1.5">
+        <span class="inline-block h-3 w-3 rounded-full bg-current opacity-40"></span>
+        {m.oryxel_note_graph_legend_size()}
+      </span>
+      <span class="flex items-center gap-1.5">
+        <span class="inline-block h-px w-5 rounded" style="background:currentColor;opacity:0.4"></span>
+        {m.oryxel_note_graph_legend_lines()}
+      </span>
+    </div>
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+      {#each legendFamilies as { family, color } (family)}
+        <span class="flex items-center gap-1">
+          <span class="inline-block h-2 w-2 flex-shrink-0 rounded-full" style="background:{color}"></span>
+          {familyLabel[family]?.() ?? family}
+        </span>
+      {/each}
+    </div>
+  </div>
+{/if}
 
 <div
   bind:this={containerElement}
