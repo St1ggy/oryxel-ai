@@ -81,6 +81,16 @@
     noteRelationships = [],
   }: Props = $props()
 
+  /* eslint-disable camelcase */
+  const tabCounts = $derived<Partial<Record<DiaryListTabValue, number>>>({
+    owned: diaryState.owned.length,
+    to_try: diaryState.to_try.length,
+    liked: diaryState.liked.length,
+    neutral: diaryState.neutral.length,
+    disliked: diaryState.disliked.length,
+  })
+  /* eslint-enable camelcase */
+
   const tabItems = $derived(
     diaryListTabItems().filter(
       (tab) => !(layout === 'mobile' && (MOBILE_EXCLUDED_TABS as DiaryListTabValue[]).includes(tab.value)),
@@ -408,7 +418,15 @@
       >
         <Tabs.List class="contents" aria-label={m.oryxel_diary_lists_aria()}>
           {#each tabItems as { value, label } (value)}
-            <Tabs.Trigger {value} class={triggerDesktop}>{label}</Tabs.Trigger>
+            <Tabs.Trigger {value} class={triggerDesktop}>
+              {label}
+              {#if !loading && tabCounts[value] !== undefined}
+                <span
+                  class="ml-1.5 rounded-full bg-muted px-1.5 py-px font-mono text-[10px] text-foreground-muted tabular-nums"
+                  >{tabCounts[value]}</span
+                >
+              {/if}
+            </Tabs.Trigger>
           {/each}
         </Tabs.List>
         {#if indicatorReady}
@@ -668,7 +686,12 @@
   {:else}
     <Tabs.List class={listClassMobile}>
       {#each tabItems as { value, label } (value)}
-        <Tabs.Trigger {value} class={triggerMobile}>{label}</Tabs.Trigger>
+        <Tabs.Trigger {value} class={triggerMobile}>
+          {label}
+          {#if !loading && tabCounts[value] !== undefined}
+            <span class="ml-1 font-mono text-[10px] tabular-nums opacity-60">{tabCounts[value]}</span>
+          {/if}
+        </Tabs.Trigger>
       {/each}
     </Tabs.List>
     <Tabs.Content value="owned" class={panelClass}>
