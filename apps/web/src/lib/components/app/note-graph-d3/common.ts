@@ -161,6 +161,8 @@ export function attachZoom(
 
   svg.call(zoomBehavior)
   svg.on('dblclick.zoom', null)
+  // Reset any stale zoom state from a previous init so the first pan/zoom doesn't jump.
+  svg.call(zoomBehavior.transform, d3.zoomIdentity)
 
   return zoomBehavior
 }

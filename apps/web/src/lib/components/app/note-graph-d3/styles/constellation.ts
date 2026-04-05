@@ -18,10 +18,14 @@ function arcPath(x1: number, y1: number, x2: number, y2: number): string {
 }
 
 const init = (context: StyleContext): RenderedSelections => {
-  const { g, nodes, links, width, height } = context
+  const { g, nodes, links, width, height, svgElement } = context
 
-  // Background sky
-  g.insert('rect', ':first-child').attr('width', width).attr('height', height).attr('fill', '#080b1a')
+  // Background sky + stars — inserted directly into the SVG (outside zoom group)
+  // so they stay fixed when the user pans/zooms.
+  const svgSel = d3.select(svgElement)
+  const bgGroup = svgSel.insert('g', ':first-child').attr('class', 'constellation-bg')
+
+  bgGroup.append('rect').attr('width', width).attr('height', height).attr('fill', '#080b1a')
 
   // Stars — static, rendered once, no filter
   const starCount = 80
@@ -37,7 +41,8 @@ const init = (context: StyleContext): RenderedSelections => {
     op: 0.2 + Math.random() * 0.6,
   }))
 
-  g.append('g')
+  bgGroup
+    .append('g')
     .attr('class', 'stars')
     .selectAll<SVGCircleElement, (typeof stars)[number]>('circle')
     .data(stars)
