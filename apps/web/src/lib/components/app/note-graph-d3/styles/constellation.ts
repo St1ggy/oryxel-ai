@@ -170,6 +170,38 @@ const tick = (sel: RenderedSelections): void => {
   sel.nodeGroupSel.attr('transform', (d) => `translate(${d.x ?? 0},${d.y ?? 0})`)
 }
 
+// Newtonian gravity: F = G·mA·mB / r²  (Plummer softening to avoid singularity)
+// Acceleration on each node depends only on the OTHER node's mass — so large
+// stars barely move while small stars are strongly attracted toward them.
+function makeNewtonian(nodes: NoteNode[]): (alpha: number) => void {
+  const G = 0.55
+  const epsilon2 = 350 // softening radius² (~19px), prevents force blow-up on overlap
+
+  return function (alpha: number) {
+    for (let index = 0; index < nodes.length; index++) {
+      for (let index_ = index + 1; index_ < nodes.length; index_++) {
+        const a = nodes[index]
+        const b = nodes[index_]
+        const dx = (b.x ?? 0) - (a.x ?? 0)
+        const dy = (b.y ?? 0) - (a.y ?? 0)
+        const distribution2 = dx * dx + dy * dy + epsilon2
+        // scaled = G·alpha / (r²+ε²)^(3/2) — combines unit-vector and 1/r² in one pass
+        const scaled = (G * alpha) / (distribution2 * Math.sqrt(distribution2))
+        const ma = a.size * a.size // mass ∝ area
+        const mb = b.size * b.size
+
+        // acc on a toward b  =  G·mb / r²
+        a.vx = (a.vx ?? 0) + dx * scaled * mb
+        a.vy = (a.vy ?? 0) + dy * scaled * mb
+
+        // acc on b toward a  =  G·ma / r²
+        b.vx = (b.vx ?? 0) - dx * scaled * ma
+        b.vy = (b.vy ?? 0) - dy * scaled * ma
+      }
+    }
+  }
+}
+
 const buildSimulation = (
   nodes: NoteNode[],
   links: NoteLink[],
@@ -178,7 +210,7 @@ const buildSimulation = (
 ): d3.Simulation<NoteNode, NoteLink> =>
   d3
     .forceSimulation<NoteNode>(nodes)
-    .velocityDecay(0.28)
+    .velocityDecay(0.22)
     .force(
       'link',
       d3
@@ -189,26 +221,19 @@ const buildSimulation = (
             (100 + ((lk.source as NoteNode).size + (lk.target as NoteNode).size) * 1.2) * linkDistanceFactor(lk.weight),
         ),
     )
-    // Base repulsion — keeps stars from overlapping
+    // Newtonian n-body gravity — replaces the old forceManyBody heuristic
+    .force('gravity', makeNewtonian(nodes))
+    // Mild repulsion for personal space (prevents dense pileups at attractors)
     .force(
       'charge',
-      d3.forceManyBody<NoteNode>().strength((d) => -(220 + d.size * 6)),
+      d3.forceManyBody<NoteNode>().strength((d) => -(40 + d.size * 1.5)),
     )
-    // Gravitational attraction — only large stars (size > 30) pull others toward them.
-    // Strength scales with "stellar mass" (size); distanceMax limits the field of influence.
-    .force(
-      'gravity',
-      d3
-        .forceManyBody<NoteNode>()
-        .strength((d) => Math.max(0, (d.size - 30) * 9))
-        .distanceMin(20)
-        .distanceMax(340),
-    )
-    .force('x', d3.forceX<NoteNode>(width / 2).strength(0.04))
-    .force('y', d3.forceY<NoteNode>(height / 2).strength(0.04))
+    // Soft centering — weaker than before so gravity can pull nodes off-centre
+    .force('x', d3.forceX<NoteNode>(width / 2).strength(0.022))
+    .force('y', d3.forceY<NoteNode>(height / 2).strength(0.022))
     .force(
       'collide',
-      d3.forceCollide<NoteNode>().radius((d) => d.size + 28),
+      d3.forceCollide<NoteNode>().radius((d) => d.size + 24),
     )
 
 export const constellationRenderer: StyleRenderer = { init, tick, buildSimulation }
