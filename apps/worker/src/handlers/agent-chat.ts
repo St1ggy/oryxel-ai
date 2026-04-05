@@ -110,6 +110,11 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
       pyramidBase,
     })
 
+    const toContextEntryWithRating = (entry: DiaryEntry) => ({
+      ...toContextEntry(entry),
+      rating: entry.rating || null,
+    })
+
     const context = {
       profile: {
         displayName: profile.displayName,
@@ -123,10 +128,10 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
       },
       diary: {
         to_try: diary.to_try.map((entry) => toContextEntry(entry)),
-        liked: diary.liked.map((entry) => toContextEntry(entry)),
+        liked: diary.liked.map((entry) => toContextEntryWithRating(entry)),
         neutral: diary.neutral.map((entry) => toContextEntry(entry)),
         disliked: diary.disliked.map((entry) => toContextEntry(entry)),
-        owned: diary.owned.map((entry) => toContextEntry(entry)),
+        owned: diary.owned.map((entry) => toContextEntryWithRating(entry)),
       },
       budget,
       recentMessages: (aiPrefs?.rememberContext ?? true) ? recentMessages : undefined,

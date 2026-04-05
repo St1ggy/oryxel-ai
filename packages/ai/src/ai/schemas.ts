@@ -31,6 +31,7 @@ const diaryEntryContextSchema = z.object({
   pyramidTop: z.string().max(300).nullable().optional(),
   pyramidMid: z.string().max(300).nullable().optional(),
   pyramidBase: z.string().max(300).nullable().optional(),
+  rating: z.number().int().min(0).max(5).nullable().optional(),
 })
 
 const diaryContextSchema = z.object({

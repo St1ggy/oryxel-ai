@@ -274,7 +274,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         pyramidMid,
         pyramidBase,
       })),
-      liked: diary.liked.map(({ id, brand, fragrance, notes, pyramidTop, pyramidMid, pyramidBase }) => ({
+      liked: diary.liked.map(({ id, brand, fragrance, notes, pyramidTop, pyramidMid, pyramidBase, rating }) => ({
         id,
         brand,
         fragrance,
@@ -282,6 +282,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         pyramidTop,
         pyramidMid,
         pyramidBase,
+        rating: rating || null,
       })),
       disliked: diary.disliked.map(({ id, brand, fragrance, notes, pyramidTop, pyramidMid, pyramidBase }) => ({
         id,
@@ -292,7 +293,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         pyramidMid,
         pyramidBase,
       })),
-      owned: diary.owned.map(({ id, brand, fragrance, notes, pyramidTop, pyramidMid, pyramidBase }) => ({
+      owned: diary.owned.map(({ id, brand, fragrance, notes, pyramidTop, pyramidMid, pyramidBase, rating }) => ({
         id,
         brand,
         fragrance,
@@ -300,6 +301,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         pyramidTop,
         pyramidMid,
         pyramidBase,
+        rating: rating || null,
       })),
     },
     budget: body.context?.budget,

@@ -100,6 +100,7 @@ type DiaryContextEntry = {
   pyramidTop?: string | null
   pyramidMid?: string | null
   pyramidBase?: string | null
+  rating?: number | null
 }
 
 function formatDiaryList(entries: DiaryContextEntry[]): string {
@@ -112,8 +113,9 @@ function formatDiaryList(entries: DiaryContextEntry[]): string {
         entry.pyramidTop || entry.pyramidMid || entry.pyramidBase
           ? `,top:"${entry.pyramidTop ?? ''}",mid:"${entry.pyramidMid ?? ''}",base:"${entry.pyramidBase ?? ''}"`
           : ''
+      const rating = entry.rating ? `,rating:${entry.rating}` : ''
 
-      return `{id:${entry.id},brand:"${entry.brand}",frag:"${entry.fragrance}"${notes}${pyramid}}`
+      return `{id:${entry.id},brand:"${entry.brand}",frag:"${entry.fragrance}"${notes}${pyramid}${rating}}`
     })
     .join(', ')
 }
