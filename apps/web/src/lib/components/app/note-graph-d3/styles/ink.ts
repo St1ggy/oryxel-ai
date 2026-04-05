@@ -12,7 +12,7 @@ const wobbleCache = new Map<string, number>()
 function wobbleFor(index: number): number {
   const key = String(index)
 
-  if (!wobbleCache.has(key)) wobbleCache.set(key, Math.sin(index * 2.7) * 12)
+  if (!wobbleCache.has(key)) wobbleCache.set(key, Math.sin(index * 2.7) * 20)
 
   return wobbleCache.get(key)!
 }
@@ -39,7 +39,18 @@ function inkPath(x1: number, y1: number, x2: number, y2: number, wobble: number)
 }
 
 const init = (context: StyleContext): RenderedSelections => {
-  const { g, defs, nodes, links, uid } = context
+  const { g, defs, nodes, links, uid, width, height, svgElement } = context
+
+  // Paper background — outside zoom group so it stays fixed when panning/zooming
+  const svgSel = d3.select(svgElement)
+  const bgGroup = svgSel.insert('g', ':first-child').attr('class', 'ink-bg')
+
+  bgGroup
+    .append('rect')
+    .attr('width', width)
+    .attr('height', height)
+    .attr('fill', 'var(--oryx-surface, #fdfaf5)')
+    .attr('opacity', 0.6)
 
   // Ink distortion filter
   const inkFilter = defs
@@ -66,13 +77,6 @@ const init = (context: StyleContext): RenderedSelections => {
     .attr('xChannelSelector', 'R')
     .attr('yChannelSelector', 'G')
 
-  // Paper background
-  g.insert('rect', ':first-child')
-    .attr('width', '100%')
-    .attr('height', '100%')
-    .attr('fill', 'var(--oryx-surface, #fdfaf5)')
-    .attr('opacity', 0.6)
-
   const linkSel = g
     .append('g')
     .attr('class', 'links')
@@ -84,6 +88,7 @@ const init = (context: StyleContext): RenderedSelections => {
     .attr('stroke-width', (lk) => linkThickness(lk.weight) * 0.9)
     .attr('stroke-opacity', (lk) => linkOpacity(lk.weight) * 0.7)
     .attr('stroke-linecap', 'round')
+    .attr('filter', `url(#${uid}-ink)`)
 
   const nodeGroupSel = g
     .append('g')

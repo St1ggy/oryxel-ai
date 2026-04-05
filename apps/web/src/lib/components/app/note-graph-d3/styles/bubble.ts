@@ -4,11 +4,36 @@ import { linkThickness, truncateLabel } from '../common'
 
 import type { NoteLink, NoteNode, RenderedSelections, StyleContext, StyleRenderer } from '../types'
 
-// ── Bubble style — translucent overlapping circles, links hidden by default ───
+// ── Bubble / watercolour style ────────────────────────────────────────────────
+// Circles use a goo/metaball SVG filter so nearby nodes visually dissolve into
+// each other.  Labels are rendered in a separate unfiltered group so they stay
+// readable.
 
 const init = (context: StyleContext): RenderedSelections => {
-  const { g, nodes, links } = context
+  const { g, defs, nodes, links, uid } = context
 
+  // ── Goo (metaball) filter ──────────────────────────────────────────────────
+  // Blur all circles together, then threshold the alpha — circles that are
+  // close enough overlap in the blurred image and merge into a single blob.
+  const gooFilter = defs
+    .append('filter')
+    .attr('id', `${uid}-goo`)
+    .attr('x', '-40%')
+    .attr('y', '-40%')
+    .attr('width', '180%')
+    .attr('height', '180%')
+
+  gooFilter.append('feGaussianBlur').attr('in', 'SourceGraphic').attr('stdDeviation', 14).attr('result', 'blur')
+
+  gooFilter
+    .append('feColorMatrix')
+    .attr('in', 'blur')
+    .attr('mode', 'matrix')
+    // Keep RGB as-is; amplify alpha (×20) then subtract 8 — only areas where
+    // blurred alpha > 0.4 survive, creating sharp merged blobs.
+    .attr('values', '1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -8')
+
+  // Links — shown on hover only
   const linkSel = g
     .append('g')
     .attr('class', 'links')
@@ -20,60 +45,37 @@ const init = (context: StyleContext): RenderedSelections => {
     .attr('stroke-opacity', 0)
     .attr('stroke-linecap', 'round')
 
-  const nodeGroupSel = g
-    .append('g')
-    .attr('class', 'nodes')
-    .selectAll<SVGGElement, NoteNode>('g')
-    .data(nodes)
-    .join('g')
-    .style('cursor', 'pointer')
+  // ── Goo-filtered node circles ──────────────────────────────────────────────
+  // The filter is on the parent <g> so all circles are blurred together before
+  // the threshold, producing the metaball merge effect.
+  const gooG = g.append('g').attr('class', 'nodes-goo').attr('filter', `url(#${uid}-goo)`)
 
-  // Outer soft ring
-  nodeGroupSel
-    .append('circle')
-    .attr('class', 'node-outer')
-    .attr('r', (d) => d.size * 1.25)
-    .attr('fill', (d) => d.color)
-    .attr('fill-opacity', 0.08)
-    .attr('pointer-events', 'none')
+  const nodeGroupSel = gooG.selectAll<SVGGElement, NoteNode>('g').data(nodes).join('g').style('cursor', 'pointer')
 
-  // Main translucent bubble
   nodeGroupSel
     .append('circle')
     .attr('class', 'node-circle')
     .attr('r', (d) => d.size)
     .attr('fill', (d) => d.color)
-    .attr('fill-opacity', 0.35)
-    .attr('stroke', (d) => d.color)
-    .attr('stroke-opacity', 0.55)
-    .attr('stroke-width', 1.5)
+    .attr('fill-opacity', 0.82)
 
-  // Small shine dot
-  nodeGroupSel
-    .filter((d) => d.size >= 18)
-    .append('circle')
-    .attr('class', 'node-shine')
-    .attr('r', (d) => d.size * 0.15)
-    .attr('cx', (d) => -(d.size * 0.28))
-    .attr('cy', (d) => -(d.size * 0.28))
-    .attr('fill', 'white')
-    .attr('fill-opacity', 0.55)
-    .attr('pointer-events', 'none')
+  // ── Unfiltered labels (sibling of goo group, not inside it) ───────────────
+  const labelsG = g.append('g').attr('class', 'nodes-labels').attr('pointer-events', 'none')
 
-  // Labels (always shown, outside small circles)
-  nodeGroupSel
+  const labelGroupSel = labelsG.selectAll<SVGGElement, NoteNode>('g').data(nodes).join('g')
+
+  labelGroupSel
     .filter((d) => d.size >= 28)
     .append('text')
     .text((d) => truncateLabel(d.name, d.size))
     .attr('text-anchor', 'middle')
     .attr('dominant-baseline', 'middle')
-    .attr('fill', (d) => d.color)
+    .attr('fill', 'white')
     .attr('font-size', (d) => `${Math.max(9, Math.min(d.size * 0.28, 13))}px`)
     .attr('font-family', 'var(--font-body, Inter, sans-serif)')
     .attr('font-weight', '600')
-    .attr('pointer-events', 'none')
 
-  nodeGroupSel
+  labelGroupSel
     .filter((d) => d.size < 28)
     .append('text')
     .text((d) => d.name)
@@ -82,10 +84,14 @@ const init = (context: StyleContext): RenderedSelections => {
     .attr('fill', 'var(--oryx-fg-muted, #888)')
     .attr('font-size', '9px')
     .attr('font-family', 'var(--font-body, Inter, sans-serif)')
-    .attr('pointer-events', 'none')
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return { linkSel: linkSel as any, nodeGroupSel }
+  return {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    linkSel: linkSel as any,
+    nodeGroupSel,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    extras: { labelsG: labelGroupSel as any },
+  }
 }
 
 const tick = (sel: RenderedSelections): void => {
@@ -96,13 +102,8 @@ const tick = (sel: RenderedSelections): void => {
     .attr('y2', (lk) => (lk.target as NoteNode).y ?? 0)
 
   sel.nodeGroupSel.attr('transform', (d) => `translate(${d.x ?? 0},${d.y ?? 0})`)
+  sel.extras?.labelsG?.attr('transform', (d: NoteNode) => `translate(${d.x ?? 0},${d.y ?? 0})`)
 }
-
-// Override linkOpacity for bubble: mouseleave in index.ts restores to linkOpacity(weight)
-// We patch it so mouseleave restores to 0 (hidden) for bubble — but since index.ts calls
-// linkOpacity directly we simply accept that links will appear on hover and fade back gently.
-// The initial opacity is 0; hover shows them at 0.9 for connected, 0.04 otherwise; mouseleave
-// restores to linkOpacity(weight) which is ≥0.35. This gives a "reveal-on-hover" effect.
 
 const buildSimulation = (
   nodes: NoteNode[],

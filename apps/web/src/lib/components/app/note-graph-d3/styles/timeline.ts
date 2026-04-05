@@ -57,6 +57,11 @@ const init = (context: StyleContext): RenderedSelections => {
     unknown: '',
   }
 
+  // Pre-position nodes to their tier Y so the simulation starts in the right lane
+  for (const node of nodes) {
+    node.y = tierY(node.tier, height)
+  }
+
   // Horizontal bands
   const bandG = g.append('g').attr('class', 'bands')
 
@@ -182,7 +187,7 @@ const buildSimulation = (
       d3.forceManyBody<NoteNode>().strength((d) => -(450 + d.size * 6)),
     )
     .force('x', d3.forceX<NoteNode>(width / 2).strength(0.04))
-    .force('y', d3.forceY<NoteNode>((d) => tierY(d.tier, height)).strength(0.4))
+    .force('y', d3.forceY<NoteNode>((d) => tierY(d.tier, height)).strength(0.55))
     .force(
       'collide',
       d3.forceCollide<NoteNode>().radius((d) => d.size + 32),

@@ -95,6 +95,41 @@ export async function initNoteGraphD3(
   const sel = renderer.init(context)
   const simulation = renderer.buildSimulation(nodes, links, width, height)
 
+  // Pre-tick so nodes have reasonable positions before first paint.
+  // 150 ticks leaves ~3% alpha remaining so the settling animation still plays.
+  simulation.tick(150)
+
+  // Compute bounding box from pre-ticked node positions
+  let x0 = Infinity,
+    y0 = Infinity,
+    x1 = -Infinity,
+    y1 = -Infinity
+
+  for (const node of nodes) {
+    const nx = node.x ?? 0
+    const ny = node.y ?? 0
+    const r = node.size
+
+    if (nx - r < x0) x0 = nx - r
+
+    if (ny - r < y0) y0 = ny - r
+
+    if (nx + r > x1) x1 = nx + r
+
+    if (ny + r > y1) y1 = ny + r
+  }
+
+  const PAD = 28
+  const bboxW = x1 - x0 + PAD * 2
+  const bboxH = y1 - y0 + PAD * 2
+  const fitScale = Math.min(width / bboxW, height / bboxH, 1.5)
+  const fitTx = width / 2 - ((x0 + x1) / 2) * fitScale
+  const fitTy = height / 2 - ((y0 + y1) / 2) * fitScale
+  const fitTransform = d3.zoomIdentity.translate(fitTx, fitTy).scale(fitScale)
+
+  // Render pre-ticked positions immediately
+  renderer.tick(sel, nodes, links)
+
   // ── Hover and click wiring ─────────────────────────────────────────────────
   const adjacency = buildAdjacency(graph.links)
   let hoveredNode: NoteNode | null = null
@@ -163,6 +198,9 @@ export async function initNoteGraphD3(
   g.attr('opacity', 0).transition().duration(450).attr('opacity', 1)
 
   const zoomBehavior = attachZoom(svg, g)
+
+  // Override the identity reset from attachZoom with the fit-to-nodes transform
+  svg.call(zoomBehavior.transform, fitTransform)
 
   return makeControls(svgElement, zoomBehavior, simulation)
 }
