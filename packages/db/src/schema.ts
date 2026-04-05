@@ -189,7 +189,7 @@ export const backgroundJob = pgTable('background_job', {
   userId: text('user_id').notNull(),
   /** 'profile_sync' | 'agent_chat' */
   type: text('type').notNull(),
-  /** 'pending' | 'processing' | 'done' | 'failed' */
+  /** 'pending' | 'processing' | 'done' | 'failed' | 'cancelled' */
   status: text('status').notNull().default('pending'),
   /** Job parameters stored at creation time so the worker can execute without the HTTP request context */
   params: jsonb('params').$type<Record<string, unknown>>(),

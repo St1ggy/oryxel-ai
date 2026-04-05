@@ -2,10 +2,19 @@ import { backgroundJob, db } from '@oryxel/db'
 import { and, desc, eq, inArray, sql } from 'drizzle-orm'
 
 export type JobType = 'profile_sync' | 'agent_chat'
-export type JobStatus = 'pending' | 'processing' | 'done' | 'failed'
+export type JobStatus = 'pending' | 'processing' | 'done' | 'failed' | 'cancelled'
 export type JobProgress = { step: number; total: number; phase: string }
 
 export async function createJob(userId: string, type: JobType, params?: Record<string, unknown>): Promise<number> {
+  // For non-chat types, cancel any pending jobs of the same type so the
+  // user always gets a fresh run without queue buildup.
+  if (type !== 'agent_chat') {
+    await db
+      .update(backgroundJob)
+      .set({ status: 'cancelled', completedAt: new Date() })
+      .where(and(eq(backgroundJob.userId, userId), eq(backgroundJob.type, type), eq(backgroundJob.status, 'pending')))
+  }
+
   const [row] = await db
     .insert(backgroundJob)
     .values({ userId, type, status: 'pending', params })
