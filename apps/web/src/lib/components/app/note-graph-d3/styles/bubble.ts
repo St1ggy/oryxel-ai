@@ -1,39 +1,25 @@
 import * as d3 from 'd3'
 
-import { linkThickness, truncateLabel } from '../common'
+import { lightenHex, linkDistanceFactor, linkOpacity, linkThickness, truncateLabel } from '../common'
 
 import type { NoteLink, NoteNode, RenderedSelections, StyleContext, StyleRenderer } from '../types'
 
-// ── Bubble / watercolour style ────────────────────────────────────────────────
-// Circles use a goo/metaball SVG filter so nearby nodes visually dissolve into
-// each other.  Labels are rendered in a separate unfiltered group so they stay
-// readable.
+// ── Bubble style — crisp translucent circles, links trimmed to circle edge ────
+
+// Returns the point on the src→tgt ray at distance `trim` from src.
+function trimmedEnd(sx: number, sy: number, tx: number, ty: number, trim: number): [number, number] {
+  const dx = tx - sx
+  const dy = ty - sy
+  const length = Math.hypot(dx, dy) || 1
+
+  return [sx + (dx / length) * trim, sy + (dy / length) * trim]
+}
 
 const init = (context: StyleContext): RenderedSelections => {
-  const { g, defs, nodes, links, uid } = context
+  const { g, nodes, links } = context
 
-  // ── Goo (metaball) filter ──────────────────────────────────────────────────
-  // Blur all circles together, then threshold the alpha — circles that are
-  // close enough overlap in the blurred image and merge into a single blob.
-  const gooFilter = defs
-    .append('filter')
-    .attr('id', `${uid}-goo`)
-    .attr('x', '-40%')
-    .attr('y', '-40%')
-    .attr('width', '180%')
-    .attr('height', '180%')
-
-  gooFilter.append('feGaussianBlur').attr('in', 'SourceGraphic').attr('stdDeviation', 14).attr('result', 'blur')
-
-  gooFilter
-    .append('feColorMatrix')
-    .attr('in', 'blur')
-    .attr('mode', 'matrix')
-    // Keep RGB as-is; amplify alpha (×20) then subtract 8 — only areas where
-    // blurred alpha > 0.4 survive, creating sharp merged blobs.
-    .attr('values', '1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -8')
-
-  // Links — shown on hover only
+  // Links trimmed to node-circle edge so they appear to dissolve into nodes.
+  // Actual coordinates are set every tick in trimmedEnd().
   const linkSel = g
     .append('g')
     .attr('class', 'links')
@@ -42,40 +28,63 @@ const init = (context: StyleContext): RenderedSelections => {
     .join('line')
     .attr('stroke', (lk) => (lk.source as NoteNode).color)
     .attr('stroke-width', (lk) => linkThickness(lk.weight))
-    .attr('stroke-opacity', 0)
+    .attr('stroke-opacity', (lk) => linkOpacity(lk.weight))
     .attr('stroke-linecap', 'round')
 
-  // ── Goo-filtered node circles ──────────────────────────────────────────────
-  // The filter is on the parent <g> so all circles are blurred together before
-  // the threshold, producing the metaball merge effect.
-  const gooG = g.append('g').attr('class', 'nodes-goo').attr('filter', `url(#${uid}-goo)`)
+  const nodeGroupSel = g
+    .append('g')
+    .attr('class', 'nodes')
+    .selectAll<SVGGElement, NoteNode>('g')
+    .data(nodes)
+    .join('g')
+    .style('cursor', 'pointer')
 
-  const nodeGroupSel = gooG.selectAll<SVGGElement, NoteNode>('g').data(nodes).join('g').style('cursor', 'pointer')
+  // Outer soft ring
+  nodeGroupSel
+    .append('circle')
+    .attr('class', 'node-outer')
+    .attr('r', (d) => d.size * 1.25)
+    .attr('fill', (d) => d.color)
+    .attr('fill-opacity', 0.08)
+    .attr('pointer-events', 'none')
 
+  // Main translucent bubble
   nodeGroupSel
     .append('circle')
     .attr('class', 'node-circle')
     .attr('r', (d) => d.size)
     .attr('fill', (d) => d.color)
-    .attr('fill-opacity', 0.82)
+    .attr('fill-opacity', 0.35)
+    .attr('stroke', (d) => d.color)
+    .attr('stroke-opacity', 0.55)
+    .attr('stroke-width', 1.5)
 
-  // ── Unfiltered labels (sibling of goo group, not inside it) ───────────────
-  const labelsG = g.append('g').attr('class', 'nodes-labels').attr('pointer-events', 'none')
+  // Small shine dot
+  nodeGroupSel
+    .filter((d) => d.size >= 18)
+    .append('circle')
+    .attr('class', 'node-shine')
+    .attr('r', (d) => d.size * 0.15)
+    .attr('cx', (d) => -(d.size * 0.28))
+    .attr('cy', (d) => -(d.size * 0.28))
+    .attr('fill', 'white')
+    .attr('fill-opacity', 0.55)
+    .attr('pointer-events', 'none')
 
-  const labelGroupSel = labelsG.selectAll<SVGGElement, NoteNode>('g').data(nodes).join('g')
-
-  labelGroupSel
+  // Labels
+  nodeGroupSel
     .filter((d) => d.size >= 28)
     .append('text')
     .text((d) => truncateLabel(d.name, d.size))
     .attr('text-anchor', 'middle')
     .attr('dominant-baseline', 'middle')
-    .attr('fill', 'white')
+    .attr('fill', (d) => lightenHex(d.color, -0.1))
     .attr('font-size', (d) => `${Math.max(9, Math.min(d.size * 0.28, 13))}px`)
     .attr('font-family', 'var(--font-body, Inter, sans-serif)')
     .attr('font-weight', '600')
+    .attr('pointer-events', 'none')
 
-  labelGroupSel
+  nodeGroupSel
     .filter((d) => d.size < 28)
     .append('text')
     .text((d) => d.name)
@@ -84,25 +93,40 @@ const init = (context: StyleContext): RenderedSelections => {
     .attr('fill', 'var(--oryx-fg-muted, #888)')
     .attr('font-size', '9px')
     .attr('font-family', 'var(--font-body, Inter, sans-serif)')
+    .attr('pointer-events', 'none')
 
-  return {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    linkSel: linkSel as any,
-    nodeGroupSel,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    extras: { labelsG: labelGroupSel as any },
-  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return { linkSel: linkSel as any, nodeGroupSel }
 }
 
 const tick = (sel: RenderedSelections): void => {
   sel.linkSel
-    .attr('x1', (lk) => (lk.source as NoteNode).x ?? 0)
-    .attr('y1', (lk) => (lk.source as NoteNode).y ?? 0)
-    .attr('x2', (lk) => (lk.target as NoteNode).x ?? 0)
-    .attr('y2', (lk) => (lk.target as NoteNode).y ?? 0)
+    .attr('x1', (lk) => {
+      const s = lk.source as NoteNode
+      const t = lk.target as NoteNode
+
+      return trimmedEnd(s.x ?? 0, s.y ?? 0, t.x ?? 0, t.y ?? 0, s.size * 0.92)[0]
+    })
+    .attr('y1', (lk) => {
+      const s = lk.source as NoteNode
+      const t = lk.target as NoteNode
+
+      return trimmedEnd(s.x ?? 0, s.y ?? 0, t.x ?? 0, t.y ?? 0, s.size * 0.92)[1]
+    })
+    .attr('x2', (lk) => {
+      const s = lk.source as NoteNode
+      const t = lk.target as NoteNode
+
+      return trimmedEnd(t.x ?? 0, t.y ?? 0, s.x ?? 0, s.y ?? 0, t.size * 0.92)[0]
+    })
+    .attr('y2', (lk) => {
+      const s = lk.source as NoteNode
+      const t = lk.target as NoteNode
+
+      return trimmedEnd(t.x ?? 0, t.y ?? 0, s.x ?? 0, s.y ?? 0, t.size * 0.92)[1]
+    })
 
   sel.nodeGroupSel.attr('transform', (d) => `translate(${d.x ?? 0},${d.y ?? 0})`)
-  sel.extras?.labelsG?.attr('transform', (d: NoteNode) => `translate(${d.x ?? 0},${d.y ?? 0})`)
 }
 
 const buildSimulation = (
@@ -113,25 +137,26 @@ const buildSimulation = (
 ): d3.Simulation<NoteNode, NoteLink> =>
   d3
     .forceSimulation<NoteNode>(nodes)
-    .velocityDecay(0.35)
+    .velocityDecay(0.32)
     .force(
       'link',
       d3
         .forceLink<NoteNode, NoteLink>(links)
         .id((d) => d.id)
-        .distance((lk) => 60 + ((lk.source as NoteNode).size + (lk.target as NoteNode).size) * 0.9),
+        .distance(
+          (lk) =>
+            (80 + ((lk.source as NoteNode).size + (lk.target as NoteNode).size) * 1) * linkDistanceFactor(lk.weight),
+        ),
     )
     .force(
       'charge',
-      d3.forceManyBody<NoteNode>().strength((d) => -(300 + d.size * 4)),
+      d3.forceManyBody<NoteNode>().strength((d) => -(400 + d.size * 5)),
     )
     .force('x', d3.forceX<NoteNode>(width / 2).strength(0.05))
     .force('y', d3.forceY<NoteNode>(height / 2).strength(0.05))
     .force(
       'collide',
-      d3.forceCollide<NoteNode>().radius((d) => d.size * 0.7 + 8),
+      d3.forceCollide<NoteNode>().radius((d) => d.size + 18),
     )
 
 export const bubbleRenderer: StyleRenderer = { init, tick, buildSimulation }
-
-export { linkOpacity } from '../common'

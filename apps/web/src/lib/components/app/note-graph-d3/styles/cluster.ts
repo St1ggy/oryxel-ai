@@ -1,6 +1,6 @@
 import * as d3 from 'd3'
 
-import { buildShadowFilter, lightenHex, linkOpacity, linkThickness, truncateLabel } from '../common'
+import { buildShadowFilter, lightenHex, linkDistanceFactor, linkOpacity, linkThickness, truncateLabel } from '../common'
 
 import type { NoteLink, NoteNode, RenderedSelections, StyleContext, StyleRenderer } from '../types'
 
@@ -185,32 +185,36 @@ const buildSimulation = (
 ): d3.Simulation<NoteNode, NoteLink> => {
   const familyCenters = buildFamilyCenters(nodes, width, height)
 
-  return d3
-    .forceSimulation<NoteNode>(nodes)
-    .velocityDecay(0.3)
-    .force(
-      'link',
-      d3
-        .forceLink<NoteNode, NoteLink>(links)
-        .id((d) => d.id)
-        .distance((lk) => {
-          const s = lk.source as NoteNode
-          const t = lk.target as NoteNode
-          const sameFam = s.family === t.family
+  return (
+    d3
+      .forceSimulation<NoteNode>(nodes)
+      .velocityDecay(0.3)
+      .force(
+        'link',
+        d3
+          .forceLink<NoteNode, NoteLink>(links)
+          .id((d) => d.id)
+          .distance((lk) => {
+            const s = lk.source as NoteNode
+            const t = lk.target as NoteNode
+            const sameFam = s.family === t.family
+            const base = sameFam ? 60 + (s.size + t.size) * 0.8 : 140 + (s.size + t.size) * 1.4
 
-          return sameFam ? 60 + (s.size + t.size) * 0.8 : 140 + (s.size + t.size) * 1.4
-        }),
-    )
-    .force(
-      'charge',
-      d3.forceManyBody<NoteNode>().strength((d) => -(500 + d.size * 7)),
-    )
-    .force('x', d3.forceX<NoteNode>((d) => familyCenters.get(d.family)?.x ?? width / 2).strength(0.12))
-    .force('y', d3.forceY<NoteNode>((d) => familyCenters.get(d.family)?.y ?? height / 2).strength(0.12))
-    .force(
-      'collide',
-      d3.forceCollide<NoteNode>().radius((d) => d.size + 22),
-    )
+            return base * linkDistanceFactor(lk.weight)
+          }),
+      )
+      .force(
+        'charge',
+        d3.forceManyBody<NoteNode>().strength((d) => -(500 + d.size * 7)),
+      )
+      // Stronger pull toward family center so clusters stay compact and distinct
+      .force('x', d3.forceX<NoteNode>((d) => familyCenters.get(d.family)?.x ?? width / 2).strength(0.28))
+      .force('y', d3.forceY<NoteNode>((d) => familyCenters.get(d.family)?.y ?? height / 2).strength(0.28))
+      .force(
+        'collide',
+        d3.forceCollide<NoteNode>().radius((d) => d.size + 22),
+      )
+  )
 }
 
 export const clusterRenderer: StyleRenderer = { init, tick, buildSimulation }

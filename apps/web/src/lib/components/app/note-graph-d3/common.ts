@@ -51,6 +51,13 @@ export function truncateLabel(name: string, size: number): string {
   return `${name.slice(0, Math.max(1, maxChars - 1))}…`
 }
 
+// ── Link distance factor ──────────────────────────────────────────────────────
+// Returns a multiplier in [0.35, 1.0]: heavier links pull nodes closer together.
+// weight=1 → 1.0x, weight=5 → 0.84x, weight=10 → 0.64x, weight=17+ → 0.35x
+export function linkDistanceFactor(weight: number): number {
+  return Math.max(0.35, 1 - (weight - 1) * 0.04)
+}
+
 // ── Adjacency ─────────────────────────────────────────────────────────────────
 
 export function buildAdjacency(links: NoteLink[]): Set<string> {

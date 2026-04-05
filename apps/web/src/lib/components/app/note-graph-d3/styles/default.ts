@@ -5,6 +5,7 @@ import {
   buildNodeGradients,
   buildShadowFilter,
   lightenHex,
+  linkDistanceFactor,
   linkOpacity,
   linkThickness,
   truncateLabel,
@@ -105,7 +106,7 @@ const init = (context: StyleContext): RenderedSelections => {
   return { linkSel: linkSel as any, nodeGroupSel, extras: { linkGrads: linkGrads as any } }
 }
 
-const tick = (sel: RenderedSelections, nodes: NoteNode[], links: NoteLink[]): void => {
+const tick = (sel: RenderedSelections, _nodes: NoteNode[], links: NoteLink[]): void => {
   const linkGrads = sel.extras?.['linkGrads']
 
   if (linkGrads) {
@@ -139,7 +140,10 @@ const buildSimulation = (
       d3
         .forceLink<NoteNode, NoteLink>(links)
         .id((d) => d.id)
-        .distance((lk) => 100 + ((lk.source as NoteNode).size + (lk.target as NoteNode).size) * 1.2),
+        .distance(
+          (lk) =>
+            (100 + ((lk.source as NoteNode).size + (lk.target as NoteNode).size) * 1.2) * linkDistanceFactor(lk.weight),
+        ),
     )
     .force(
       'charge',

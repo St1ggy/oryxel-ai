@@ -1,6 +1,6 @@
 import * as d3 from 'd3'
 
-import { linkOpacity, linkThickness, truncateLabel } from '../common'
+import { linkDistanceFactor, linkOpacity, linkThickness, truncateLabel } from '../common'
 
 import type { NoteLink, NoteNode, RenderedSelections, StyleContext, StyleRenderer } from '../types'
 
@@ -180,7 +180,10 @@ const buildSimulation = (
       d3
         .forceLink<NoteNode, NoteLink>(links)
         .id((d) => d.id)
-        .distance((lk) => 80 + ((lk.source as NoteNode).size + (lk.target as NoteNode).size) * 1),
+        .distance(
+          (lk) =>
+            (80 + ((lk.source as NoteNode).size + (lk.target as NoteNode).size) * 1) * linkDistanceFactor(lk.weight),
+        ),
     )
     .force(
       'charge',
