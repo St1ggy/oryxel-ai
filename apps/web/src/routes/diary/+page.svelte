@@ -164,6 +164,12 @@
   let syncConfirmOpen = $state(false)
   let thinking = $state(false)
 
+  // Aborted when the component is destroyed (navigation away) — stops all in-flight fetches.
+  let pageAbort = new AbortController()
+
+  const abortOnDestroy = () => pageAbort.abort()
+  $effect(() => abortOnDestroy)
+
   // Resume polling for jobs that were still running when the page was last closed/refreshed
   let jobsResumed = false
 
@@ -195,13 +201,13 @@
           const job = await (async () => {
             while (true) {
               await new Promise((resolve) => setTimeout(resolve, 1500))
-              const r = await fetch(`/api/jobs/${chatJob.id}`)
+              const r = await fetch(`/api/jobs/${chatJob.id}`, { signal: pageAbort.signal })
 
               if (!r.ok) throw new Error('poll failed')
 
               const index = (await r.json()) as JobResult
 
-              if (index.status === 'done' || index.status === 'failed') return index
+              if (index.status === 'done' || index.status === 'failed' || index.status === 'cancelled') return index
 
               const latest = index.progress.at(-1)
 
@@ -246,7 +252,7 @@
     }
   })
 
-  async function pollJob(jobId: number, intervalMs = 2000): Promise<JobResult> {
+  async function pollJob(jobId: number, intervalMs = 2000, signal = pageAbort.signal): Promise<JobResult> {
     const deadline = Date.now() + 12 * 60 * 1000 // 12-min client-side hard stop
 
     while (true) {
@@ -256,13 +262,13 @@
         throw new Error('Poll timed out')
       }
 
-      const pollResponse = await fetch(`/api/jobs/${jobId}`)
+      const pollResponse = await fetch(`/api/jobs/${jobId}`, { signal })
 
       if (!pollResponse.ok) throw new Error(`Job poll failed: ${pollResponse.status}`)
 
       const job = (await pollResponse.json()) as JobResult
 
-      if (job.status === 'done' || job.status === 'failed') return job
+      if (job.status === 'done' || job.status === 'failed' || job.status === 'cancelled') return job
 
       // Update progress from latest event in progress array
       const latest = job.progress.at(-1)
@@ -293,6 +299,7 @@
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ locale: data.locale }),
+        signal: pageAbort.signal,
       })
 
       if (!response.ok) throw new Error('Sync failed')
@@ -330,13 +337,13 @@
         while (true) {
           await new Promise((resolve) => setTimeout(resolve, 1500))
 
-          const pollResponse = await fetch(`/api/jobs/${jobId}`)
+          const pollResponse = await fetch(`/api/jobs/${jobId}`, { signal: pageAbort.signal })
 
           if (!pollResponse.ok) throw new Error(`Job poll failed: ${pollResponse.status}`)
 
           const index = (await pollResponse.json()) as JobResult
 
-          if (index.status === 'done' || index.status === 'failed') return index
+          if (index.status === 'done' || index.status === 'failed' || index.status === 'cancelled') return index
 
           const latest = index.progress.at(-1)
 
