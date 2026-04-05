@@ -75,10 +75,10 @@ function buildBaseInstructions(request: AnalyzePreferencesRequest): string[] {
     'The "reply" field: your conversational response to the user.',
     'The "summary" field: a 1-2 sentence human-readable description of what changed.',
     'Table operations — op values: add, move, rate, status, remove.',
-    'Fragrance state is stored as flags: isOwned (bool), isTried (bool), isLiked (bool|null).',
-    'Flag combinations: not tried yet → isTried=false, isLiked=null, isOwned=false; liked → isTried=true, isLiked=true; disliked → isTried=true, isLiked=false; neutral (tried, no strong opinion) → isTried=true, isLiked=null, isOwned=false; in collection → isOwned=true (can combine with liked/disliked).',
-    `UI list names: to_try="${tableNames.to_try}" (isTried=false, isOwned=false), liked="${tableNames.liked}" (isTried=true, isLiked=true), neutral="${tableNames.neutral}" (isTried=true, isLiked=null, isOwned=false), disliked="${tableNames.disliked}" (isTried=true, isLiked=false), owned="${tableNames.owned}" (isOwned=true). Use these names in your reply.`,
-    'For op=add: set brandName and fragranceName (strings). Set isOwned/isTried/isLiked flags. Do NOT use fragranceId for new fragrances.',
+    'Fragrance state is stored as flags: isOwned (bool), isTried (bool), isLiked (bool, default false), isDisliked (bool, default false).',
+    'Flag combinations: not tried yet → isTried=false, isLiked=false, isDisliked=false, isOwned=false; liked → isTried=true, isLiked=true, isDisliked=false; disliked → isTried=true, isLiked=false, isDisliked=true; neutral (tried, no strong opinion) → isTried=true, isLiked=false, isDisliked=false, isOwned=false; in collection → isOwned=true (can combine with liked/disliked).',
+    `UI list names: to_try="${tableNames.to_try}" (isTried=false, isOwned=false), liked="${tableNames.liked}" (isTried=true, isLiked=true), neutral="${tableNames.neutral}" (isTried=true, isLiked=false, isDisliked=false, isOwned=false), disliked="${tableNames.disliked}" (isTried=true, isDisliked=true), owned="${tableNames.owned}" (isOwned=true). Use these names in your reply.`,
+    'For op=add: set brandName and fragranceName (strings). Set isOwned/isTried/isLiked/isDisliked flags. Do NOT use fragranceId for new fragrances.',
     'For op=add: ALWAYS set notesSummary — comma-separated list of up to 5 key fragrance notes in English.',
     `For op=add or op=status: set pyramidTop, pyramidMid, pyramidBase as comma-separated note names in English. Fill all three tiers if you know the fragrance. Each tier must contain at most ${request.maxPyramidNotes ?? 5} notes.`,
     `For op=add or op=status: ALWAYS set agentComment — a punchy one-line phrase in ${language}, max 80 chars. Capture the scent essence (e.g. "Warm amber with smoky oud"). No sentences, no "because", no user references.`,
@@ -87,7 +87,7 @@ function buildBaseInstructions(request: AnalyzePreferencesRequest): string[] {
     'For op=add: ALWAYS set timeOfDay — comma-separated from: day, evening, night. E.g. "evening,night" for intense/heavy fragrances, "day" for light/fresh ones.',
     'For op=add: ALWAYS set gender — one of: female, male, unisex. Base on fragrance character and notes, not just marketing. Unisex when it genuinely works for all.',
     'For op=status: OPTIONALLY update season, timeOfDay, gender if the user provides new information about the fragrance.',
-    'For op=move: set rowId and the new flag values (isOwned/isTried/isLiked).',
+    'For op=move: set rowId and the new flag values (isOwned/isTried/isLiked/isDisliked).',
     'For op=rate/status/remove: set rowId to the id from the diary context. Never use op=add for rows that already exist in the diary.',
     `OUTPUT SIZE: For bulk imports (many fragrances), omit suggestions.`,
   ]
@@ -170,11 +170,11 @@ function buildScenarioBlock(request: AnalyzePreferencesRequest): string[] {
   const scenario = request.scenario
   const language = languageForLocale(request.locale)
   const scenarioInstructions: Record<AnalyzePreferencesRequest['scenario'], string> = {
-    analog: `Scenario analog: find the closest scent analogs for a fragrance the user mentions. Suggest up to 5 alternatives as tableOps (op=add, isTried=false, isLiked=null, isOwned=false). For each: set notesSummary (lowercase English), pyramidTop/Mid/Base (lowercase English) if known, and agentComment (in ${language}) explaining why it is a good analog. Write a friendly reply in ${language} explaining the picks and scent similarities.`,
+    analog: `Scenario analog: find the closest scent analogs for a fragrance the user mentions. Suggest up to 5 alternatives as tableOps (op=add, isTried=false, isLiked=false, isDisliked=false, isOwned=false). For each: set notesSummary (lowercase English), pyramidTop/Mid/Base (lowercase English) if known, and agentComment (in ${language}) explaining why it is a good analog. Write a friendly reply in ${language} explaining the picks and scent similarities.`,
     pyramid: [
       'Scenario pyramid: the user wants to know or update the olfactory pyramid (top/mid/base notes) of one or more fragrances.',
       'For each relevant fragrance already in the diary, generate a tableOp with op=status and rowId, setting pyramidTop, pyramidMid, pyramidBase (all lowercase English).',
-      'If the fragrance is not yet in the diary, use op=add with brandName, fragranceName, isTried=false, isLiked=null, isOwned=false, and fill pyramidTop/Mid/Base (lowercase English).',
+      'If the fragrance is not yet in the diary, use op=add with brandName, fragranceName, isTried=false, isLiked=false, isDisliked=false, isOwned=false, and fill pyramidTop/Mid/Base (lowercase English).',
       'IMPORTANT: Always populate ALL THREE pyramid fields.',
       `Include a reply in ${language} describing the pyramid in a natural, conversational way.`,
     ].join(' '),
@@ -183,12 +183,12 @@ function buildScenarioBlock(request: AnalyzePreferencesRequest): string[] {
     command: [
       'Scenario command: the user gave a direct instruction OR a structured bulk import. Execute it precisely.',
       'BULK IMPORT: If the message contains section headers (like "# В НАЛИЧИИ", "В НАЛИЧИИ", "НРАВИТСЯ", "НЕ НРАВИТСЯ", "ПРИОРИТЕТ НА ТЕСТ", "В КОЛЛЕКЦИИ", "ХОЧУ ПОПРОБОВАТЬ", or English equivalents "OWNED", "LIKED", "DISLIKED", "TO TRY") treat each section as a list and generate op=add tableOps for EVERY fragrance listed.',
-      'Map sections to flags: В НАЛИЧИИ/OWNED → isOwned=true, isTried=false, isLiked=null; НРАВИТСЯ/LIKED → isTried=true, isLiked=true, isOwned=false; НЕ НРАВИТСЯ/DISLIKED → isTried=true, isLiked=false, isOwned=false; ПРИОРИТЕТ НА ТЕСТ/TO TRY → isTried=false, isLiked=null, isOwned=false.',
+      'Map sections to flags: В НАЛИЧИИ/OWNED → isOwned=true, isTried=false, isLiked=false, isDisliked=false; НРАВИТСЯ/LIKED → isTried=true, isLiked=true, isDisliked=false, isOwned=false; НЕ НРАВИТСЯ/DISLIKED → isTried=true, isLiked=false, isDisliked=true, isOwned=false; ПРИОРИТЕТ НА ТЕСТ/TO TRY → isTried=false, isLiked=false, isDisliked=false, isOwned=false.',
       'For fragrances in both НРАВИТСЯ and В НАЛИЧИИ: isOwned=true, isTried=true, isLiked=true.',
       `Skip any fragrance already in the diary (check the context). For each op=add set notesSummary (lowercase English) and agentComment (in ${language}). Skip pyramidTop/Mid/Base for bulk import to keep response small.`,
       `PREFERENCES SECTION: If the message contains "ПРОФИЛЬ ПРЕДПОЧТЕНИЙ" or "PREFERENCES", save the full text verbatim to profile.preferences. Also update profile.archetype and profile.favoriteNote in ${language}.`,
       'BULK IMPORT OUTPUT SIZE: Omit suggestions for bulk imports.',
-      `Single instruction: If adding a fragrance to try: use op=add with isTried=false, isLiked=null, isOwned=false, set brandName, fragranceName, notesSummary (lowercase English), pyramidTop/Mid/Base if known (lowercase English), and agentComment (in ${language} — WHY the user should try it). If adding to owned/liked/disliked: set flags accordingly.`,
+      `Single instruction: If adding a fragrance to try: use op=add with isTried=false, isLiked=false, isDisliked=false, isOwned=false, set brandName, fragranceName, notesSummary (lowercase English), pyramidTop/Mid/Base if known (lowercase English), and agentComment (in ${language} — WHY the user should try it). If adding to owned/liked/disliked: set flags accordingly (isLiked=true for liked; isDisliked=true for disliked).`,
       'If the user shares their opinion about a fragrance: use op=status with rowId and set userComment to their words (in their language).',
       'If rating: op=rate with rowId and rating (0-5).',
       'If moving between lists: op=move with rowId and new flag values.',

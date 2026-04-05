@@ -44,6 +44,7 @@ export async function seedMinimalAgentScenario(userId: string) {
     isOwned: true,
     isTried: true,
     isLiked: true,
+    isDisliked: false,
     userComment: 'Collection',
   })
 

@@ -12,11 +12,12 @@ function lc(s: string | null | undefined): string | null | undefined {
   return s ? s.toLowerCase() : s
 }
 
-function opToFlags(op: TableOperation): { isOwned: boolean; isTried: boolean; isLiked: boolean | null } {
+function opToFlags(op: TableOperation): { isOwned: boolean; isTried: boolean; isLiked: boolean; isDisliked: boolean } {
   return {
     isOwned: op.isOwned ?? false,
     isTried: op.isTried ?? false,
-    isLiked: op.isLiked ?? null,
+    isLiked: op.isLiked ?? false,
+    isDisliked: op.isDisliked ?? false,
   }
 }
 
@@ -139,6 +140,8 @@ async function applyUpdateOp(executor: DatabaseExecutor, userId: string, op: Tab
 
   if (op.isLiked !== undefined) updates.isLiked = op.isLiked
 
+  if (op.isDisliked !== undefined) updates.isDisliked = op.isDisliked
+
   if (Object.keys(updates).length === 0) return
 
   await executor
@@ -243,7 +246,8 @@ export async function applyPatchToDatabase(userId: string, patch: StructuredPref
             rating: 0,
             isOwned: false,
             isTried: false,
-            isLiked: null,
+            isLiked: false,
+            isDisliked: false,
             isRecommendation: true,
             agentComment: rec.tag || null,
           })
@@ -322,7 +326,8 @@ export async function applyRecommendations(userId: string, patch: StructuredPref
           rating: 0,
           isOwned: false,
           isTried: false,
-          isLiked: null,
+          isLiked: false,
+          isDisliked: false,
           isRecommendation: true,
           agentComment: rec.tag || null,
         })

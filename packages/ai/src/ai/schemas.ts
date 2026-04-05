@@ -81,7 +81,8 @@ export const tableOperationSchema = z.object({
   // Flags for op=add / op=move (replaces listType)
   isOwned: z.boolean().optional(),
   isTried: z.boolean().optional(),
-  isLiked: z.boolean().nullable().optional(),
+  isLiked: z.boolean().optional(),
+  isDisliked: z.boolean().optional(),
   rating: z.number().int().min(0).max(5).optional(),
   agentComment: z.string().max(80).optional(),
   userComment: z.string().max(200).nullable().optional(),

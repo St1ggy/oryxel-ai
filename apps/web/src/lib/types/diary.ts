@@ -30,7 +30,8 @@ export type DiaryRow = {
   gender: string | null
   isOwned: boolean
   isTried: boolean
-  isLiked: boolean | null
+  isLiked: boolean
+  isDisliked: boolean
   pyramidTop: string | null
   pyramidMid: string | null
   pyramidBase: string | null

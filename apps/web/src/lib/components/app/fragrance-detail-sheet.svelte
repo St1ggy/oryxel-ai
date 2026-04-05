@@ -123,13 +123,13 @@
               {m.oryxel_owned_hint()}
             </span>
           {/if}
-          {#if row.isTried && row.isLiked === true}
+          {#if row.isTried && row.isLiked}
             <span
               class="rounded-full bg-emerald-500/12 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400"
             >
               {m.oryxel_liked()}
             </span>
-          {:else if row.isTried && row.isLiked === false}
+          {:else if row.isTried && row.isDisliked}
             <span
               class="rounded-full bg-rose-500/12 px-2 py-0.5 text-[11px] font-semibold text-rose-600 dark:text-rose-400"
             >

@@ -35,4 +35,11 @@ export default defineConfig([
       'sonarjs/cognitive-complexity': 'off',
     },
   },
+  {
+    files: ['src/ai/apply.ts'],
+    rules: {
+      // lc() intentionally returns the same union type as its input (string | null | undefined).
+      'sonarjs/function-return-type': 'off',
+    },
+  },
 ])

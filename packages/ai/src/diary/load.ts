@@ -43,7 +43,8 @@ function buildDiaryRow(
     rating: number
     isOwned: boolean
     isTried: boolean
-    isLiked: boolean | null
+    isLiked: boolean
+    isDisliked: boolean
     agentComment: string | null
     userComment: string | null
     season: string | null
@@ -73,6 +74,7 @@ function buildDiaryRow(
     isOwned: r.isOwned,
     isTried: r.isTried,
     isLiked: r.isLiked,
+    isDisliked: r.isDisliked,
     pyramidTop: resolveCommaSeparated(extractEnglishKey(r.pyramidTop), translations),
     pyramidMid: resolveCommaSeparated(extractEnglishKey(r.pyramidMid), translations),
     pyramidBase: resolveCommaSeparated(extractEnglishKey(r.pyramidBase), translations),
@@ -89,6 +91,7 @@ export async function loadDiaryForUser(userId: string, locale = 'en'): Promise<D
         isOwned: userFragrance.isOwned,
         isTried: userFragrance.isTried,
         isLiked: userFragrance.isLiked,
+        isDisliked: userFragrance.isDisliked,
         agentComment: userFragrance.agentComment,
         userComment: userFragrance.userComment,
         season: userFragrance.season,
@@ -123,11 +126,11 @@ export async function loadDiaryForUser(userId: string, locale = 'en'): Promise<D
 
       if (!r.isTried && !r.isOwned) result['to_try'].push(row)
 
-      if (r.isTried && r.isLiked === true) result.liked.push(row)
+      if (r.isTried && r.isLiked) result.liked.push(row)
 
-      if (r.isTried && r.isLiked === null) result.neutral.push(row)
+      if (r.isTried && !r.isLiked && !r.isDisliked) result.neutral.push(row)
 
-      if (r.isTried && r.isLiked === false) result.disliked.push(row)
+      if (r.isTried && r.isDisliked) result.disliked.push(row)
 
       if (r.isOwned) result.owned.push(row)
     }

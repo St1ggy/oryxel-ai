@@ -26,9 +26,9 @@
   let saveError = $state(false)
 
   function inferStatus(r: DiaryRow): StatusValue {
-    if (r.isTried && r.isLiked === true) return 'liked'
+    if (r.isTried && r.isLiked) return 'liked'
 
-    if (r.isTried && r.isLiked === false) return 'disliked'
+    if (r.isTried && r.isDisliked) return 'disliked'
 
     if (r.isTried) return 'neutral'
 
