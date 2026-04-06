@@ -395,6 +395,8 @@
   "oryxel_tour_table_desc": "Add fragrances, rate them, and leave notes. AI fills in notes and pyramid automatically.",
   "oryxel_tour_profile_title": "Your fragrance profile",
   "oryxel_tour_profile_desc": "See your olfactory preferences as a radar chart. Use \"Analyse diary\" to refresh your To Try list, notes, and recommendations.",
+  "oryxel_tour_notes_title": "Your note map",
+  "oryxel_tour_notes_desc": "Explore which notes appear most in your collection and how your preferences connect. Updated automatically when you run Analyse diary.",
   "oryxel_tour_settings_title": "Personalize Oryxel",
   "oryxel_tour_settings_desc": "Change theme, switch language, or open full settings to configure AI providers.",
   "oryxel_tour_done_title": "You're all set!",

@@ -393,6 +393,8 @@
   "oryxel_tour_tabs_desc": "Cambia entre Colección, Probar, Gustado, Neutral, No gustado y más. La pestaña \"Probar\" la rellena automáticamente la IA según tus preferencias.",
   "oryxel_tour_table_title": "Registra tus fragancias",
   "oryxel_tour_table_desc": "Agrega fragancias, califícalas y deja notas. La IA completa automáticamente.",
+  "oryxel_tour_notes_title": "Tu mapa de notas",
+  "oryxel_tour_notes_desc": "Explora qué notas aparecen más en tu colección y cómo se conectan tus preferencias. Se actualiza automáticamente al ejecutar Analizar diario.",
   "oryxel_tour_profile_title": "Tu perfil de fragancia",
   "oryxel_tour_profile_desc": "Consulta tus preferencias olfativas en un gráfico de radar. Usa \"Analizar diario\" para actualizar la lista Probar, notas y recomendaciones.",
   "oryxel_tour_settings_title": "Personaliza Oryxel",

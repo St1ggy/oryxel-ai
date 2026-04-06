@@ -181,6 +181,12 @@
   )
 
   const panelClass = $derived(cn('oryx-tab-panel', { 'outline-none': layout === 'desktop' }))
+
+  const tourTabId: Partial<Record<DiaryListTabValue, string>> = {
+    owned: 'owned-tab',
+    profile: 'profile-tab',
+    notes: 'notes-tab',
+  }
 </script>
 
 <Tabs.Root class={shellClass} bind:value={listTab}>
@@ -197,7 +203,7 @@
       >
         <Tabs.List class="contents" aria-label={m.oryxel_diary_lists_aria()}>
           {#each tabItems as { value, label } (value)}
-            <Tabs.Trigger {value} class={triggerDesktop} data-tour={value === 'profile' ? 'profile-tab' : undefined}>
+            <Tabs.Trigger {value} class={triggerDesktop} data-tour={tourTabId[value]}>
               {label}
               {#if !loading && tabCounts[value] !== undefined}
                 <span

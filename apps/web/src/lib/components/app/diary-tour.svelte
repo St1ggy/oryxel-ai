@@ -77,6 +77,9 @@
         },
         {
           element: '[data-tour="diary-table"]',
+          onHighlightStarted: () => {
+            document.querySelector<HTMLElement>('[data-tour="owned-tab"]')?.click()
+          },
           popover: {
             title: m.oryxel_tour_table_title(),
             description: m.oryxel_tour_table_desc(),
@@ -86,9 +89,24 @@
         },
         {
           element: '[data-tour="profile-tab"]',
+          onHighlightStarted: (element) => {
+            ;(element as HTMLElement | undefined)?.click()
+          },
           popover: {
             title: m.oryxel_tour_profile_title(),
             description: m.oryxel_tour_profile_desc(),
+            side: 'bottom',
+            align: 'start',
+          },
+        },
+        {
+          element: '[data-tour="notes-tab"]',
+          onHighlightStarted: (element) => {
+            ;(element as HTMLElement | undefined)?.click()
+          },
+          popover: {
+            title: m.oryxel_tour_notes_title(),
+            description: m.oryxel_tour_notes_desc(),
             side: 'bottom',
             align: 'start',
           },

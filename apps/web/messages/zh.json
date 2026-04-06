@@ -393,6 +393,8 @@
   "oryxel_tour_tabs_desc": "在收藏、想尝试、喜欢、中性、不喜欢等之间切换。「想尝试」标签由 AI 根据您的偏好自动填充。",
   "oryxel_tour_table_title": "追踪您的香水",
   "oryxel_tour_table_desc": "添加香水、评分并留下备注，AI 自动填写香调信息。",
+  "oryxel_tour_notes_title": "香调图谱",
+  "oryxel_tour_notes_desc": "了解您收藏中最常出现的香调及其偏好关联。运行「分析日记」后自动更新。",
   "oryxel_tour_profile_title": "您的香水档案",
   "oryxel_tour_profile_desc": "通过雷达图查看您的嗅觉偏好。点击「分析日记」可刷新想尝试列表、香调笔记和推荐内容。",
   "oryxel_tour_settings_title": "个性化 Oryxel",

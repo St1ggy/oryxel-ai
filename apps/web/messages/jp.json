@@ -393,6 +393,8 @@
   "oryxel_tour_tabs_desc": "コレクション、試したいもの、好き、普通、嫌いなどを切り替えられます。「試したいもの」タブはAIがあなたの好みをもとに自動で埋めます。",
   "oryxel_tour_table_title": "香水を記録する",
   "oryxel_tour_table_desc": "香水を追加し、評価してメモを残しましょう。AIが自動で補完します。",
+  "oryxel_tour_notes_title": "ノートマップ",
+  "oryxel_tour_notes_desc": "コレクションの中でよく登場するノートや好みのつながりを確認できます。「日記を分析」を実行すると自動で更新されます。",
   "oryxel_tour_profile_title": "あなたの香水プロフィール",
   "oryxel_tour_profile_desc": "レーダーチャートで嗅覚の好みを確認できます。「日記を分析」を押すと試したいリスト、ノート、おすすめが更新されます。",
   "oryxel_tour_settings_title": "Oryxelをカスタマイズ",
