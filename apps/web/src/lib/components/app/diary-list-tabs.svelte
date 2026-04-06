@@ -228,6 +228,8 @@
               rows={diaryState.owned}
               {onRatingChange}
               onOpenDetail={(row) => onOpenDetail?.(row, 'diary')}
+              emptyTitle={m.oryxel_empty_owned_title()}
+              emptyHint={m.oryxel_empty_owned_hint()}
             />
           {/if}
         </Tabs.Content>
@@ -235,7 +237,12 @@
           {#if loading}
             <DiaryTableSkeleton />
           {:else}
-            <ToTryTable rows={diaryState.to_try} onOpenDetail={(row) => onOpenDetail?.(row, 'to_try')} />
+            <ToTryTable
+              rows={diaryState.to_try}
+              onOpenDetail={(row) => onOpenDetail?.(row, 'to_try')}
+              emptyTitle={m.oryxel_empty_to_try_title()}
+              emptyHint={m.oryxel_empty_to_try_hint()}
+            />
           {/if}
         </Tabs.Content>
         <Tabs.Content value="liked" class={panelClass}>
@@ -246,6 +253,8 @@
               rows={diaryState.liked}
               {onRatingChange}
               onOpenDetail={(row) => onOpenDetail?.(row, 'diary')}
+              emptyTitle={m.oryxel_empty_liked_title()}
+              emptyHint={m.oryxel_empty_liked_hint()}
             />
           {/if}
         </Tabs.Content>
@@ -257,6 +266,8 @@
               rows={diaryState.neutral}
               {onRatingChange}
               onOpenDetail={(row) => onOpenDetail?.(row, 'diary')}
+              emptyTitle={m.oryxel_empty_neutral_title()}
+              emptyHint={m.oryxel_empty_neutral_hint()}
             />
           {/if}
         </Tabs.Content>
@@ -268,6 +279,8 @@
               rows={diaryState.disliked}
               {onRatingChange}
               onOpenDetail={(row) => onOpenDetail?.(row, 'diary')}
+              emptyTitle={m.oryxel_empty_disliked_title()}
+              emptyHint={m.oryxel_empty_disliked_hint()}
             />
           {/if}
         </Tabs.Content>
@@ -323,6 +336,8 @@
           rows={diaryState.owned}
           {onRatingChange}
           onOpenDetail={(row) => onOpenDetail?.(row, 'diary')}
+          emptyTitle={m.oryxel_empty_owned_title()}
+          emptyHint={m.oryxel_empty_owned_hint()}
         />
       {/if}
     </Tabs.Content>
@@ -330,7 +345,12 @@
       {#if loading}
         <DiaryTableSkeleton />
       {:else}
-        <ToTryTable rows={diaryState.to_try} onOpenDetail={(row) => onOpenDetail?.(row, 'to_try')} />
+        <ToTryTable
+          rows={diaryState.to_try}
+          onOpenDetail={(row) => onOpenDetail?.(row, 'to_try')}
+          emptyTitle={m.oryxel_empty_to_try_title()}
+          emptyHint={m.oryxel_empty_to_try_hint()}
+        />
       {/if}
     </Tabs.Content>
     <Tabs.Content value="liked" class={panelClass}>
@@ -341,6 +361,8 @@
           rows={diaryState.liked}
           {onRatingChange}
           onOpenDetail={(row) => onOpenDetail?.(row, 'diary')}
+          emptyTitle={m.oryxel_empty_liked_title()}
+          emptyHint={m.oryxel_empty_liked_hint()}
         />
       {/if}
     </Tabs.Content>
@@ -352,6 +374,8 @@
           rows={diaryState.neutral}
           {onRatingChange}
           onOpenDetail={(row) => onOpenDetail?.(row, 'diary')}
+          emptyTitle={m.oryxel_empty_neutral_title()}
+          emptyHint={m.oryxel_empty_neutral_hint()}
         />
       {/if}
     </Tabs.Content>
@@ -363,6 +387,8 @@
           rows={diaryState.disliked}
           {onRatingChange}
           onOpenDetail={(row) => onOpenDetail?.(row, 'diary')}
+          emptyTitle={m.oryxel_empty_disliked_title()}
+          emptyHint={m.oryxel_empty_disliked_hint()}
         />
       {/if}
     </Tabs.Content>

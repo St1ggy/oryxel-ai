@@ -398,5 +398,15 @@
   "oryxel_tour_settings_title": "Personnalisez Oryxel",
   "oryxel_tour_settings_desc": "Changez le thème, la langue ou accédez aux paramètres complets.",
   "oryxel_tour_done_title": "Vous êtes prêt\u00a0!",
-  "oryxel_tour_done_desc": "Commencez à ajouter des parfums ou demandez des recommandations à l'IA. Cliquez sur ❓ pour rejouer ce tour."
+  "oryxel_tour_done_desc": "Commencez à ajouter des parfums ou demandez des recommandations à l'IA. Cliquez sur ❓ pour rejouer ce tour.",
+  "oryxel_empty_owned_title": "Aucun parfum encore",
+  "oryxel_empty_owned_hint": "Demandez à l'IA des recommandations et ajoutez le premier",
+  "oryxel_empty_to_try_title": "Liste de souhaits vide",
+  "oryxel_empty_to_try_hint": "Demandez à l'IA — elle suggérera des parfums à sauvegarder",
+  "oryxel_empty_liked_title": "Aucun parfum aimé",
+  "oryxel_empty_liked_hint": "Les parfums notés 4–5 étoiles apparaîtront ici",
+  "oryxel_empty_neutral_title": "Aucun parfum neutre",
+  "oryxel_empty_neutral_hint": "Les parfums notés 3 étoiles apparaîtront ici",
+  "oryxel_empty_disliked_title": "Aucun parfum rejeté",
+  "oryxel_empty_disliked_hint": "Les parfums notés 1–2 étoiles apparaîtront ici"
 }

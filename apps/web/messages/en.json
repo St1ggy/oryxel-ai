@@ -398,5 +398,15 @@
   "oryxel_tour_settings_title": "Personalize Oryxel",
   "oryxel_tour_settings_desc": "Change theme, switch language, or open full settings to configure AI providers.",
   "oryxel_tour_done_title": "You're all set!",
-  "oryxel_tour_done_desc": "Start adding fragrances or ask the AI for recommendations. Click the ❓ button anytime to replay this tour."
+  "oryxel_tour_done_desc": "Start adding fragrances or ask the AI for recommendations. Click the ❓ button anytime to replay this tour.",
+  "oryxel_empty_owned_title": "No fragrances yet",
+  "oryxel_empty_owned_hint": "Ask the AI for recommendations and add your first one",
+  "oryxel_empty_to_try_title": "Your wishlist is empty",
+  "oryxel_empty_to_try_hint": "Ask the AI and it will suggest fragrances to save here",
+  "oryxel_empty_liked_title": "No liked fragrances",
+  "oryxel_empty_liked_hint": "Fragrances rated 4–5 stars will appear here",
+  "oryxel_empty_neutral_title": "No neutral fragrances",
+  "oryxel_empty_neutral_hint": "Fragrances rated 3 stars will appear here",
+  "oryxel_empty_disliked_title": "No disliked fragrances",
+  "oryxel_empty_disliked_hint": "Fragrances rated 1–2 stars will appear here"
 }

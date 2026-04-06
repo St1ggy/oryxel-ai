@@ -398,5 +398,15 @@
   "oryxel_tour_settings_title": "个性化 Oryxel",
   "oryxel_tour_settings_desc": "更改主题、语言，或进入完整设置配置 AI 提供商。",
   "oryxel_tour_done_title": "一切就绪！",
-  "oryxel_tour_done_desc": "开始添加香水或向 AI 询问推荐。随时点击 ❓ 按钮重播此导览。"
+  "oryxel_tour_done_desc": "开始添加香水或向 AI 询问推荐。随时点击 ❓ 按钮重播此导览。",
+  "oryxel_empty_owned_title": "暂无香水",
+  "oryxel_empty_owned_hint": "向 AI 寻求推荐，添加您的第一款香水",
+  "oryxel_empty_to_try_title": "心愿单为空",
+  "oryxel_empty_to_try_hint": "向 AI 提问，它会将推荐的香水保存到这里",
+  "oryxel_empty_liked_title": "暂无喜爱的香水",
+  "oryxel_empty_liked_hint": "评分 4–5 星的香水将显示在这里",
+  "oryxel_empty_neutral_title": "暂无中立香水",
+  "oryxel_empty_neutral_hint": "评分 3 星的香水将显示在这里",
+  "oryxel_empty_disliked_title": "暂无不喜欢的香水",
+  "oryxel_empty_disliked_hint": "评分 1–2 星的香水将显示在这里"
 }

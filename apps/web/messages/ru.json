@@ -398,5 +398,15 @@
   "oryxel_tour_settings_title": "Персонализация",
   "oryxel_tour_settings_desc": "Смените тему, язык или откройте настройки для подключения ИИ-провайдеров.",
   "oryxel_tour_done_title": "Всё готово!",
-  "oryxel_tour_done_desc": "Начните добавлять ароматы или спросите ИИ о рекомендациях. Нажмите ❓ в любое время, чтобы повторить тур."
+  "oryxel_tour_done_desc": "Начните добавлять ароматы или спросите ИИ о рекомендациях. Нажмите ❓ в любое время, чтобы повторить тур.",
+  "oryxel_empty_owned_title": "Ароматов пока нет",
+  "oryxel_empty_owned_hint": "Попросите ИИ подобрать ароматы и добавьте первый",
+  "oryxel_empty_to_try_title": "Список желаний пуст",
+  "oryxel_empty_to_try_hint": "Попросите ИИ — он предложит ароматы для сохранения",
+  "oryxel_empty_liked_title": "Понравившихся ароматов нет",
+  "oryxel_empty_liked_hint": "Ароматы с оценкой 4–5 звёзд появятся здесь",
+  "oryxel_empty_neutral_title": "Нейтральных ароматов нет",
+  "oryxel_empty_neutral_hint": "Ароматы с оценкой 3 звезды появятся здесь",
+  "oryxel_empty_disliked_title": "Нелюбимых ароматов нет",
+  "oryxel_empty_disliked_hint": "Ароматы с оценкой 1–2 звезды появятся здесь"
 }

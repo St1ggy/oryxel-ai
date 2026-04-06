@@ -398,5 +398,15 @@
   "oryxel_tour_settings_title": "Personaliza Oryxel",
   "oryxel_tour_settings_desc": "Cambia el tema, el idioma o abre la configuración completa.",
   "oryxel_tour_done_title": "¡Todo listo!",
-  "oryxel_tour_done_desc": "Empieza a agregar fragancias o pide recomendaciones a la IA. Haz clic en ❓ para repetir el tour."
+  "oryxel_tour_done_desc": "Empieza a agregar fragancias o pide recomendaciones a la IA. Haz clic en ❓ para repetir el tour.",
+  "oryxel_empty_owned_title": "Sin fragancias aún",
+  "oryxel_empty_owned_hint": "Pide al asistente recomendaciones y añade la primera",
+  "oryxel_empty_to_try_title": "Lista de deseos vacía",
+  "oryxel_empty_to_try_hint": "Pide al asistente y guardará fragancias aquí",
+  "oryxel_empty_liked_title": "Sin fragancias favoritas",
+  "oryxel_empty_liked_hint": "Las fragancias con 4–5 estrellas aparecerán aquí",
+  "oryxel_empty_neutral_title": "Sin fragancias neutras",
+  "oryxel_empty_neutral_hint": "Las fragancias con 3 estrellas aparecerán aquí",
+  "oryxel_empty_disliked_title": "Sin fragancias rechazadas",
+  "oryxel_empty_disliked_hint": "Las fragancias con 1–2 estrellas aparecerán aquí"
 }

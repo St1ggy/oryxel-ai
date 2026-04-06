@@ -398,5 +398,15 @@
   "oryxel_tour_settings_title": "Oryxelをカスタマイズ",
   "oryxel_tour_settings_desc": "テーマや言語を変更したり、設定でAIプロバイダーを設定したりできます。",
   "oryxel_tour_done_title": "準備完了！",
-  "oryxel_tour_done_desc": "香水を追加するか、AIにおすすめを聞いてみましょう。❓ボタンでいつでもツアーを再生できます。"
+  "oryxel_tour_done_desc": "香水を追加するか、AIにおすすめを聞いてみましょう。❓ボタンでいつでもツアーを再生できます。",
+  "oryxel_empty_owned_title": "フレグランスなし",
+  "oryxel_empty_owned_hint": "AIにおすすめを聞いて、最初の香水を追加しましょう",
+  "oryxel_empty_to_try_title": "ウィッシュリストが空です",
+  "oryxel_empty_to_try_hint": "AIにお願いすると、候補の香水をここに保存してくれます",
+  "oryxel_empty_liked_title": "お気に入りなし",
+  "oryxel_empty_liked_hint": "評価4〜5のフレグランスがここに表示されます",
+  "oryxel_empty_neutral_title": "ニュートラルなし",
+  "oryxel_empty_neutral_hint": "評価3のフレグランスがここに表示されます",
+  "oryxel_empty_disliked_title": "嫌いなフレグランスなし",
+  "oryxel_empty_disliked_hint": "評価1〜2のフレグランスがここに表示されます"
 }
