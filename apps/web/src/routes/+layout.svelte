@@ -16,7 +16,7 @@
 
   const path = $derived(deLocalizeHref(page.url.pathname))
   const isDiary = $derived(path === '/diary')
-  const showSecondaryHeader = $derived(!isDiary && path !== '/')
+  const showSecondaryHeader = $derived(!isDiary && path !== '/' && !path.startsWith('/login'))
 
   const secondaryTitle = $derived.by((): string => {
     if (path.startsWith('/login')) return m.oryxel_login_title_signin()
