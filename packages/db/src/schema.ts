@@ -41,6 +41,7 @@ export const userProfile = pgTable('user_profile', {
   /** 'male' | 'female' | null — user gender for AI pronoun selection */
   gender: text('gender'),
   noteRelationships: jsonb('note_relationships').$type<{ note: string; sentiment: string; label: string }[]>(),
+  onboardingCompletedAt: timestamp('onboarding_completed_at', { withTimezone: true }),
 })
 
 export const userAiPreferences = pgTable('user_ai_preferences', {

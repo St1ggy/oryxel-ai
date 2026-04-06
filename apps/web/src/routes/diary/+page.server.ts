@@ -14,7 +14,7 @@ import {
 } from '$lib/server/ai/keys/service'
 import { getLatestPendingPatches, listLatestChatMessages, updatePatchStatus } from '$lib/server/ai/storage'
 import { db } from '$lib/server/db'
-import { aiPendingPatch, userAiPreferences } from '$lib/server/db/schema'
+import { aiPendingPatch, userAiPreferences, userProfile } from '$lib/server/db/schema'
 import { loadRecentActivity } from '$lib/server/diary/activity'
 import { loadDiaryForUser } from '$lib/server/diary/load'
 import { loadProfileForUser } from '$lib/server/profile/load'
@@ -59,8 +59,8 @@ export const load: PageServerLoad = async ({ locals, url, cookies }) => {
   const recentActivity = loadRecentActivity(userId, 30)
 
   // Fast queries — resolved before the shell renders
-  const [pendingPatches, activeJobs, configuredProviders, providerRows, defaultProvider, prefsRows] = await Promise.all(
-    [
+  const [pendingPatches, activeJobs, configuredProviders, providerRows, defaultProvider, prefsRows, profileRows] =
+    await Promise.all([
       getLatestPendingPatches(userId, 3),
       getActiveJobsForUser(userId),
       listConfiguredProviders(userId),
@@ -71,10 +71,15 @@ export const load: PageServerLoad = async ({ locals, url, cookies }) => {
         .from(userAiPreferences)
         .where(eq(userAiPreferences.userId, userId))
         .limit(1),
-    ],
-  )
+      db
+        .select({ onboardingCompletedAt: userProfile.onboardingCompletedAt })
+        .from(userProfile)
+        .where(eq(userProfile.userId, userId))
+        .limit(1),
+    ])
 
   const graphStyle = prefsRows[0]?.graphStyle ?? 'default'
+  const onboardingCompleted = !!profileRows[0]?.onboardingCompletedAt
 
   const labelMap = new Map(providerRows.map((r) => [r.provider, r.label]))
   const chatProviders = configuredProviders.map((p, index) => ({
@@ -107,5 +112,6 @@ export const load: PageServerLoad = async ({ locals, url, cookies }) => {
     chatHistory,
     initialTab,
     graphStyle,
+    onboardingCompleted,
   }
 }
