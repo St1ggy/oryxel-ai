@@ -12,20 +12,25 @@
   let pendingProvider = $state<string | null>(null)
   let errorText = $state<string | null>(null)
 
-  async function loginWith(provider: 'google' | 'apple') {
+  // Social providers use /api/auth/sign-in/social
+  // Yandex is registered via genericOAuth plugin → /api/auth/sign-in/oauth2
+  const GENERIC_OAUTH_PROVIDERS = new Set(['yandex'])
+
+  async function loginWith(provider: 'google' | 'apple' | 'facebook' | 'vk' | 'wechat' | 'yandex') {
     pendingProvider = provider
     errorText = null
 
+    const isGenericOAuth = GENERIC_OAUTH_PROVIDERS.has(provider)
+    const endpoint = isGenericOAuth ? '/api/auth/sign-in/oauth2' : '/api/auth/sign-in/social'
+    const body = isGenericOAuth
+      ? { providerId: provider, callbackURL: data.redirectTo, disableRedirect: true, requestSignUp: true }
+      : { provider, callbackURL: data.redirectTo, disableRedirect: true, requestSignUp: true }
+
     try {
-      const response = await fetch('/api/auth/sign-in/social', {
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          provider,
-          callbackURL: data.redirectTo,
-          disableRedirect: true,
-          requestSignUp: true,
-        }),
+        body: JSON.stringify(body),
       })
 
       if (!response.ok) {
@@ -46,7 +51,14 @@
     }
   }
 
-  const hasProviders = $derived(data.providers.google || data.providers.apple)
+  const hasProviders = $derived(
+    data.providers.google ||
+      data.providers.apple ||
+      data.providers.facebook ||
+      data.providers.vk ||
+      data.providers.wechat ||
+      data.providers.yandex,
+  )
 </script>
 
 <div class="relative flex min-h-svh flex-col items-center justify-center px-4 py-16">
@@ -122,6 +134,92 @@
               </svg>
             {/if}
             <span class="flex-1 text-center">{m.oryxel_login_continue_apple()}</span>
+          </button>
+        {/if}
+
+        {#if data.providers.yandex}
+          <button
+            type="button"
+            class="oryx-transition group relative flex h-12 w-full items-center gap-3 rounded-[14px] border border-border bg-surface px-4 text-sm font-medium text-foreground shadow-sm hover:bg-muted hover:shadow-md active:scale-[0.985] disabled:pointer-events-none disabled:opacity-50"
+            onclick={() => loginWith('yandex')}
+            disabled={pendingProvider !== null}
+          >
+            {#if pendingProvider === 'yandex'}
+              <Loader2 class="size-5 shrink-0 animate-spin text-foreground-muted" />
+            {:else}
+              <!-- Yandex Я badge -->
+              <span
+                class="flex size-5 shrink-0 items-center justify-center rounded-[5px] text-[13px] leading-none font-black text-white"
+                style="background: #fc3f1d">Я</span
+              >
+            {/if}
+            <span class="flex-1 text-center">{m.oryxel_login_continue_yandex()}</span>
+          </button>
+        {/if}
+
+        {#if data.providers.vk}
+          <button
+            type="button"
+            class="oryx-transition group relative flex h-12 w-full items-center gap-3 rounded-[14px] border border-border bg-surface px-4 text-sm font-medium text-foreground shadow-sm hover:bg-muted hover:shadow-md active:scale-[0.985] disabled:pointer-events-none disabled:opacity-50"
+            onclick={() => loginWith('vk')}
+            disabled={pendingProvider !== null}
+          >
+            {#if pendingProvider === 'vk'}
+              <Loader2 class="size-5 shrink-0 animate-spin text-foreground-muted" />
+            {:else}
+              <!-- VK logo -->
+              <svg class="size-5 shrink-0" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  fill="#0077FF"
+                  d="M15.684 0H8.316C1.592 0 0 1.592 0 8.316v7.368C0 22.408 1.592 24 8.316 24h7.368C22.408 24 24 22.408 24 15.684V8.316C24 1.592 22.408 0 15.684 0zm3.692 17.123h-1.744c-.66 0-.862-.525-2.049-1.714-1.033-1.01-1.49-.857-1.49-.857v1.1c0 .445-.143.714-1.305.714-1.922 0-4.056-1.166-5.558-3.34C5.372 9.995 5 8.27 5 7.97c0-.12.033-.233.098-.332h2.014c.458 0 .598.19.786.682.876 2.387 2.356 4.477 2.964 4.477.228 0 .332-.105.332-.682V9.474c-.066-1.165-.682-1.266-.682-1.683 0-.198.157-.4.398-.4h3.174c.34 0 .46.18.46.558v2.994c0 .34.148.457.243.457.228 0 .424-.117.84-.532 1.304-1.46 2.231-3.712 2.231-3.712.122-.256.333-.49.68-.49h1.744c.523 0 .637.27.523.635-.21.98-2.263 3.875-2.263 3.875-.19.307-.258.444 0 .794.19.258.808.795 1.22 1.278.756.863 1.337 1.591 1.493 2.09.142.493-.11.746-.556.746z"
+                />
+              </svg>
+            {/if}
+            <span class="flex-1 text-center">{m.oryxel_login_continue_vk()}</span>
+          </button>
+        {/if}
+
+        {#if data.providers.facebook}
+          <button
+            type="button"
+            class="oryx-transition group relative flex h-12 w-full items-center gap-3 rounded-[14px] border border-border bg-surface px-4 text-sm font-medium text-foreground shadow-sm hover:bg-muted hover:shadow-md active:scale-[0.985] disabled:pointer-events-none disabled:opacity-50"
+            onclick={() => loginWith('facebook')}
+            disabled={pendingProvider !== null}
+          >
+            {#if pendingProvider === 'facebook'}
+              <Loader2 class="size-5 shrink-0 animate-spin text-foreground-muted" />
+            {:else}
+              <!-- Facebook logo -->
+              <svg class="size-5 shrink-0" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  fill="#1877F2"
+                  d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"
+                />
+              </svg>
+            {/if}
+            <span class="flex-1 text-center">{m.oryxel_login_continue_facebook()}</span>
+          </button>
+        {/if}
+
+        {#if data.providers.wechat}
+          <button
+            type="button"
+            class="oryx-transition group relative flex h-12 w-full items-center gap-3 rounded-[14px] border border-border bg-surface px-4 text-sm font-medium text-foreground shadow-sm hover:bg-muted hover:shadow-md active:scale-[0.985] disabled:pointer-events-none disabled:opacity-50"
+            onclick={() => loginWith('wechat')}
+            disabled={pendingProvider !== null}
+          >
+            {#if pendingProvider === 'wechat'}
+              <Loader2 class="size-5 shrink-0 animate-spin text-foreground-muted" />
+            {:else}
+              <!-- WeChat logo -->
+              <svg class="size-5 shrink-0" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  fill="#07C160"
+                  d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c-.276-.94-.418-1.92-.418-2.93 0-3.98 3.787-7.006 8.276-7.006.157 0 .312.007.466.018C15.956 4.251 12.68 2.188 8.69 2.188zm-2.75 3.999a.982.982 0 1 1 0 1.963.982.982 0 0 1 0-1.963zm5.5 0a.982.982 0 1 1 0 1.963.982.982 0 0 1 0-1.963zm7.964 2.293c-4.056 0-7.345 2.773-7.345 6.194 0 3.422 3.29 6.195 7.345 6.195.868 0 1.698-.132 2.474-.37a.75.75 0 0 1 .622.086l1.656.969a.284.284 0 0 0 .145.047.256.256 0 0 0 .252-.256.62.62 0 0 0-.04-.185l-.34-1.29a.514.514 0 0 1 .185-.578A5.876 5.876 0 0 0 24 14.674c0-3.42-3.29-6.194-7.595-6.194zm-2.747 3.52a.854.854 0 1 1 0 1.707.854.854 0 0 1 0-1.707zm5.494 0a.854.854 0 1 1 0 1.707.854.854 0 0 1 0-1.707z"
+                />
+              </svg>
+            {/if}
+            <span class="flex-1 text-center">{m.oryxel_login_continue_wechat()}</span>
           </button>
         {/if}
       </div>
