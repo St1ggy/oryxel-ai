@@ -93,6 +93,7 @@
   "oryxel_provider_label": "Display name",
   "oryxel_export_md": "Export Markdown",
   "oryxel_import_csv": "Import CSV",
+  "oryxel_signout": "Sign out",
   "oryxel_delete_all": "Delete all data",
   "oryxel_analytics": "Send anonymous analytics",
   "oryxel_remember_context": "Let AI remember chat context",

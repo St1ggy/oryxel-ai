@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Activity, ChevronDown, ChevronRight, Heart, Sparkles } from '@lucide/svelte'
+  import { Activity, ChevronDown, ChevronRight, Heart, LogOut, Sparkles } from '@lucide/svelte'
 
   import ActivityLog from '$lib/components/app/activity-log.svelte'
   import DiaryHeaderControls from '$lib/components/app/diary-header-controls.svelte'
@@ -13,7 +13,13 @@
 
   type DiaryCounts = { owned: number; to_try: number; liked: number; neutral: number; disliked: number }
 
+  import { goto } from '$app/navigation'
   import { resolve } from '$app/paths'
+
+  async function signOut() {
+    await fetch('/api/auth/sign-out', { method: 'POST' })
+    await goto(resolve('/'))
+  }
 
   type ProfileData = {
     displayName: string
@@ -85,6 +91,15 @@
         >
           {m.oryxel_profile_edit()}
         </Button>
+        <Button
+          variant="ghost"
+          class="size-9 shrink-0 rounded-full p-0 text-foreground-muted hover:text-destructive"
+          onclick={signOut}
+          title={m.oryxel_signout()}
+        >
+          <LogOut class="size-4" />
+          <span class="sr-only">{m.oryxel_signout()}</span>
+        </Button>
       </div>
     </div>
   {:else}
@@ -119,6 +134,15 @@
           href={resolve('/profile/edit')}
         >
           {m.oryxel_profile_edit()}
+        </Button>
+        <Button
+          variant="ghost"
+          class="size-[42px] shrink-0 rounded-full p-0 text-foreground-muted hover:text-destructive"
+          onclick={signOut}
+          title={m.oryxel_signout()}
+        >
+          <LogOut class="size-4" />
+          <span class="sr-only">{m.oryxel_signout()}</span>
         </Button>
       </div>
     </div>

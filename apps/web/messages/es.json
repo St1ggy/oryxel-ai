@@ -93,6 +93,7 @@
   "oryxel_provider_label": "Nombre visible",
   "oryxel_export_md": "Exportar Markdown",
   "oryxel_import_csv": "Importar CSV",
+  "oryxel_signout": "Cerrar sesión",
   "oryxel_delete_all": "Eliminar todos los datos",
   "oryxel_analytics": "Enviar analítica anónima",
   "oryxel_remember_context": "Permitir que la IA recuerde el contexto del chat",

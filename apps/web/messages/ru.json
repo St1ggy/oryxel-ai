@@ -93,6 +93,7 @@
   "oryxel_provider_label": "Отображаемое имя",
   "oryxel_export_md": "Экспорт Markdown",
   "oryxel_import_csv": "Импорт CSV",
+  "oryxel_signout": "Выйти",
   "oryxel_delete_all": "Удалить все данные",
   "oryxel_analytics": "Анонимная аналитика",
   "oryxel_remember_context": "Разрешить ИИ запоминать контекст чата",

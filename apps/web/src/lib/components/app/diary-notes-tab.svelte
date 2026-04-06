@@ -132,8 +132,8 @@
 </script>
 
 <!-- View toggle -->
-<div class="mb-3 flex items-center justify-end" data-tour="notes-view-toggle">
-  <div class="flex gap-0.5 rounded-lg border border-border bg-muted p-0.5">
+<div class="mb-3 flex items-center justify-end">
+  <div class="flex gap-0.5 rounded-lg border border-border bg-muted p-0.5" data-tour="notes-view-toggle">
     <button
       onclick={() => (notesViewMode = 'list')}
       aria-label={m.oryxel_notes_view_list()}

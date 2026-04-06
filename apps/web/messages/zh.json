@@ -93,6 +93,7 @@
   "oryxel_provider_label": "显示名称",
   "oryxel_export_md": "导出 Markdown",
   "oryxel_import_csv": "导入 CSV",
+  "oryxel_signout": "退出登录",
   "oryxel_delete_all": "删除全部数据",
   "oryxel_analytics": "发送匿名分析",
   "oryxel_remember_context": "允许 AI 记住聊天上下文",

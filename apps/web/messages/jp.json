@@ -93,6 +93,7 @@
   "oryxel_provider_label": "表示名",
   "oryxel_export_md": "Markdownを書き出す",
   "oryxel_import_csv": "CSVを読み込む",
+  "oryxel_signout": "ログアウト",
   "oryxel_delete_all": "すべてのデータを削除",
   "oryxel_analytics": "匿名分析を送信",
   "oryxel_remember_context": "AIにチャット文脈を記憶させる",
