@@ -9,6 +9,7 @@
   import DiaryHeaderControls from '$lib/components/app/diary-header-controls.svelte'
   import DiaryListTabs from '$lib/components/app/diary-list-tabs.svelte'
   import DiaryProfileTab from '$lib/components/app/diary-profile-tab.svelte'
+  import DiaryTour from '$lib/components/app/diary-tour.svelte'
   import FragranceDetailModal from '$lib/components/app/fragrance-detail-modal.svelte'
   import MobilePrimaryNav from '$lib/components/app/mobile-primary-nav.svelte'
   import Button from '$lib/components/ui/button.svelte'
@@ -20,6 +21,7 @@
   import type { ChatMessage, DiaryData, DiaryMobileTab, DiaryRow, FragranceListType } from '$lib/types/diary'
   import type { PageData } from './$types'
 
+  import { browser } from '$app/environment'
   import { invalidateAll } from '$app/navigation'
 
   const { data }: { data: PageData } = $props()
@@ -42,6 +44,25 @@
     history.replaceState({}, '', url)
   })
   let editOpen = $state(false)
+
+  // ── Onboarding tour ────────────────────────────────────────────────────────
+  let startTour = $state<(() => void) | null>(null)
+  let onboardingCompleted = $state(untrack(() => data.onboardingCompleted))
+  let tourAutoStarted = false
+
+  $effect(() => {
+    if (onboardingCompleted || !browser || tourAutoStarted) return
+
+    if (diaryLoading || !startTour) return
+
+    tourAutoStarted = true
+    const timer = setTimeout(() => {
+      chatOpen = true
+      startTour?.()
+    }, 500)
+
+    return () => clearTimeout(timer)
+  })
 
   /** Local rating edits keyed by fragranceId; reset when fresh server data arrives. */
   let ratingOverrides = $state<Record<number, number>>({})
@@ -505,7 +526,12 @@
           </Button>
         {/snippet}
         {#snippet headerEnd()}
-          <DiaryHeaderControls />
+          <DiaryHeaderControls
+            onStartTour={() => {
+              chatOpen = true
+              startTour?.()
+            }}
+          />
         {/snippet}
       </DiaryListTabs>
       <!-- Desktop status bar — inline at bottom of right panel, never overlaps chat -->
@@ -599,3 +625,13 @@
 <div class="md:hidden">
   <AiStatusFloat {thinking} patches={pendingItems} {syncProgress} {patchProgress} />
 </div>
+
+<DiaryTour
+  completed={onboardingCompleted}
+  onComplete={() => {
+    onboardingCompleted = true
+  }}
+  onReady={(function_) => {
+    startTour = function_
+  }}
+/>

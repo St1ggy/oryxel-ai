@@ -185,7 +185,10 @@
 
 <Tabs.Root class={shellClass} bind:value={listTab}>
   {#if layout === 'desktop'}
-    <div class="flex h-[68px] shrink-0 items-center gap-2 border-b border-border bg-surface px-4 md:gap-4 md:px-10">
+    <div
+      class="flex h-[68px] shrink-0 items-center gap-2 border-b border-border bg-surface px-4 md:gap-4 md:px-10"
+      data-tour="diary-tabs"
+    >
       {@render headerStart?.()}
       <div
         bind:this={tabsListElement}
@@ -194,7 +197,7 @@
       >
         <Tabs.List class="contents" aria-label={m.oryxel_diary_lists_aria()}>
           {#each tabItems as { value, label } (value)}
-            <Tabs.Trigger {value} class={triggerDesktop}>
+            <Tabs.Trigger {value} class={triggerDesktop} data-tour={value === 'profile' ? 'profile-tab' : undefined}>
               {label}
               {#if !loading && tabCounts[value] !== undefined}
                 <span
@@ -217,7 +220,7 @@
     {@render statusBanner?.()}
     <div class="min-h-0 flex-1 overflow-y-auto p-4 md:p-9">
       <div class={cn('w-full', contentWidthClass)}>
-        <Tabs.Content value="owned" class={panelClass}>
+        <Tabs.Content value="owned" class={panelClass} data-tour="diary-table">
           {#if loading}
             <DiaryTableSkeleton />
           {:else}

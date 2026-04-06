@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Check, Globe, Palette, Settings } from '@lucide/svelte'
+  import { Check, Globe, HelpCircle, Palette, Settings } from '@lucide/svelte'
   import { DropdownMenu } from 'bits-ui'
 
   import Button from '$lib/components/ui/button.svelte'
@@ -15,9 +15,10 @@
 
   type Props = {
     showSettingsButton?: boolean
+    onStartTour?: () => void
   }
 
-  const { showSettingsButton = true }: Props = $props()
+  const { showSettingsButton = true, onStartTour }: Props = $props()
 
   const themeContext = getThemeContext()
   function themeLabel(themeId: OryxelThemeId): string {
@@ -80,7 +81,7 @@
   const activeLocale = $derived(getLocale())
 </script>
 
-<div class="flex items-center gap-1.5">
+<div class="flex items-center gap-1.5" data-tour="header-controls">
   <DropdownMenu.Root>
     <DropdownMenu.Trigger>
       <Button variant="ghost" size="sm" class="size-9 shrink-0 p-0 text-foreground-muted hover:text-accent">
@@ -142,6 +143,18 @@
       </DropdownMenu.Content>
     </DropdownMenu.Portal>
   </DropdownMenu.Root>
+
+  {#if onStartTour}
+    <Button
+      variant="ghost"
+      size="sm"
+      class="size-9 shrink-0 p-0 text-foreground-muted hover:text-accent"
+      onclick={onStartTour}
+    >
+      <HelpCircle class="size-5" />
+      <span class="sr-only">{m.oryxel_tour_help()}</span>
+    </Button>
+  {/if}
 
   {#if showSettingsButton}
     <Button

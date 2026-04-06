@@ -119,7 +119,10 @@
   })
 </script>
 
-<div class="flex h-full min-h-0 flex-col bg-[color-mix(in_srgb,var(--oryx-bg-surface)_54%,var(--oryx-bg-page))]">
+<div
+  class="flex h-full min-h-0 flex-col bg-[color-mix(in_srgb,var(--oryx-bg-surface)_54%,var(--oryx-bg-page))]"
+  data-tour="chat-panel"
+>
   <AiModelHeader modelLabel={m.oryxel_chat_model()} />
   {#if hasApiKey}
     <div bind:this={scrollElement} class="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 pt-5 pb-6">
@@ -174,6 +177,7 @@
           style="max-height: {MAX_TEXTAREA_HEIGHT}px"
           onkeydown={onDraftKeydown}
           oninput={resizeDraft}
+          data-tour="chat-input"
         ></textarea>
         <button
           type="button"
