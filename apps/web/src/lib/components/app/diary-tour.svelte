@@ -88,9 +88,9 @@
           },
         },
         {
-          element: '[data-tour="profile-tab"]',
-          onHighlightStarted: (element) => {
-            ;(element as HTMLElement | undefined)?.click()
+          element: '[data-tour="profile-header"]',
+          onHighlightStarted: () => {
+            document.querySelector<HTMLElement>('[data-tour="profile-tab"]')?.click()
           },
           popover: {
             title: m.oryxel_tour_profile_title(),
@@ -100,14 +100,32 @@
           },
         },
         {
-          element: '[data-tour="notes-tab"]',
-          onHighlightStarted: (element) => {
-            ;(element as HTMLElement | undefined)?.click()
+          element: '[data-tour="profile-radar"]',
+          popover: {
+            title: m.oryxel_tour_profile_radar_title(),
+            description: m.oryxel_tour_profile_radar_desc(),
+            side: 'right',
+            align: 'start',
+          },
+        },
+        {
+          element: '[data-tour="notes-view-toggle"]',
+          onHighlightStarted: () => {
+            document.querySelector<HTMLElement>('[data-tour="notes-tab"]')?.click()
           },
           popover: {
             title: m.oryxel_tour_notes_title(),
             description: m.oryxel_tour_notes_desc(),
             side: 'bottom',
+            align: 'end',
+          },
+        },
+        {
+          element: '[data-tour="notes-content"]',
+          popover: {
+            title: m.oryxel_tour_notes_sentiments_title(),
+            description: m.oryxel_tour_notes_sentiments_desc(),
+            side: 'top',
             align: 'start',
           },
         },

@@ -91,6 +91,7 @@
     <!-- Desktop header: side-by-side layout -->
     <div
       class="flex items-center justify-between rounded-[24px] border border-border bg-surface px-[25px] py-[25px] shadow-[0px_1px_3px_0px_rgba(0,0,0,0.1),0px_1px_2px_0px_rgba(0,0,0,0.1)]"
+      data-tour="profile-header"
     >
       <div class="flex items-center gap-6">
         <Avatar alt={m.oryxel_profile_default_user()} size="lg" class="size-20" />
@@ -125,6 +126,7 @@
 
   <!-- Radar + stats card -->
   <div
+    data-tour="profile-radar"
     class={isMobile
       ? 'rounded-[20px] border border-border bg-surface px-5 pt-5 pb-2 shadow-sm'
       : 'rounded-[24px] border border-border bg-surface px-[33px] pt-[33px] pb-[8px] shadow-[0px_1px_3px_0px_rgba(0,0,0,0.1),0px_1px_2px_0px_rgba(0,0,0,0.1)]'}
