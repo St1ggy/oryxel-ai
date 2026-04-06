@@ -18,10 +18,6 @@ if (env.APPLE_CLIENT_ID && env.APPLE_CLIENT_SECRET) {
   socialProviders.apple = { clientId: env.APPLE_CLIENT_ID, clientSecret: env.APPLE_CLIENT_SECRET }
 }
 
-if (env.YANDEX_CLIENT_ID && env.YANDEX_CLIENT_SECRET) {
-  socialProviders.yandex = { clientId: env.YANDEX_CLIENT_ID, clientSecret: env.YANDEX_CLIENT_SECRET }
-}
-
 export const auth = betterAuth({
   baseURL: env.ORIGIN,
   secret: env.BETTER_AUTH_SECRET,

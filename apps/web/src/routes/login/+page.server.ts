@@ -21,7 +21,6 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     providers: {
       google: Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
       apple: Boolean(env.APPLE_CLIENT_ID && env.APPLE_CLIENT_SECRET),
-      yandex: Boolean(env.YANDEX_CLIENT_ID && env.YANDEX_CLIENT_SECRET),
     },
   }
 }

@@ -12,7 +12,7 @@
   let pendingProvider = $state<string | null>(null)
   let errorText = $state<string | null>(null)
 
-  async function loginWith(provider: 'google' | 'apple' | 'yandex') {
+  async function loginWith(provider: 'google' | 'apple') {
     pendingProvider = provider
     errorText = null
 
@@ -46,7 +46,7 @@
     }
   }
 
-  const hasProviders = $derived(data.providers.google || data.providers.apple || data.providers.yandex)
+  const hasProviders = $derived(data.providers.google || data.providers.apple)
 </script>
 
 <div class="relative flex min-h-svh flex-col items-center justify-center px-4 py-16">
@@ -122,26 +122,6 @@
               </svg>
             {/if}
             <span class="flex-1 text-center">{m.oryxel_login_continue_apple()}</span>
-          </button>
-        {/if}
-
-        {#if data.providers.yandex}
-          <button
-            type="button"
-            class="oryx-transition group relative flex h-12 w-full items-center gap-3 rounded-[14px] border border-border bg-surface px-4 text-sm font-medium text-foreground shadow-sm hover:bg-muted hover:shadow-md active:scale-[0.985] disabled:pointer-events-none disabled:opacity-50"
-            onclick={() => loginWith('yandex')}
-            disabled={pendingProvider !== null}
-          >
-            {#if pendingProvider === 'yandex'}
-              <Loader2 class="size-5 shrink-0 animate-spin text-foreground-muted" />
-            {:else}
-              <!-- Yandex Я badge -->
-              <span
-                class="flex size-5 shrink-0 items-center justify-center rounded-[5px] text-[13px] leading-none font-black text-white"
-                style="background: #fc3f1d">Я</span
-              >
-            {/if}
-            <span class="flex-1 text-center">{m.oryxel_login_continue_yandex()}</span>
           </button>
         {/if}
       </div>
