@@ -173,6 +173,7 @@
       suggestions: [],
     },
   )
+  const shellLoading = $derived(resolvedShell === null)
   const pendingItems = $derived(resolvedShell?.pendingPatches ?? [])
 
   function renderAssistantMessage(content: string): string {
@@ -731,7 +732,8 @@
 
   // Extra bottom padding on mobile when the fixed status bar is visible.
   const mobileStatusVisible = $derived(
-    thinking ||
+    shellLoading ||
+      thinking ||
       refreshingRecommendations ||
       pendingItems.some((p) => p.status === 'created') ||
       !!patchProgress ||
@@ -749,6 +751,7 @@
       )}
     >
       <AppChatPanel
+        loading={shellLoading}
         {messages}
         {thinking}
         {onSend}
@@ -796,15 +799,17 @@
             />
           {:else if desktopShellView === 'notes'}
             <div data-tour="primary-notes">
-              <DiaryNotesTab
-                diaryData={diaryState}
-                noteRelationships={resolvedProfile?.noteRelationships ?? []}
-                layout="desktop"
-                {graphStyle}
-              />
+              <PhantomUiShell loading={diaryLoading || shellLoading}>
+                <DiaryNotesTab
+                  diaryData={diaryState}
+                  noteRelationships={resolvedProfile?.noteRelationships ?? []}
+                  layout="desktop"
+                  {graphStyle}
+                />
+              </PhantomUiShell>
             </div>
           {:else if desktopShellView === 'profile'}
-            <PhantomUiShell loading={diaryLoading}>
+            <PhantomUiShell loading={diaryLoading || shellLoading}>
               <DiaryProfileTab
                 variant="desktop"
                 profile={profileData}
@@ -825,6 +830,7 @@
         </div>
       </div>
       <AiStatusFloat
+        loading={shellLoading}
         thinking={thinking || refreshingRecommendations}
         patches={pendingItems}
         {syncProgress}
@@ -867,15 +873,17 @@
           />
         {:else if primaryView === 'notes'}
           <div data-tour="primary-notes">
-            <DiaryNotesTab
-              diaryData={diaryState}
-              noteRelationships={resolvedProfile?.noteRelationships ?? []}
-              layout="mobile"
-              {graphStyle}
-            />
+            <PhantomUiShell loading={diaryLoading || shellLoading}>
+              <DiaryNotesTab
+                diaryData={diaryState}
+                noteRelationships={resolvedProfile?.noteRelationships ?? []}
+                layout="mobile"
+                {graphStyle}
+              />
+            </PhantomUiShell>
           </div>
         {:else if primaryView === 'profile'}
-          <PhantomUiShell loading={diaryLoading}>
+          <PhantomUiShell loading={diaryLoading || shellLoading}>
             <DiaryProfileTab
               variant="mobile"
               profile={profileData}
@@ -892,6 +900,7 @@
           </PhantomUiShell>
         {:else if primaryView === 'chat'}
           <AppChatPanel
+            loading={shellLoading}
             {messages}
             {thinking}
             {onSend}
@@ -940,6 +949,7 @@
 <!-- Mobile status bar — fixed above bottom nav, only on mobile -->
 <div class="md:hidden">
   <AiStatusFloat
+    loading={shellLoading}
     thinking={thinking || refreshingRecommendations}
     patches={pendingItems}
     {syncProgress}

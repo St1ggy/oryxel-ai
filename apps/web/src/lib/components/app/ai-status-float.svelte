@@ -2,6 +2,7 @@
   import { ChevronUp } from '@lucide/svelte'
   import { fly, slide } from 'svelte/transition'
 
+  import PhantomUiShell from '$lib/components/ui/phantom-ui-shell.svelte'
   import * as m from '$lib/paraglide/messages.js'
 
   import { invalidateAll } from '$app/navigation'
@@ -19,6 +20,8 @@
   type PatchProgress = { step: number; total: number }
 
   type Props = {
+    /** Pending patches / progress not loaded yet */
+    loading?: boolean
     thinking?: boolean
     patches?: PendingPatch[]
     syncProgress?: SyncProgress | null
@@ -32,6 +35,7 @@
   }
 
   const {
+    loading = false,
     thinking = false,
     patches = [],
     syncProgress = null,
@@ -45,7 +49,7 @@
   const activeProgress = $derived(patchProgress ?? syncProgress)
   const progressPercent = $derived(activeProgress ? Math.round((activeProgress.step / activeProgress.total) * 100) : 0)
   const isProgressActive = $derived(!!patchProgress || !!syncProgress)
-  const visible = $derived(thinking || pendingPatches.length > 0 || isProgressActive)
+  const visible = $derived(loading || thinking || pendingPatches.length > 0 || isProgressActive)
 
   // Mobile-only: collapsed by default; auto-expands when patches arrive
   let collapsed = $state(true)
@@ -120,80 +124,90 @@
   {#if inline}
     <!-- Desktop: plain block at the bottom of the right panel, no overlay -->
     <div in:fly={{ y: 8, duration: 220, opacity: 0 }} out:fly={{ y: 8, duration: 180, opacity: 0 }}>
-      {#each pendingPatches as patch (patch.id)}
-        <div class="border-t border-border bg-surface" in:slide={{ duration: 200 }} out:slide={{ duration: 160 }}>
+      {#if loading}
+        <PhantomUiShell loading={true} class="border-t border-border bg-surface">
           <div class="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
-            <p class="min-w-0 flex-1 text-sm text-foreground">
-              <span class="font-medium">{m.oryxel_pending_title()}</span>
-              &nbsp;—&nbsp;
-              {patch.summary ?? m.oryxel_pending_fallback_summary()}
-            </p>
-            <div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
-              {#if onOpenPatchDetails}
+            <div class="h-4 min-w-0 flex-1 rounded-md bg-muted/55"></div>
+            <div class="h-8 w-24 shrink-0 rounded-lg bg-muted/50"></div>
+            <div class="h-8 w-20 shrink-0 rounded-lg bg-muted/45"></div>
+          </div>
+        </PhantomUiShell>
+      {:else}
+        {#each pendingPatches as patch (patch.id)}
+          <div class="border-t border-border bg-surface" in:slide={{ duration: 200 }} out:slide={{ duration: 160 }}>
+            <div class="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
+              <p class="min-w-0 flex-1 text-sm text-foreground">
+                <span class="font-medium">{m.oryxel_pending_title()}</span>
+                &nbsp;—&nbsp;
+                {patch.summary ?? m.oryxel_pending_fallback_summary()}
+              </p>
+              <div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                {#if onOpenPatchDetails}
+                  <button
+                    type="button"
+                    class="oryx-transition rounded-lg border border-border bg-muted/40 px-3 py-1.5 text-xs font-medium text-foreground-muted hover:border-border-strong hover:text-foreground disabled:opacity-50"
+                    disabled={busyId !== null}
+                    onclick={() =>
+                      onOpenPatchDetails(
+                        (patch.payload && typeof patch.payload === 'object' ? patch.payload : {}) as Record<
+                          string,
+                          unknown
+                        >,
+                        patch.summary,
+                      )}
+                  >
+                    {m.oryxel_patch_details_cta()}
+                  </button>
+                {/if}
                 <button
                   type="button"
-                  class="oryx-transition rounded-lg border border-border bg-muted/40 px-3 py-1.5 text-xs font-medium text-foreground-muted hover:border-border-strong hover:text-foreground disabled:opacity-50"
+                  class="oryx-transition oryx-btn-primary rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-50"
                   disabled={busyId !== null}
-                  onclick={() =>
-                    onOpenPatchDetails(
-                      (patch.payload && typeof patch.payload === 'object' ? patch.payload : {}) as Record<
-                        string,
-                        unknown
-                      >,
-                      patch.summary,
-                    )}
+                  onclick={() => submitDecision(patch, 'confirm')}
                 >
-                  {m.oryxel_patch_details_cta()}
+                  {m.oryxel_action_confirm()}
                 </button>
-              {/if}
-              <button
-                type="button"
-                class="oryx-transition oryx-btn-primary rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-50"
-                disabled={busyId !== null}
-                onclick={() => submitDecision(patch, 'confirm')}
-              >
-                {m.oryxel_action_confirm()}
-              </button>
-              <button
-                type="button"
-                class="oryx-transition rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground-muted hover:border-border-strong hover:text-foreground disabled:opacity-50"
-                disabled={busyId !== null}
-                onclick={() => submitDecision(patch, 'reject')}
-              >
-                {m.oryxel_action_reject()}
-              </button>
+                <button
+                  type="button"
+                  class="oryx-transition rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground-muted hover:border-border-strong hover:text-foreground disabled:opacity-50"
+                  disabled={busyId !== null}
+                  onclick={() => submitDecision(patch, 'reject')}
+                >
+                  {m.oryxel_action_reject()}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      {/each}
+        {/each}
 
-      {#if isProgressActive || thinking}
-        <div class="border-t border-border bg-surface">
-          <div class="mx-auto flex max-w-5xl items-center gap-3 px-4 py-2.5">
-            {#if thinking && !isProgressActive}
-              <span class="flex shrink-0 gap-1">
-                {#each [0, 1, 2] as index (index)}
-                  <span class="size-1.5 animate-pulse rounded-full bg-accent" style="animation-delay: {index * 0.15}s"
-                  ></span>
-                {/each}
-              </span>
-            {/if}
-            <span class="flex-1 truncate text-sm text-foreground-muted">{statusLabel}</span>
-            {#if activeProgress}
-              <span class="shrink-0 text-xs font-medium text-foreground-muted tabular-nums">
-                {activeProgress.step}/{activeProgress.total}
-              </span>
+        {#if isProgressActive || thinking}
+          <div class="border-t border-border bg-surface">
+            <div class="mx-auto flex max-w-5xl items-center gap-3 px-4 py-2.5">
+              {#if thinking && !isProgressActive}
+                <span class="flex shrink-0 gap-1">
+                  {#each [0, 1, 2] as index (index)}
+                    <span class="size-1.5 animate-pulse rounded-full bg-accent" style="animation-delay: {index * 0.15}s"
+                    ></span>
+                  {/each}
+                </span>
+              {/if}
+              <span class="flex-1 truncate text-sm text-foreground-muted">{statusLabel}</span>
+              {#if activeProgress}
+                <span class="shrink-0 text-xs font-medium text-foreground-muted tabular-nums">
+                  {activeProgress.step}/{activeProgress.total}
+                </span>
+              {/if}
+            </div>
+            {#if isProgressActive}
+              <div class="h-0.5 w-full bg-border">
+                <div
+                  class="h-full bg-accent transition-[width] duration-500 ease-out"
+                  style="width: {progressPercent}%"
+                ></div>
+              </div>
             {/if}
           </div>
-          {#if isProgressActive}
-            <div class="h-0.5 w-full bg-border">
-              <div
-                class="h-full bg-accent transition-[width] duration-500 ease-out"
-                style="width: {progressPercent}%"
-              ></div>
-            </div>
-          {/if}
-        </div>
+        {/if}
       {/if}
     </div>
   {:else}
@@ -203,122 +217,133 @@
       in:fly={{ y: 16, duration: 220, opacity: 0 }}
       out:fly={{ y: 16, duration: 180, opacity: 0 }}
     >
-      <!-- Expanded content (patch cards + progress) -->
-      {#if !collapsed}
-        <div transition:slide={{ duration: 200 }}>
-          {#each pendingPatches as patch (patch.id)}
-            <div class="border-t border-border bg-surface">
-              <div class="flex items-start gap-3 px-4 py-3">
-                <p class="min-w-0 flex-1 text-sm text-foreground">
-                  <span class="font-medium">{m.oryxel_pending_title()}</span>
-                  <br />
-                  <span class="text-foreground-muted">{patch.summary ?? m.oryxel_pending_fallback_summary()}</span>
-                </p>
-                <div class="flex shrink-0 flex-col gap-1.5 pt-0.5">
-                  {#if onOpenPatchDetails}
+      {#if loading}
+        <PhantomUiShell loading={true} class="border-t border-border bg-surface">
+          <div class="flex items-center gap-3 px-4 py-3">
+            <div class="h-4 min-w-0 flex-1 rounded-md bg-muted/55"></div>
+            <div class="h-4 w-16 shrink-0 rounded bg-muted/45"></div>
+          </div>
+        </PhantomUiShell>
+      {:else}
+        <!-- Expanded content (patch cards + progress) -->
+        {#if !collapsed}
+          <div transition:slide={{ duration: 200 }}>
+            {#each pendingPatches as patch (patch.id)}
+              <div class="border-t border-border bg-surface">
+                <div class="flex items-start gap-3 px-4 py-3">
+                  <p class="min-w-0 flex-1 text-sm text-foreground">
+                    <span class="font-medium">{m.oryxel_pending_title()}</span>
+                    <br />
+                    <span class="text-foreground-muted">{patch.summary ?? m.oryxel_pending_fallback_summary()}</span>
+                  </p>
+                  <div class="flex shrink-0 flex-col gap-1.5 pt-0.5">
+                    {#if onOpenPatchDetails}
+                      <button
+                        type="button"
+                        class="oryx-transition rounded-lg border border-border bg-muted/40 px-3 py-1.5 text-xs font-medium text-foreground-muted disabled:opacity-50"
+                        disabled={busyId !== null}
+                        onclick={() =>
+                          onOpenPatchDetails(
+                            (patch.payload && typeof patch.payload === 'object' ? patch.payload : {}) as Record<
+                              string,
+                              unknown
+                            >,
+                            patch.summary,
+                          )}
+                      >
+                        {m.oryxel_patch_details_cta()}
+                      </button>
+                    {/if}
                     <button
                       type="button"
-                      class="oryx-transition rounded-lg border border-border bg-muted/40 px-3 py-1.5 text-xs font-medium text-foreground-muted disabled:opacity-50"
+                      class="oryx-transition oryx-btn-primary rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-50"
                       disabled={busyId !== null}
-                      onclick={() =>
-                        onOpenPatchDetails(
-                          (patch.payload && typeof patch.payload === 'object' ? patch.payload : {}) as Record<
-                            string,
-                            unknown
-                          >,
-                          patch.summary,
-                        )}
+                      onclick={() => submitDecision(patch, 'confirm')}
                     >
-                      {m.oryxel_patch_details_cta()}
+                      {m.oryxel_action_confirm()}
                     </button>
-                  {/if}
-                  <button
-                    type="button"
-                    class="oryx-transition oryx-btn-primary rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-50"
-                    disabled={busyId !== null}
-                    onclick={() => submitDecision(patch, 'confirm')}
-                  >
-                    {m.oryxel_action_confirm()}
-                  </button>
-                  <button
-                    type="button"
-                    class="oryx-transition rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground-muted disabled:opacity-50"
-                    disabled={busyId !== null}
-                    onclick={() => submitDecision(patch, 'reject')}
-                  >
-                    {m.oryxel_action_reject()}
-                  </button>
+                    <button
+                      type="button"
+                      class="oryx-transition rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground-muted disabled:opacity-50"
+                      disabled={busyId !== null}
+                      onclick={() => submitDecision(patch, 'reject')}
+                    >
+                      {m.oryxel_action_reject()}
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          {/each}
+            {/each}
 
-          {#if isProgressActive}
-            <div class="border-t border-border bg-surface">
-              <div class="flex items-center gap-3 px-4 py-2.5">
-                <span class="flex-1 truncate text-sm text-foreground-muted">{statusLabel}</span>
-                <span class="shrink-0 text-xs font-medium text-foreground-muted tabular-nums">
-                  {activeProgress?.step}/{activeProgress?.total}
-                </span>
+            {#if isProgressActive}
+              <div class="border-t border-border bg-surface">
+                <div class="flex items-center gap-3 px-4 py-2.5">
+                  <span class="flex-1 truncate text-sm text-foreground-muted">{statusLabel}</span>
+                  <span class="shrink-0 text-xs font-medium text-foreground-muted tabular-nums">
+                    {activeProgress?.step}/{activeProgress?.total}
+                  </span>
+                </div>
+                <div class="h-0.5 w-full bg-border">
+                  <div
+                    class="h-full bg-accent transition-[width] duration-500 ease-out"
+                    style="width: {progressPercent}%"
+                  ></div>
+                </div>
               </div>
-              <div class="h-0.5 w-full bg-border">
-                <div
-                  class="h-full bg-accent transition-[width] duration-500 ease-out"
-                  style="width: {progressPercent}%"
-                ></div>
-              </div>
-            </div>
-          {/if}
-        </div>
-      {/if}
-
-      <!-- Handle bar: always visible, tap to toggle -->
-      <button
-        type="button"
-        class="flex w-full items-center gap-3 border-t border-border bg-surface px-4 py-2.5 text-left"
-        onclick={() => (collapsed = !collapsed)}
-        aria-expanded={!collapsed}
-        aria-label={collapsed ? m.oryxel_status_expand() : m.oryxel_status_collapse()}
-      >
-        {#if collapsed}
-          <!-- Collapsed: show compact status summary -->
-          {#if thinking && !isProgressActive}
-            <span class="flex shrink-0 gap-1">
-              {#each [0, 1, 2] as index (index)}
-                <span class="size-1.5 animate-pulse rounded-full bg-accent" style="animation-delay: {index * 0.15}s"
-                ></span>
-              {/each}
-            </span>
-          {:else if isProgressActive}
-            <span class="shrink-0 text-xs font-semibold text-accent tabular-nums">{progressPercent}%</span>
-          {/if}
-          <span class="min-w-0 flex-1 truncate text-sm text-foreground-muted">{statusLabel}</span>
-          {#if pendingPatches.length > 0}
-            <span class="shrink-0 rounded-full bg-accent px-2 py-0.5 text-[10px] font-semibold text-white tabular-nums">
-              {pendingPatches.length}
-            </span>
-          {/if}
-        {:else}
-          <!-- Expanded: just a collapse label -->
-          <span class="flex-1 text-xs text-foreground-muted">{m.oryxel_status_collapse()}</span>
+            {/if}
+          </div>
         {/if}
 
-        <!-- Chevron -->
-        <ChevronUp
-          class="size-4 shrink-0 text-foreground-muted transition-transform duration-200 {collapsed
-            ? ''
-            : 'rotate-180'}"
-        />
-      </button>
+        <!-- Handle bar: always visible, tap to toggle -->
+        <button
+          type="button"
+          class="flex w-full items-center gap-3 border-t border-border bg-surface px-4 py-2.5 text-left"
+          onclick={() => (collapsed = !collapsed)}
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? m.oryxel_status_expand() : m.oryxel_status_collapse()}
+        >
+          {#if collapsed}
+            <!-- Collapsed: show compact status summary -->
+            {#if thinking && !isProgressActive}
+              <span class="flex shrink-0 gap-1">
+                {#each [0, 1, 2] as index (index)}
+                  <span class="size-1.5 animate-pulse rounded-full bg-accent" style="animation-delay: {index * 0.15}s"
+                  ></span>
+                {/each}
+              </span>
+            {:else if isProgressActive}
+              <span class="shrink-0 text-xs font-semibold text-accent tabular-nums">{progressPercent}%</span>
+            {/if}
+            <span class="min-w-0 flex-1 truncate text-sm text-foreground-muted">{statusLabel}</span>
+            {#if pendingPatches.length > 0}
+              <span
+                class="shrink-0 rounded-full bg-accent px-2 py-0.5 text-[10px] font-semibold text-white tabular-nums"
+              >
+                {pendingPatches.length}
+              </span>
+            {/if}
+          {:else}
+            <!-- Expanded: just a collapse label -->
+            <span class="flex-1 text-xs text-foreground-muted">{m.oryxel_status_collapse()}</span>
+          {/if}
 
-      <!-- Mini progress bar under the handle (collapsed only) -->
-      {#if collapsed && isProgressActive}
-        <div class="h-0.5 w-full bg-border">
-          <div
-            class="h-full bg-accent transition-[width] duration-500 ease-out"
-            style="width: {progressPercent}%"
-          ></div>
-        </div>
+          <!-- Chevron -->
+          <ChevronUp
+            class="size-4 shrink-0 text-foreground-muted transition-transform duration-200 {collapsed
+              ? ''
+              : 'rotate-180'}"
+          />
+        </button>
+
+        <!-- Mini progress bar under the handle (collapsed only) -->
+        {#if collapsed && isProgressActive}
+          <div class="h-0.5 w-full bg-border">
+            <div
+              class="h-full bg-accent transition-[width] duration-500 ease-out"
+              style="width: {progressPercent}%"
+            ></div>
+          </div>
+        {/if}
       {/if}
     </div>
   {/if}
