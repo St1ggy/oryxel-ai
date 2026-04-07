@@ -1,6 +1,8 @@
 import { backgroundJob, db } from '@oryxel/db'
 import { and, desc, eq, inArray, sql } from 'drizzle-orm'
 
+import { emitJobUpdated } from './job-notify'
+
 export type JobType = 'profile_sync' | 'agent_chat'
 export type JobStatus = 'pending' | 'processing' | 'done' | 'failed' | 'cancelled'
 export type JobProgress = { step: number; total: number; phase: string }
@@ -30,6 +32,8 @@ export async function pushJobProgress(jobId: number, event: JobProgress): Promis
       progress: sql`COALESCE(${backgroundJob.progress}, '[]'::jsonb) || ${JSON.stringify([event])}::jsonb`,
     })
     .where(eq(backgroundJob.id, jobId))
+
+  emitJobUpdated(jobId)
 }
 
 export async function completeJob(jobId: number, result: Record<string, unknown>): Promise<void> {
@@ -37,6 +41,8 @@ export async function completeJob(jobId: number, result: Record<string, unknown>
     .update(backgroundJob)
     .set({ status: 'done', result, completedAt: new Date() })
     .where(eq(backgroundJob.id, jobId))
+
+  emitJobUpdated(jobId)
 }
 
 export async function failJob(jobId: number, errorMessage: string): Promise<void> {
@@ -44,6 +50,8 @@ export async function failJob(jobId: number, errorMessage: string): Promise<void
     .update(backgroundJob)
     .set({ status: 'failed', errorMessage, completedAt: new Date() })
     .where(eq(backgroundJob.id, jobId))
+
+  emitJobUpdated(jobId)
 }
 
 /** Jobs in 'processing' older than this are considered stale and auto-failed. */

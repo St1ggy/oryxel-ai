@@ -1,0 +1,6 @@
+# Railway: set root directory to apps/job-stream-gateway (or monorepo equivalent).
+# Health check for the HTTP server started by `bun run start`.
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 30

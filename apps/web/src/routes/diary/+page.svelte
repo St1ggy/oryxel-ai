@@ -23,6 +23,7 @@
 
   import { browser } from '$app/environment'
   import { invalidateAll } from '$app/navigation'
+  import { env } from '$env/dynamic/public'
 
   const { data }: { data: PageData } = $props()
 
@@ -216,7 +217,17 @@
       syncProgress = latest
         ? { step: latest.step, total: latest.total, phase: latest.phase as NonNullable<SyncProgress>['phase'] }
         : { step: 0, total: 1, phase: 'profile' }
-      void pollJob(syncJob.id).finally(() => {
+      void waitForJob(syncJob.id, pageAbort.signal, (job) => {
+        const last = job.progress.at(-1)
+
+        if (last) {
+          syncProgress = {
+            step: last.step,
+            total: last.total,
+            phase: last.phase as NonNullable<SyncProgress>['phase'],
+          }
+        }
+      }).finally(() => {
         syncProgress = null
         void invalidateAll()
       })
@@ -228,25 +239,14 @@
       thinking = true
       void (async () => {
         try {
-          const job = await (async () => {
-            while (true) {
-              await new Promise((resolve) => setTimeout(resolve, 1500))
-              const r = await fetch(`/api/jobs/${chatJob.id}`, { signal: pageAbort.signal })
+          const job = await waitForJob(chatJob.id, pageAbort.signal, (index) => {
+            const latest = index.progress.at(-1)
 
-              if (!r.ok) throw new Error('poll failed')
-
-              const index = (await r.json()) as JobResult
-
-              if (index.status === 'done' || index.status === 'failed' || index.status === 'cancelled') return index
-
-              const latest = index.progress.at(-1)
-
-              if (latest?.phase === 'applying') {
-                thinking = false
-                patchProgress = { step: latest.step, total: latest.total }
-              }
+            if (latest?.phase === 'applying') {
+              thinking = false
+              patchProgress = { step: latest.step, total: latest.total }
             }
-          })()
+          })
 
           patchProgress = null
           thinking = false
@@ -284,11 +284,91 @@
     }
   })
 
-  async function pollJob(jobId: number, intervalMs = 2000, signal = pageAbort.signal): Promise<JobResult> {
+  function jobStreamEnabled(): boolean {
+    return Boolean(env.PUBLIC_JOB_STREAM_URL?.trim())
+  }
+
+  async function streamJobUntilDone(
+    jobId: number,
+    options: { signal: AbortSignal; onUpdate: (job: JobResult) => void },
+  ): Promise<JobResult> {
+    return new Promise((resolve, reject) => {
+      let settled = false
+      let es: EventSource | undefined
+
+      const fail = (error: Error) => {
+        if (settled) return
+
+        settled = true
+        es?.close()
+        reject(error)
+      }
+
+      const succeed = (job: JobResult) => {
+        if (settled) return
+
+        settled = true
+        es?.close()
+        resolve(job)
+      }
+
+      const onAbort = () => {
+        fail(new DOMException('Aborted', 'AbortError'))
+      }
+
+      options.signal.addEventListener('abort', onAbort, { once: true })
+
+      void (async () => {
+        try {
+          const tokenResponse = await fetch(`/api/jobs/${jobId}/stream-token`, {
+            method: 'POST',
+            signal: options.signal,
+          })
+
+          if (!tokenResponse.ok) {
+            throw new Error('stream token failed')
+          }
+
+          const { token } = (await tokenResponse.json()) as { token: string }
+          const base = env.PUBLIC_JOB_STREAM_URL!.trim().replace(/\/$/, '')
+          const url = `${base}/stream?jobId=${jobId}&token=${encodeURIComponent(token)}`
+
+          es = new EventSource(url)
+
+          es.addEventListener('message', (event: MessageEvent) => {
+            try {
+              const job = JSON.parse(event.data) as JobResult
+
+              options.onUpdate(job)
+
+              if (job.status === 'done' || job.status === 'failed' || job.status === 'cancelled') {
+                options.signal.removeEventListener('abort', onAbort)
+                succeed(job)
+              }
+            } catch (error) {
+              fail(error instanceof Error ? error : new Error('parse failed'))
+            }
+          })
+
+          es.addEventListener('error', () => {
+            fail(new Error('EventSource error'))
+          })
+        } catch (error) {
+          fail(error instanceof Error ? error : new Error(String(error)))
+        }
+      })()
+    })
+  }
+
+  async function pollJobWithUpdate(
+    jobId: number,
+    signal: AbortSignal,
+    onUpdate: (job: JobResult) => void,
+  ): Promise<JobResult> {
     const deadline = Date.now() + 12 * 60 * 1000 // 12-min client-side hard stop
 
     while (true) {
-      await new Promise((resolve) => setTimeout(resolve, intervalMs))
+      await new Promise((resolve) => setTimeout(resolve, 2000))
 
       if (Date.now() > deadline) {
         throw new Error('Poll timed out')
@@ -300,19 +380,26 @@
 
       const job = (await pollResponse.json()) as JobResult
 
+      onUpdate(job)
+
       if (job.status === 'done' || job.status === 'failed' || job.status === 'cancelled') return job
+    }
+  }
 
-      // Update progress from latest event in progress array
-      const latest = job.progress.at(-1)
-
-      if (latest) {
-        syncProgress = {
-          step: latest.step,
-          total: latest.total,
-          phase: latest.phase as NonNullable<SyncProgress>['phase'],
-        }
+  async function waitForJob(
+    jobId: number,
+    signal: AbortSignal,
+    onUpdate: (job: JobResult) => void,
+  ): Promise<JobResult> {
+    if (jobStreamEnabled()) {
+      try {
+        return await streamJobUntilDone(jobId, { signal, onUpdate })
+      } catch {
+        // Gateway unreachable or token misconfigured — fall back to polling.
       }
     }
+
+    return pollJobWithUpdate(jobId, signal, onUpdate)
   }
 
   function handleProfileSyncClick() {
@@ -338,7 +425,17 @@
 
       const { jobId } = (await response.json()) as { jobId: number }
 
-      await pollJob(jobId)
+      await waitForJob(jobId, pageAbort.signal, (job) => {
+        const latest = job.progress.at(-1)
+
+        if (latest) {
+          syncProgress = {
+            step: latest.step,
+            total: latest.total,
+            phase: latest.phase as NonNullable<SyncProgress>['phase'],
+          }
+        }
+      })
     } catch {
       // silently ignore — diary still reloads
     } finally {
@@ -364,27 +461,14 @@
 
       const { jobId } = (await response.json()) as { jobId: number }
 
-      // Poll for completion, updating patchProgress from job progress events
-      const job = await (async () => {
-        while (true) {
-          await new Promise((resolve) => setTimeout(resolve, 1500))
+      const job = await waitForJob(jobId, pageAbort.signal, (index) => {
+        const latest = index.progress.at(-1)
 
-          const pollResponse = await fetch(`/api/jobs/${jobId}`, { signal: pageAbort.signal })
-
-          if (!pollResponse.ok) throw new Error(`Job poll failed: ${pollResponse.status}`)
-
-          const index = (await pollResponse.json()) as JobResult
-
-          if (index.status === 'done' || index.status === 'failed' || index.status === 'cancelled') return index
-
-          const latest = index.progress.at(-1)
-
-          if (latest?.phase === 'applying') {
-            thinking = false
-            patchProgress = { step: latest.step, total: latest.total }
-          }
+        if (latest?.phase === 'applying') {
+          thinking = false
+          patchProgress = { step: latest.step, total: latest.total }
         }
-      })()
+      })
 
       patchProgress = null
       thinking = false

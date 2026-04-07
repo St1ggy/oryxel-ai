@@ -1,5 +1,5 @@
 {
-  "name": "@oryxel/worker",
+  "name": "@oryxel/job-stream-gateway",
   "private": true,
   "version": "0.0.1",
   "type": "module",
@@ -12,11 +12,12 @@
   "dependencies": {
     "@oryxel/ai": "workspace:*",
     "@oryxel/db": "workspace:*",
-    "drizzle-orm": "^0.45.2",
     "ioredis": "^5.9.2",
+    "jose": "^6.1.3",
     "tsx": "^4.21.0"
   },
   "devDependencies": {
+    "@st1ggy/linter-config": "^2.42.0",
     "@types/node": "^25",
     "typescript": "^6.0.2"
   }

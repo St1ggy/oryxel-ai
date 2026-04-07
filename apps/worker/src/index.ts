@@ -1,11 +1,30 @@
-import { failJob } from '@oryxel/ai'
+import { emitJobUpdated, failJob, setJobUpdatedHandler } from '@oryxel/ai'
 import { backgroundJob, db, user } from '@oryxel/db'
 import { eq } from 'drizzle-orm'
+import Redis from 'ioredis'
 
 import { handleAgentChat } from './handlers/agent-chat'
 import { handleProfileSync } from './handlers/profile-sync'
 
 const POLL_INTERVAL_MS = 2000
+
+const redisUrl = process.env.REDIS_URL?.trim()
+
+if (redisUrl) {
+  const redis = new Redis(redisUrl, { maxRetriesPerRequest: 3 })
+
+  redis.on('error', (error) => {
+    console.error('[worker] redis error:', error instanceof Error ? error.message : error)
+  })
+
+  setJobUpdatedHandler(async (jobId) => {
+    await redis.publish(`job:${jobId}`, JSON.stringify({ jobId }))
+  })
+
+  console.log('[worker] Redis pub/sub enabled for job streams')
+} else {
+  console.warn('[worker] REDIS_URL not set — job stream publishes disabled')
+}
 
 async function claimNextJob() {
   // Atomically claim one pending job: UPDATE ... SET status='processing' WHERE id = (SELECT ...)
@@ -52,6 +71,8 @@ async function processJob(job: {
   const userName = userRow?.name ?? 'User'
 
   console.log(`[worker] processing job ${job.id} type=${job.type} userId=${job.userId}`)
+
+  emitJobUpdated(job.id)
 
   if (job.type === 'agent_chat') {
     await handleAgentChat(job.id, job.userId, params)

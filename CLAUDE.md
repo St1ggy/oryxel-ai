@@ -201,7 +201,13 @@ AI_ROUTER_PROVIDER_ORDER
 AI_ROUTER_TIMEOUT_MS
 AI_ROUTER_MAX_RETRIES
 AI_ROUTER_MAX_ATTEMPTS
+REDIS_URL
+JOB_STREAM_JWT_SECRET
+PUBLIC_JOB_STREAM_URL
+STREAM_CORS_ORIGIN
 ```
+
+`REDIS_URL` — worker + job-stream-gateway (Railway Redis). `JOB_STREAM_JWT_SECRET` — shared by web (stream-token) and gateway. `PUBLIC_JOB_STREAM_URL` — base URL of the gateway for browser `EventSource` (no trailing slash). `STREAM_CORS_ORIGIN` — gateway CORS (production web origin, or `*` for local).
 
 Extend this list in **`memory.mdc`** and here when new features add secrets.
 

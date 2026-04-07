@@ -36,6 +36,19 @@ alwaysApply: true
 
 ---
 
+## 2026-04-07 — Job progress via Railway Redis + SSE gateway
+
+### What changed
+
+- Background job UI updates use **Redis pub/sub** (`job:{id}`) and a separate **`apps/job-stream-gateway`** service (SSE). Worker publishes after progress/completion; web uses `POST /api/jobs/[id]/stream-token` + `EventSource` when `PUBLIC_JOB_STREAM_URL` is set, with **polling fallback** if unset or stream errors.
+- New env vars: `REDIS_URL`, `JOB_STREAM_JWT_SECRET`, `PUBLIC_JOB_STREAM_URL`, optional `STREAM_CORS_ORIGIN` on the gateway.
+
+### Why
+
+- Stable push across multiple worker instances without polling the browser; Railway hosts Redis and the long-lived gateway.
+
+---
+
 ## Template for new entries
 
 ```
