@@ -34,17 +34,18 @@
     ).filter(([, on]) => on),
   )
 
-  function providerLabel(id: string): string {
-    const map: Record<string, string> = {
-      google: m.oryxel_login_continue_google(),
-      apple: m.oryxel_login_continue_apple(),
-      facebook: m.oryxel_login_continue_facebook(),
-      vk: m.oryxel_login_continue_vk(),
-      wechat: m.oryxel_login_continue_wechat(),
-      yandex: m.oryxel_login_continue_yandex(),
+  /** Short provider name for link buttons and linked-account titles (not login CTA copy). */
+  function oauthProviderName(id: string): string {
+    const map: Record<string, () => string> = {
+      google: m.oryxel_auth_provider_google,
+      apple: m.oryxel_auth_provider_apple,
+      facebook: m.oryxel_auth_provider_facebook,
+      vk: m.oryxel_auth_provider_vk,
+      wechat: m.oryxel_auth_provider_wechat,
+      yandex: m.oryxel_auth_provider_yandex,
     }
 
-    return map[id] ?? id
+    return map[id]?.() ?? id
   }
 
   async function refreshAccounts() {
@@ -162,7 +163,7 @@
         {#each accounts as account (account.id)}
           <li class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-3 py-2">
             <div>
-              <div class="text-sm font-medium">{providerLabel(account.providerId)}</div>
+              <div class="text-sm font-medium">{oauthProviderName(account.providerId)}</div>
               <div class="text-xs text-foreground-muted">
                 {m.oryxel_settings_security_account_id({ id: account.accountId })}
               </div>
@@ -192,7 +193,7 @@
           <Button variant="secondary" size="sm" disabled={busyKey !== null} onclick={() => linkSocial(provider)}>
             {busyKey === `link:${provider}`
               ? '…'
-              : m.oryxel_settings_security_link({ provider: providerLabel(provider) })}
+              : m.oryxel_settings_security_link({ provider: oauthProviderName(provider) })}
           </Button>
         {/if}
       {/each}
