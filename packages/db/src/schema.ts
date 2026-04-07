@@ -1,5 +1,15 @@
 import { relations } from 'drizzle-orm'
-import { boolean, integer, jsonb, pgTable, serial, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
+import {
+  boolean,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  serial,
+  text,
+  timestamp,
+  uniqueIndex,
+} from 'drizzle-orm/pg-core'
 
 export * from './auth.schema'
 
@@ -155,6 +165,21 @@ export const userActivityLog = pgTable('user_activity_log', {
   summary: text('summary').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
+
+/** User-managed long-term lines injected into the AI agent context. */
+export const userAgentMemory = pgTable(
+  'user_agent_memory',
+  {
+    id: serial('id').primaryKey(),
+    userId: text('user_id').notNull(),
+    content: text('content').notNull(),
+    /** 'user' | 'agent' — reserved for future auto-capture */
+    source: text('source').notNull().default('user'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('user_agent_memory_user_id_idx').on(table.userId)],
+)
 
 export const brandRelations = relations(brand, ({ many }) => ({
   fragrances: many(fragrance),

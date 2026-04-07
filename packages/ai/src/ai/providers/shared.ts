@@ -51,9 +51,27 @@ function tableNamesForLocale(locale: string): TableNames {
 }
 /* eslint-enable camelcase */
 
+function buildUserDisplayHardLimits(request: AnalyzePreferencesRequest): string[] {
+  const minP = request.minPyramidNotes ?? 1
+  const maxP = request.maxPyramidNotes ?? 5
+  const minR = request.minRecommendations ?? 5
+  const maxR = request.maxRecommendations ?? 20
+  const analogMax = Math.min(5, maxR)
+
+  return [
+    'USER DISPLAY LIMITS (hard constraints — output that breaks these rules is INVALID and may be rejected):',
+    `- Pyramid: For each of pyramidTop, pyramidMid, pyramidBase, if the string is non-empty, note count = comma-separated tokens after trim (drop empty). Each non-empty tier MUST have between ${minP} and ${maxP} notes inclusive.`,
+    `- Scenario "recommendation": recommendations array length MUST be between ${minR} and ${maxR} inclusive. MUST NOT return fewer than ${minR} or more than ${maxR}.`,
+    `- Scenario "analog": prefer at most ${analogMax} op=add alternatives in one response unless the user clearly asks for more; never exceed ${maxR} new rows.`,
+    `- Whenever you set pyramid tiers on op=add or op=status (non-bulk), all populated tiers MUST obey the pyramid min/max above.`,
+  ]
+}
+
 function buildBaseInstructions(request: AnalyzePreferencesRequest): string[] {
   const language = languageForLocale(request.locale)
   const tableNames = tableNamesForLocale(request.locale)
+  const allowAgentMemoryOps = request.allowAgentMemoryOps !== false
+  const recommendationsOnly = request.recommendationsOnly === true
 
   const toneInstruction = request.tone
     ? `Communication style: ${request.tone}.`
@@ -71,7 +89,9 @@ function buildBaseInstructions(request: AnalyzePreferencesRequest): string[] {
     `agentComment and recommendations[].tag MUST be written in ${language} — they are shown directly to the user without translation.`,
     'Return ONLY compact JSON — no markdown, no code fences, no extra text outside the JSON object.',
     'Required JSON keys: reply (string), confidence (0-1), summary (string), tableOps (array, may be empty).',
-    'Optional JSON keys: profile (object), recommendations (array), suggestions (array).',
+    allowAgentMemoryOps
+      ? 'Optional JSON keys: profile (object), recommendations (array), suggestions (array), agentMemoryOps (array).'
+      : 'Optional JSON keys: profile (object), recommendations (array), suggestions (array). Do NOT include agentMemoryOps — long-term memory cannot be changed from this channel.',
     'The "reply" field: your conversational response to the user.',
     'The "summary" field: a 1-2 sentence human-readable description of what changed.',
     'Table operations — op values: add, move, rate, status, remove.',
@@ -89,6 +109,16 @@ function buildBaseInstructions(request: AnalyzePreferencesRequest): string[] {
     'For op=move: set rowId and the new flag values (isOwned/isTried/isLiked/isDisliked).',
     'For op=rate/status/move/remove: rowId MUST be the exact integer id from the diary context below. NEVER guess or invent a rowId. If the fragrance is not listed in the diary, use op=add instead.',
     `OUTPUT SIZE: For bulk imports (many fragrances), omit suggestions.`,
+    ...(allowAgentMemoryOps
+      ? [
+          'agentMemoryOps (optional): only when the user clearly asks to remember, forget, or correct long-term memory. Max 10 items per response. Each item is one of: { op: "add", content: string } (plain text, max 500 chars, English or user language as appropriate), { op: "update", id: number, content: string } (id MUST match an id listed under Long-term memory in context), { op: "remove", id: number }. Never invent ids. If the user did not ask to change memory, omit agentMemoryOps or use [].',
+        ]
+      : []),
+    ...(recommendationsOnly
+      ? [
+          'MODE: Refresh recommendations only. Output a full new recommendations[] that replaces the prior AI suggestion list. tableOps MUST be []. Do not output profile, suggestions, or agentMemoryOps.',
+        ]
+      : []),
   ]
 }
 
@@ -120,6 +150,7 @@ function formatDiaryList(entries: DiaryContextEntry[]): string {
     .join(', ')
 }
 
+/* eslint-disable sonarjs/cognitive-complexity */
 function buildContextBlock(request: AnalyzePreferencesRequest): string[] {
   const context = request.context
 
@@ -164,22 +195,36 @@ function buildContextBlock(request: AnalyzePreferencesRequest): string[] {
     }
   }
 
+  if (context.agentMemoryEntries && context.agentMemoryEntries.length > 0) {
+    lines.push('Long-term memory (treat as stable facts; use numeric id for agentMemoryOps update/remove only):')
+
+    for (const entry of context.agentMemoryEntries) {
+      lines.push(`- id ${entry.id}: ${entry.content}`)
+    }
+  }
+
   return lines
 }
+/* eslint-enable sonarjs/cognitive-complexity */
 
 function buildScenarioBlock(request: AnalyzePreferencesRequest): string[] {
   const scenario = request.scenario
   const language = languageForLocale(request.locale)
+  const minP = request.minPyramidNotes ?? 1
+  const maxP = request.maxPyramidNotes ?? 5
+  const minR = request.minRecommendations ?? 5
+  const maxR = request.maxRecommendations ?? 20
+  const analogMax = Math.min(5, maxR)
   const scenarioInstructions: Record<AnalyzePreferencesRequest['scenario'], string> = {
-    analog: `Scenario analog: find the closest scent analogs for a fragrance the user mentions. Suggest up to 5 alternatives as tableOps (op=add, isTried=false, isLiked=false, isDisliked=false, isOwned=false). For each: set notesSummary (lowercase English), pyramidTop/Mid/Base (lowercase English) if known, and agentComment (in ${language}) explaining why it is a good analog. Write a friendly reply in ${language} explaining the picks and scent similarities.`,
+    analog: `Scenario analog: find the closest scent analogs for a fragrance the user mentions. Output at most ${analogMax} alternatives as tableOps (op=add, isTried=false, isLiked=false, isDisliked=false, isOwned=false) unless the user explicitly requests more — never exceed ${maxR}. For each: set notesSummary (lowercase English), pyramidTop/Mid/Base (lowercase English) when populated each tier MUST have ${minP}-${maxP} notes, and agentComment (in ${language}). Write a friendly reply in ${language} explaining the picks and scent similarities.`,
     pyramid: [
       'Scenario pyramid: the user wants to know or update the olfactory pyramid (top/mid/base notes) of one or more fragrances.',
       'For each relevant fragrance already in the diary, generate a tableOp with op=status and rowId, setting pyramidTop, pyramidMid, pyramidBase (all lowercase English).',
       'If the fragrance is not yet in the diary, use op=add with brandName, fragranceName, isTried=false, isLiked=false, isDisliked=false, isOwned=false, and fill pyramidTop/Mid/Base (lowercase English).',
-      'IMPORTANT: Always populate ALL THREE pyramid fields.',
+      `IMPORTANT: Always populate ALL THREE pyramid fields. Each tier MUST contain between ${minP} and ${maxP} comma-separated notes (count rule in USER DISPLAY LIMITS).`,
       `Include a reply in ${language} describing the pyramid in a natural, conversational way.`,
     ].join(' '),
-    recommendation: `Scenario recommendation: suggest fragrances the user would likely enjoy based on their diary and preferences. Set between ${request.minRecommendations ?? 5} and ${request.maxRecommendations ?? 20} recommendations. Personalization rules: (1) If profile.gender is "male" prefer male/unisex fragrances; if "female" prefer female/unisex; if absent include all. (2) If profile.bio or profile.preferences exist, use them to understand the user's personality, lifestyle, and aesthetic — tailor picks accordingly. (3) If noteRelationships exist, favor fragrances with "love"/"like" notes and avoid "redflag"/"dislike" notes. For each recommendation: id (unique string), brand, name, notesSummary (comma-separated lowercase English notes), pyramidTop/Mid/Base if known (lowercase English), tag (plain string in ${language} — WHY this fragrance suits THIS specific user based on their profile and diary), gender (one of: female, male, unisex), timeOfDay (comma-separated: day, evening, night), season (comma-separated: spring, summer, autumn, winter). This REPLACES the current recommendation list. Update suggestions to exactly 3 short first-person user messages in ${language} (max 60 chars each, e.g. "Find an analog for Santal 33", "What works for date nights?") — these appear as tappable chips the user can send. Include a helpful reply in ${language} presenting your picks and explaining how they match the user's personal style.`,
+    recommendation: `Scenario recommendation: suggest fragrances the user would likely enjoy based on their diary and preferences. HARD REQUIREMENT: the recommendations array length MUST be between ${minR} and ${maxR} inclusive — responses outside this range are INVALID. Personalization rules: (1) If profile.gender is "male" prefer male/unisex fragrances; if "female" prefer female/unisex; if absent include all. (2) If profile.bio or profile.preferences exist, use them to understand the user's personality, lifestyle, and aesthetic — tailor picks accordingly. (3) If noteRelationships exist, favor fragrances with "love"/"like" notes and avoid "redflag"/"dislike" notes. For each recommendation: id (unique string), brand, name, notesSummary (comma-separated lowercase English notes), pyramidTop/Mid/Base if known (lowercase English), tag (plain string in ${language} — WHY this fragrance suits THIS specific user based on their profile and diary), gender (one of: female, male, unisex), timeOfDay (comma-separated: day, evening, night), season (comma-separated: spring, summer, autumn, winter). This REPLACES the current recommendation list. Update suggestions to exactly 3 short first-person user messages in ${language} (max 60 chars each, e.g. "Find an analog for Santal 33", "What works for date nights?") — these appear as tappable chips the user can send. Include a helpful reply in ${language} presenting your picks and explaining how they match the user's personal style.`,
     comparison: `Scenario comparison: compare two or more fragrances mentioned by the user. Highlight differences in notes, character, and suitability. Update ratings or move rows (using flags) if the user indicates clear preference. Include a reply in ${language} summarizing the comparison.`,
     command: [
       'Scenario command: the user gave a direct instruction OR a structured bulk import. Execute it precisely.',
@@ -195,13 +240,13 @@ function buildScenarioBlock(request: AnalyzePreferencesRequest): string[] {
       'If moving between lists: op=move with rowId and new flag values.',
       `If updating agent comment: op=status with rowId and agentComment (in ${language}).`,
       'If removing: op=remove with rowId.',
-      `If updating pyramid notes: op=status with rowId, set pyramidTop, pyramidMid, pyramidBase (lowercase English).`,
+      `If updating pyramid notes: op=status with rowId, set pyramidTop, pyramidMid, pyramidBase (lowercase English). Each non-empty tier MUST have between ${minP} and ${maxP} notes (comma-separated count rule).`,
       'Set tableOps:[] only if the message is a pure question with no action requested.',
       `Always include a reply in ${language} confirming what you did, or answering the question.`,
     ].join(' '),
     // eslint-disable-next-line camelcase
     profile_sync: [
-      'Scenario profile_sync: analyze the diary and update the user profile. No entry filling, no recommendations.',
+      'Scenario profile_sync: analyze the diary and update the user profile. No entry filling, no recommendations. Do not output agentMemoryOps.',
       'UPDATE PROFILE: Base calculations on ALL lists: "owned", "liked", "neutral", and "disliked". Also consider user note relationships from context if provided.',
       `profile.archetype: a compact 2-4 word personality descriptor in ${language} based on patterns in pyramids/notes. Not a sentence, not a label — a concise personality tag (e.g. "фруктово-цитрусовый гурман", "цитрусовый эстет", "пряный oriental lover", "woody minimalist").`,
       `profile.favoriteNote: the single most prominent note in ${language} across liked/owned entries.`,
@@ -221,6 +266,7 @@ function buildScenarioBlock(request: AnalyzePreferencesRequest): string[] {
 export function buildPrompt(request: AnalyzePreferencesRequest): string {
   return [
     ...buildBaseInstructions(request),
+    ...buildUserDisplayHardLimits(request),
     ...buildContextBlock(request),
     ...buildScenarioBlock(request),
     `User message: ${request.message}`,

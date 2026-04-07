@@ -48,11 +48,18 @@ const recentMessageSchema = z.object({
   content: z.string().max(400),
 })
 
+const agentMemoryEntryContextSchema = z.object({
+  id: z.number().int(),
+  content: z.string().max(500),
+})
+
 const contextSchema = z.object({
   profile: profileContextSchema.optional(),
   diary: diaryContextSchema.optional(),
   budget: z.string().max(120).optional(),
   recentMessages: z.array(recentMessageSchema).max(10).optional(),
+  /** Long-term memory rows with stable ids (for agentMemoryOps update/remove). */
+  agentMemoryEntries: z.array(agentMemoryEntryContextSchema).max(20).optional(),
 })
 
 export const analyzePreferencesRequestSchema = z.object({
@@ -70,6 +77,10 @@ export const analyzePreferencesRequestSchema = z.object({
   maxPyramidNotes: z.number().int().min(1).max(10).optional(),
   tone: z.string().max(200).optional(),
   depth: z.string().max(200).optional(),
+  /** When false (e.g. async worker), prompts omit agentMemoryOps; callers should still drop any from the model output. */
+  allowAgentMemoryOps: z.boolean().optional(),
+  /** When true, prompt steers the model to only output recommendations[]; worker sanitizes the patch before apply. */
+  recommendationsOnly: z.boolean().optional(),
 })
 
 export const tableOperationSchema = z.object({
@@ -94,6 +105,22 @@ export const tableOperationSchema = z.object({
   timeOfDay: z.string().max(40).optional(),
   gender: z.enum(['female', 'male', 'unisex']).optional(),
 })
+
+export const agentMemoryOpSchema = z.union([
+  z.object({
+    op: z.literal('add'),
+    content: z.string().trim().min(1).max(500),
+  }),
+  z.object({
+    op: z.literal('update'),
+    id: z.number().int().positive(),
+    content: z.string().trim().min(1).max(500),
+  }),
+  z.object({
+    op: z.literal('remove'),
+    id: z.number().int().positive(),
+  }),
+])
 
 export const structuredPreferencePatchSchema = z.object({
   reply: z.string().max(800).optional(),
@@ -141,4 +168,6 @@ export const structuredPreferencePatchSchema = z.object({
     .max(30)
     .nullish(),
   suggestions: z.array(z.string().max(200)).max(5).nullish(),
+  /** Agent-driven changes to long-term memory (applied after diary/profile/recs). */
+  agentMemoryOps: z.array(agentMemoryOpSchema).max(10).optional(),
 })

@@ -27,6 +27,7 @@ type StepContext = {
   provider: AnalyzePreferencesRequest['preferredProvider']
   minRecommendations: number | undefined
   maxRecommendations: number | undefined
+  minPyramidNotes: number | undefined
   maxPyramidNotes: number | undefined
   tone: string | undefined
   depth: string | undefined
@@ -70,6 +71,7 @@ async function fillListBatches(
         locale: context.locale,
         scenario: 'command',
         preferredProvider: context.provider,
+        minPyramidNotes: context.minPyramidNotes,
         maxPyramidNotes: context.maxPyramidNotes,
         tone: context.tone,
         depth: context.depth,
@@ -134,6 +136,8 @@ async function runRecommendationsStep(context: StepContext): Promise<void> {
       preferredProvider: context.provider,
       minRecommendations: context.minRecommendations,
       maxRecommendations: context.maxRecommendations,
+      minPyramidNotes: context.minPyramidNotes,
+      maxPyramidNotes: context.maxPyramidNotes,
       tone: context.tone,
       depth: context.depth,
       context: {
@@ -178,6 +182,7 @@ async function runToTryFillStep(context: StepContext): Promise<void> {
           locale: context.locale,
           scenario: 'command',
           preferredProvider: context.provider,
+          minPyramidNotes: context.minPyramidNotes,
           maxPyramidNotes: context.maxPyramidNotes,
           tone: context.tone,
           depth: context.depth,
@@ -186,6 +191,7 @@ async function runToTryFillStep(context: StepContext): Promise<void> {
             diary: {
               to_try: batch,
               liked: [],
+              neutral: [],
               disliked: [],
               owned: [],
             },
@@ -276,6 +282,7 @@ export async function handleProfileSync(
         .select({
           minRecommendations: userAiPreferences.minRecommendations,
           maxRecommendations: userAiPreferences.maxRecommendations,
+          minPyramidNotes: userAiPreferences.minPyramidNotes,
           maxPyramidNotes: userAiPreferences.maxPyramidNotes,
           tone: userAiPreferences.tone,
           depth: userAiPreferences.depth,
@@ -316,6 +323,7 @@ export async function handleProfileSync(
       provider: defaultProvider ?? undefined,
       minRecommendations: aiPrefs?.minRecommendations,
       maxRecommendations: aiPrefs?.maxRecommendations,
+      minPyramidNotes: aiPrefs?.minPyramidNotes,
       maxPyramidNotes: aiPrefs?.maxPyramidNotes,
       tone: aiPrefs?.tone ?? undefined,
       depth: aiPrefs?.depth ?? undefined,

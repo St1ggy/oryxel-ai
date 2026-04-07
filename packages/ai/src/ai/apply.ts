@@ -1,9 +1,10 @@
-import { db, fragrance, userFragrance, userProfile } from '@oryxel/db'
-import { and, eq } from 'drizzle-orm'
+import { db, fragrance, userAgentMemory, userFragrance, userProfile } from '@oryxel/db'
+import { and, count, eq } from 'drizzle-orm'
 
+import { AGENT_MEMORY_MAX_ROWS } from './agent-memory'
 import { findOrCreateBrand, findOrCreateFragrance } from '../diary/find-or-create'
 
-import type { StructuredPreferencePatch, TableOperation } from './contracts'
+import type { AgentMemoryOp, StructuredPreferencePatch, TableOperation } from './contracts'
 import type { NoteRelationship } from '../types/diary'
 
 type DatabaseExecutor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0]
@@ -214,6 +215,44 @@ async function applyTableOp(executor: DatabaseExecutor, userId: string, op: Tabl
   await applyUpdateOp(executor, userId, op)
 }
 
+export async function applyAgentMemoryOps(
+  executor: DatabaseExecutor,
+  userId: string,
+  ops: AgentMemoryOp[] | undefined | null,
+): Promise<void> {
+  if (ops == null || ops.length === 0) {
+    return
+  }
+
+  for (const op of ops) {
+    if (op.op === 'add') {
+      const [{ n }] = await executor
+        .select({ n: count() })
+        .from(userAgentMemory)
+        .where(eq(userAgentMemory.userId, userId))
+
+      if (n >= AGENT_MEMORY_MAX_ROWS) {
+        continue
+      }
+
+      await executor.insert(userAgentMemory).values({
+        userId,
+        content: op.content,
+        source: 'agent',
+      })
+    } else if (op.op === 'update') {
+      await executor
+        .update(userAgentMemory)
+        .set({ content: op.content, updatedAt: new Date() })
+        .where(and(eq(userAgentMemory.id, op.id), eq(userAgentMemory.userId, userId)))
+    } else {
+      await executor
+        .delete(userAgentMemory)
+        .where(and(eq(userAgentMemory.id, op.id), eq(userAgentMemory.userId, userId)))
+    }
+  }
+}
+
 export async function applyPatchToDatabase(userId: string, patch: StructuredPreferencePatch): Promise<void> {
   await db.transaction(async (tx) => {
     if (patch.profile != null || patch.suggestions != null) {
@@ -293,6 +332,8 @@ export async function applyPatchToDatabase(userId: string, patch: StructuredPref
           .onConflictDoNothing()
       }
     }
+
+    await applyAgentMemoryOps(tx, userId, patch.agentMemoryOps)
   })
 }
 

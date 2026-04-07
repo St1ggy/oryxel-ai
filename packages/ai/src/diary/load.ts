@@ -41,6 +41,7 @@ function buildDiaryRow(
     id: number
     fragranceId: number
     rating: number
+    isRecommendation: boolean
     isOwned: boolean
     isTried: boolean
     isLiked: boolean
@@ -75,6 +76,7 @@ function buildDiaryRow(
     isTried: r.isTried,
     isLiked: r.isLiked,
     isDisliked: r.isDisliked,
+    isRecommendation: r.isRecommendation,
     pyramidTop: resolveCommaSeparated(extractEnglishKey(r.pyramidTop), translations),
     pyramidMid: resolveCommaSeparated(extractEnglishKey(r.pyramidMid), translations),
     pyramidBase: resolveCommaSeparated(extractEnglishKey(r.pyramidBase), translations),
@@ -88,6 +90,7 @@ export async function loadDiaryForUser(userId: string, locale = 'en'): Promise<D
         id: userFragrance.id,
         fragranceId: fragrance.id,
         rating: userFragrance.rating,
+        isRecommendation: userFragrance.isRecommendation,
         isOwned: userFragrance.isOwned,
         isTried: userFragrance.isTried,
         isLiked: userFragrance.isLiked,

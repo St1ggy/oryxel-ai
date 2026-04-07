@@ -38,6 +38,8 @@ export type DiaryRow = {
   isTried: boolean
   isLiked: boolean
   isDisliked: boolean
+  /** AI-generated to-try suggestion (vs user wishlist). */
+  isRecommendation: boolean
   pyramidTop: string | null
   pyramidMid: string | null
   pyramidBase: string | null

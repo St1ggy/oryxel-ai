@@ -16,7 +16,9 @@ import {
   loadRecentChatMessages,
   pushJobProgress,
   recordActivity,
+  sanitizePatchToRecommendationsOnly,
   updatePatchStatus,
+  warnIfPatchViolatesDisplayLimits,
 } from '@oryxel/ai'
 import { db, user, userAiPreferences } from '@oryxel/db'
 import { eq } from 'drizzle-orm'
@@ -59,12 +61,108 @@ async function applyPatchWithProgress(
   }
 }
 
+async function applyNonCriticalPatchFlow(
+  jobId: number,
+  userId: string,
+  patch: StructuredPreferencePatch,
+  pendingPatchId: number,
+  applyTotal: number,
+  locale: string,
+  routerAttempts: unknown,
+  explicitProvider: string | undefined,
+  defaultProvider: string | null | undefined,
+): Promise<boolean> {
+  const ok = await applyPatchWithProgress(jobId, userId, patch, 0, applyTotal)
+
+  if (!ok) {
+    await updatePatchStatus({
+      patchId: pendingPatchId,
+      userId,
+      action: 'failed',
+      failureReason: 'Patch apply failed',
+    })
+    await appendPatchAuditLog({
+      userId,
+      patchId: pendingPatchId,
+      action: 'apply_failed',
+      details: { attempts: routerAttempts },
+    })
+    await failJob(jobId, 'Patch apply failed')
+
+    return false
+  }
+
+  void generateMissingTranslations(userId, locale)
+  await updatePatchStatus({ patchId: pendingPatchId, userId, action: 'applied' })
+  void recordActivity({
+    userId,
+    action: 'patch_applied',
+    actor: 'agent',
+    provider: explicitProvider ?? defaultProvider ?? undefined,
+    summary: patch.summary ?? '',
+  })
+
+  return true
+}
+
+type LoadedProfile = Awaited<ReturnType<typeof loadProfileForUser>>
+type LoadedDiary = Awaited<ReturnType<typeof loadDiaryForUser>>
+type RecentChatSlice = Awaited<ReturnType<typeof loadRecentChatMessages>>
+
+function buildPreferenceAnalysisContext(
+  profile: LoadedProfile,
+  diary: LoadedDiary,
+  budget: string | undefined,
+  rememberContext: boolean | undefined,
+  recentMessages: RecentChatSlice,
+) {
+  type DiaryEntry = (typeof diary.to_try)[number]
+
+  const toContextEntry = ({ id, brand, fragrance, notes, pyramidTop, pyramidMid, pyramidBase }: DiaryEntry) => ({
+    id,
+    brand,
+    fragrance,
+    notes: notes.join(', ') || null,
+    pyramidTop,
+    pyramidMid,
+    pyramidBase,
+  })
+
+  const toContextEntryWithRating = (entry: DiaryEntry) => ({
+    ...toContextEntry(entry),
+    rating: entry.rating || null,
+  })
+
+  return {
+    profile: {
+      displayName: profile.displayName,
+      bio: profile.bio,
+      preferences: profile.preferences || undefined,
+      archetype: profile.archetype ?? undefined,
+      favoriteNote: profile.favoriteNote ?? undefined,
+      radar: Object.fromEntries(profile.radarAxes.map(({ key, value }) => [key, value])),
+      gender: (profile.gender as 'male' | 'female' | null | undefined) ?? undefined,
+      noteRelationships: profile.noteRelationships.length > 0 ? profile.noteRelationships : undefined,
+    },
+    diary: {
+      to_try: diary.to_try.map((entry) => toContextEntry(entry)),
+      liked: diary.liked.map((entry) => toContextEntryWithRating(entry)),
+      neutral: diary.neutral.map((entry) => toContextEntry(entry)),
+      disliked: diary.disliked.map((entry) => toContextEntry(entry)),
+      owned: diary.owned.map((entry) => toContextEntryWithRating(entry)),
+    },
+    budget,
+    recentMessages: (rememberContext ?? true) ? recentMessages : undefined,
+  }
+}
+
 export async function handleAgentChat(jobId: number, userId: string, params: Record<string, unknown>): Promise<void> {
   const message = params['message'] as string
   const locale = (params['locale'] as string | undefined) ?? 'en'
   const scenario = (params['scenario'] as string | undefined) ?? 'recommendation'
   const explicitProvider = params['provider'] as string | undefined
   const budget = params['budget'] as string | undefined
+  const recommendationsOnly = params['recommendationsOnly'] === true
 
   try {
     await pushJobProgress(jobId, { step: 0, total: 1, phase: 'analyzing' })
@@ -98,44 +196,7 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
         .then((rows) => rows[0]),
     ])
 
-    type DiaryEntry = (typeof diary.to_try)[number]
-
-    const toContextEntry = ({ id, brand, fragrance, notes, pyramidTop, pyramidMid, pyramidBase }: DiaryEntry) => ({
-      id,
-      brand,
-      fragrance,
-      notes: notes.join(', ') || null,
-      pyramidTop,
-      pyramidMid,
-      pyramidBase,
-    })
-
-    const toContextEntryWithRating = (entry: DiaryEntry) => ({
-      ...toContextEntry(entry),
-      rating: entry.rating || null,
-    })
-
-    const context = {
-      profile: {
-        displayName: profile.displayName,
-        bio: profile.bio,
-        preferences: profile.preferences || undefined,
-        archetype: profile.archetype ?? undefined,
-        favoriteNote: profile.favoriteNote ?? undefined,
-        radar: Object.fromEntries(profile.radarAxes.map(({ key, value }) => [key, value])),
-        gender: (profile.gender as 'male' | 'female' | null | undefined) ?? undefined,
-        noteRelationships: profile.noteRelationships.length > 0 ? profile.noteRelationships : undefined,
-      },
-      diary: {
-        to_try: diary.to_try.map((entry) => toContextEntry(entry)),
-        liked: diary.liked.map((entry) => toContextEntryWithRating(entry)),
-        neutral: diary.neutral.map((entry) => toContextEntry(entry)),
-        disliked: diary.disliked.map((entry) => toContextEntry(entry)),
-        owned: diary.owned.map((entry) => toContextEntryWithRating(entry)),
-      },
-      budget,
-      recentMessages: (aiPrefs?.rememberContext ?? true) ? recentMessages : undefined,
-    }
+    const context = buildPreferenceAnalysisContext(profile, diary, budget, aiPrefs?.rememberContext, recentMessages)
 
     const preferredProvider =
       explicitProvider === undefined
@@ -155,9 +216,28 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
       maxPyramidNotes: aiPrefs?.maxPyramidNotes,
       tone: aiPrefs?.tone ?? undefined,
       depth: aiPrefs?.depth ?? undefined,
+      allowAgentMemoryOps: false,
+      recommendationsOnly: recommendationsOnly || undefined,
     })
 
-    const patch = router.result.patch
+    let patch: StructuredPreferencePatch = { ...router.result.patch }
+
+    if (recommendationsOnly) {
+      patch = sanitizePatchToRecommendationsOnly(patch)
+    } else {
+      delete patch.agentMemoryOps
+    }
+
+    warnIfPatchViolatesDisplayLimits(patch, {
+      scenario,
+      userId,
+      limits: {
+        minPyramidNotes: aiPrefs?.minPyramidNotes,
+        maxPyramidNotes: aiPrefs?.maxPyramidNotes,
+        minRecommendations: aiPrefs?.minRecommendations,
+        maxRecommendations: aiPrefs?.maxRecommendations,
+      },
+    })
     const critical = isCriticalPatch(patch)
     const pendingPatch = await createPendingPatch({
       userId,
@@ -171,35 +251,19 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
     const applyTotal = profileStep + recStep + patch.tableOps.length
 
     if (!critical) {
-      const ok = await applyPatchWithProgress(jobId, userId, patch, 0, applyTotal)
-
-      if (!ok) {
-        await updatePatchStatus({
-          patchId: pendingPatch.id,
-          userId,
-          action: 'failed',
-          failureReason: 'Patch apply failed',
-        })
-        await appendPatchAuditLog({
-          userId,
-          patchId: pendingPatch.id,
-          action: 'apply_failed',
-          details: { attempts: router.attempts },
-        })
-        await failJob(jobId, 'Patch apply failed')
-
-        return
-      }
-
-      void generateMissingTranslations(userId, locale)
-      await updatePatchStatus({ patchId: pendingPatch.id, userId, action: 'applied' })
-      void recordActivity({
+      const continued = await applyNonCriticalPatchFlow(
+        jobId,
         userId,
-        action: 'patch_applied',
-        actor: 'agent',
-        provider: explicitProvider ?? defaultProvider ?? undefined,
-        summary: patch.summary ?? '',
-      })
+        patch,
+        pendingPatch.id,
+        applyTotal,
+        locale,
+        router.attempts,
+        explicitProvider,
+        defaultProvider,
+      )
+
+      if (!continued) return
     }
 
     const assistantMessage =
@@ -214,7 +278,9 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
     })
 
     const triggerSync =
-      !critical && (patch.tableOps.length >= 2 || patch.recommendations != null || scenario === 'command')
+      !critical &&
+      !recommendationsOnly &&
+      (patch.tableOps.length >= 2 || patch.recommendations != null || scenario === 'command')
 
     await completeJob(jobId, {
       requiresConfirmation: critical,
@@ -222,6 +288,7 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
       summary: patch.summary,
       reply: patch.reply,
       triggerSync,
+      appliedPatch: structuredClone(patch) as Record<string, unknown>,
     })
   } catch (error_) {
     await failJob(jobId, error_ instanceof Error ? error_.message : 'Unknown error')
