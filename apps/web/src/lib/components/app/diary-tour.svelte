@@ -222,9 +222,9 @@
 </script>
 
 <style>
+  /* No backdrop-filter here: driver.js uses a full-viewport SVG mask; blurring the overlay
+     blurs the entire viewport in WebKit/Blink, including the highlighted “hole”. */
   :global(.driver-overlay) {
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
     z-index: 40 !important;
   }
 
