@@ -49,67 +49,74 @@ export const load: PageServerLoad = async ({ locals, url, cookies }) => {
 
   const userId = locals.user.id
   const locale = cookies.get(cookieName) ?? 'en'
+  const displayName = locals.user.name || 'User'
 
-  // Auto-apply patches confirmed by user but not yet applied (must finish before diary loads)
-  await applyConfirmedPatches(userId)
+  // Single gate: confirmed patches must run before diary / shell reads see updated DB.
+  const afterPatches = applyConfirmedPatches(userId)
 
-  // Slow queries — returned as un-awaited Promises so SvelteKit streams them to the client
-  const diary = loadDiaryForUser(userId, locale)
-  const profile = loadProfileForUser(userId, locals.user.name || 'User', locale)
-  const recentActivity = loadRecentActivity(userId, 30)
+  const diary = afterPatches.then(() => loadDiaryForUser(userId, locale))
+  const profile = afterPatches.then(() => loadProfileForUser(userId, displayName, locale))
+  const recentActivity = afterPatches.then(() => loadRecentActivity(userId, 30))
 
-  // Fast queries — resolved before the shell renders
-  const [pendingPatches, activeJobs, configuredProviders, providerRows, defaultProvider, prefsRows, profileRows] =
-    await Promise.all([
-      getLatestPendingPatches(userId, 3),
-      getActiveJobsForUser(userId),
-      listConfiguredProviders(userId),
-      listUserProviderKeys(userId),
-      getUserDefaultProvider(userId),
-      db
-        .select({ graphStyle: userAiPreferences.graphStyle })
-        .from(userAiPreferences)
-        .where(eq(userAiPreferences.userId, userId))
-        .limit(1),
-      db
-        .select({ onboardingCompletedAt: userProfile.onboardingCompletedAt })
-        .from(userProfile)
-        .where(eq(userProfile.userId, userId))
-        .limit(1),
-    ])
+  // Everything else streams after the same patch gate — load() returns immediately (no top-level await).
+  const deferredShell = afterPatches.then(async () => {
+    const [pendingPatches, activeJobs, configuredProviders, providerRows, defaultProvider, prefsRows, profileRows] =
+      await Promise.all([
+        getLatestPendingPatches(userId, 3),
+        getActiveJobsForUser(userId),
+        listConfiguredProviders(userId),
+        listUserProviderKeys(userId),
+        getUserDefaultProvider(userId),
+        db
+          .select({ graphStyle: userAiPreferences.graphStyle })
+          .from(userAiPreferences)
+          .where(eq(userAiPreferences.userId, userId))
+          .limit(1),
+        db
+          .select({ onboardingCompletedAt: userProfile.onboardingCompletedAt })
+          .from(userProfile)
+          .where(eq(userProfile.userId, userId))
+          .limit(1),
+      ])
 
-  const graphStyle = prefsRows[0]?.graphStyle ?? 'default'
-  const onboardingCompleted = !!profileRows[0]?.onboardingCompletedAt
+    const graphStyle = prefsRows[0]?.graphStyle ?? 'default'
+    const onboardingCompleted = !!profileRows[0]?.onboardingCompletedAt
 
-  const labelMap = new Map(providerRows.map((r) => [r.provider, r.label]))
-  const chatProviders = configuredProviders.map((p, index) => ({
-    value: p.id,
-    label: labelMap.get(p.id) ?? PROVIDER_DISPLAY_NAME[p.id],
-    active: defaultProvider ? p.id === defaultProvider : index === 0,
-    source: p.source === 'env' ? ('user' as const) : p.source,
-  }))
-  const hasChatAccess = await hasEffectiveProviderAccess(userId)
-  const latestChatRows = await listLatestChatMessages(userId, 40)
-  const chatHistory = [...latestChatRows]
-    .reverse()
-    .map((row) => ({ id: `db-${row.id}`, role: row.role as 'user' | 'assistant', content: row.content }))
+    const labelMap = new Map(providerRows.map((r) => [r.provider, r.label]))
+    const chatProviders = configuredProviders.map((p, index) => ({
+      value: p.id,
+      label: labelMap.get(p.id) ?? PROVIDER_DISPLAY_NAME[p.id],
+      active: defaultProvider ? p.id === defaultProvider : index === 0,
+      source: p.source === 'env' ? ('user' as const) : p.source,
+    }))
+
+    const hasChatAccess = await hasEffectiveProviderAccess(userId)
+    const latestChatRows = await listLatestChatMessages(userId, 40)
+    const chatHistory = [...latestChatRows]
+      .reverse()
+      .map((row) => ({ id: `db-${row.id}`, role: row.role as 'user' | 'assistant', content: row.content }))
+
+    return {
+      pendingPatches,
+      activeJobs,
+      chatProviders,
+      hasChatAccess,
+      chatHistory,
+      graphStyle,
+      onboardingCompleted,
+    }
+  })
 
   const { view: initialView, list: initialFragranceTab } = parseDiaryUrlParams(url.searchParams)
 
   return {
     diary,
-    userId,
     profile,
-    pendingPatches,
     recentActivity,
-    activeJobs,
+    deferredShell,
     locale,
-    hasChatAccess,
-    chatProviders,
-    chatHistory,
+    userId,
     initialView,
     initialFragranceTab,
-    graphStyle,
-    onboardingCompleted,
   }
 }

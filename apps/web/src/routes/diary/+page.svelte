@@ -25,6 +25,8 @@
   import type { ChatMessage, DiaryData, DiaryRow, FragranceListType } from '$lib/types/diary'
   import type { PageData } from './$types'
 
+  type DeferredShell = Awaited<NonNullable<PageData['deferredShell']>>
+
   import { browser } from '$app/environment'
   import { invalidateAll } from '$app/navigation'
   import { env } from '$env/dynamic/public'
@@ -75,25 +77,6 @@
   }
   let editOpen = $state(false)
 
-  // ── Onboarding tour ────────────────────────────────────────────────────────
-  let startTour = $state<(() => void) | null>(null)
-  let onboardingCompleted = $state(untrack(() => data.onboardingCompleted))
-  let tourAutoStarted = false
-
-  $effect(() => {
-    if (onboardingCompleted || !browser || tourAutoStarted) return
-
-    if (diaryLoading || !startTour) return
-
-    tourAutoStarted = true
-    const timer = setTimeout(() => {
-      prepareTourChatPanel()
-      startTour?.()
-    }, 500)
-
-    return () => clearTimeout(timer)
-  })
-
   /** Local rating edits keyed by fragranceId; reset when fresh server data arrives. */
   let ratingOverrides = $state<Record<number, number>>({})
 
@@ -131,6 +114,42 @@
     })
   })
 
+  /** Meta + chat shell: resolves after applyConfirmedPatches; load() returns without awaiting this. */
+  let resolvedShell = $state<DeferredShell | null>(null)
+  let _shellSeq = 0
+
+  $effect(() => {
+    const seq = ++_shellSeq
+
+    void Promise.resolve(data.deferredShell).then((shell) => {
+      if (seq !== _shellSeq) return
+
+      resolvedShell = shell
+    })
+  })
+
+  // ── Onboarding tour ────────────────────────────────────────────────────────
+  let startTour = $state<(() => void) | null>(null)
+  /** Local completion after tour finishes (server flag arrives via deferredShell). */
+  let tourMarkedDone = $state(false)
+  let tourAutoStarted = false
+
+  const serverTourCompleted = $derived(resolvedShell?.onboardingCompleted ?? false)
+
+  $effect(() => {
+    if (tourMarkedDone || serverTourCompleted || !browser || tourAutoStarted) return
+
+    if (resolvedShell === null || diaryLoading || !startTour) return
+
+    tourAutoStarted = true
+    const timer = setTimeout(() => {
+      prepareTourChatPanel()
+      startTour?.()
+    }, 500)
+
+    return () => clearTimeout(timer)
+  })
+
   function rowsWithOverrides(rows: DiaryRow[]): DiaryRow[] {
     return rows.map((row) =>
       row.fragranceId in ratingOverrides ? { ...row, rating: ratingOverrides[row.fragranceId] } : row,
@@ -154,7 +173,7 @@
       suggestions: [],
     },
   )
-  const pendingItems = $derived(data.pendingPatches ?? [])
+  const pendingItems = $derived(resolvedShell?.pendingPatches ?? [])
 
   function renderAssistantMessage(content: string): string {
     if (content.startsWith('CRITICAL_PENDING:')) {
@@ -172,30 +191,37 @@
     return content
   }
 
-  let messages = $state<ChatMessage[]>([])
-  let initializedMessages = $state(false)
+  let messages = $state<ChatMessage[]>([
+    {
+      id: 'm1',
+      role: 'assistant' as const,
+      content: m.oryxel_chat_greeting(),
+    },
+  ])
+  let _chatShellSeq = 0
 
   $effect(() => {
-    if (initializedMessages) {
-      return
-    }
+    const seq = ++_chatShellSeq
 
-    const chatHistory = data.chatHistory ?? []
+    void Promise.resolve(data.deferredShell).then((shell) => {
+      if (seq !== _chatShellSeq) return
 
-    messages =
-      chatHistory.length > 0
-        ? chatHistory.map((message) => ({
-            ...message,
-            content: message.role === 'assistant' ? renderAssistantMessage(message.content) : message.content,
-          }))
-        : [
-            {
-              id: 'm1',
-              role: 'assistant' as const,
-              content: m.oryxel_chat_greeting(),
-            },
-          ]
-    initializedMessages = true
+      const chatHistory = shell?.chatHistory ?? []
+
+      messages =
+        chatHistory.length > 0
+          ? chatHistory.map((message) => ({
+              ...message,
+              content: message.role === 'assistant' ? renderAssistantMessage(message.content) : message.content,
+            }))
+          : [
+              {
+                id: 'm1',
+                role: 'assistant' as const,
+                content: m.oryxel_chat_greeting(),
+              },
+            ]
+    })
   })
 
   type SyncProgress = {
@@ -255,17 +281,15 @@
   $effect(() => abortOnDestroy)
 
   // Resume polling for jobs that were still running when the page was last closed/refreshed.
-  // Uses untrack() so data changes from invalidateAll() don't re-run this effect and re-trigger
-  // the cleanup — which would cause an abort → invalidateAll → abort infinite loop.
+  // Runs once after deferredShell resolves; jobsResumed prevents re-entry on invalidateAll().
   let jobsResumed = false
 
   $effect(() => {
-    if (jobsResumed) return
+    if (resolvedShell === null || jobsResumed) return
 
     jobsResumed = true
 
-    // untrack: do NOT let data reads here make this effect reactive to data changes
-    const activeJobs = untrack(() => data.activeJobs ?? [])
+    const activeJobs = resolvedShell.activeJobs
 
     const syncJob = activeJobs.find((index) => index.type === 'profile_sync')
 
@@ -328,8 +352,9 @@
     // No cleanup return here — abortOnDestroy effect handles pageAbort.abort() on unmount.
     // Returning abort here would call it on every invalidateAll() re-render, killing in-flight polls.
   })
-  const hasChatAccess = $derived(data.hasChatAccess)
-  const providerOptions = $derived(data.chatProviders ?? [])
+  const hasChatAccess = $derived(resolvedShell?.hasChatAccess ?? false)
+  const providerOptions = $derived(resolvedShell?.chatProviders ?? [])
+  const graphStyle = $derived(resolvedShell?.graphStyle ?? 'default')
   let selectedProvider = $state<string>('')
 
   $effect(() => {
@@ -775,7 +800,7 @@
                 diaryData={diaryState}
                 noteRelationships={resolvedProfile?.noteRelationships ?? []}
                 layout="desktop"
-                graphStyle={data.graphStyle}
+                {graphStyle}
               />
             </div>
           {:else if desktopShellView === 'profile'}
@@ -846,7 +871,7 @@
               diaryData={diaryState}
               noteRelationships={resolvedProfile?.noteRelationships ?? []}
               layout="mobile"
-              graphStyle={data.graphStyle}
+              {graphStyle}
             />
           </div>
         {:else if primaryView === 'profile'}
@@ -934,10 +959,10 @@
 <PatchDetailsModal bind:open={patchDetailsOpen} payload={patchDetailsPayload} subtitle={patchDetailsSubtitle} />
 
 <DiaryTour
-  completed={onboardingCompleted}
+  completed={tourMarkedDone || (resolvedShell?.onboardingCompleted ?? false)}
   prepareChatPanel={prepareTourChatPanel}
   onComplete={() => {
-    onboardingCompleted = true
+    tourMarkedDone = true
   }}
   onReady={(function_) => {
     startTour = function_
