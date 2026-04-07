@@ -64,29 +64,47 @@
       tour: 'fragrance-list-disliked',
     },
   ]
+
+  const activeListToggle = $derived(iconToggles.find((t) => t.value === fragranceTab))
 </script>
 
 <div class={cn('flex min-h-0 flex-col', layout === 'desktop' ? 'flex-1' : '')}>
-  <div class="mb-3 flex items-center justify-end" data-tour="fragrance-list-toggle">
-    <div class="flex gap-0.5 rounded-lg border border-border bg-muted p-0.5">
+  <div class="mb-3 flex flex-wrap items-center justify-between gap-3" data-tour="fragrance-list-toggle">
+    <div class="flex min-h-[2.25rem] min-w-0 items-center">
+      {#if loading}
+        <span class="text-sm text-foreground-muted">{m.oryxel_loading()}</span>
+      {:else if activeListToggle}
+        <p class="text-sm text-foreground-muted">
+          <span class="font-semibold text-foreground">{activeListToggle.label()}</span>
+          <span class="ml-2 text-foreground tabular-nums">{tabCounts[fragranceTab]}</span>
+        </p>
+      {/if}
+    </div>
+    <div class="flex shrink-0 gap-0.5 rounded-lg border border-border bg-muted p-0.5">
       {#each iconToggles as { value, icon: Icon, label, tour } (value)}
         <button
           type="button"
           data-tour={tour}
-          aria-label={label()}
-          title={label()}
+          aria-label={`${label()} (${tabCounts[value]})`}
+          title={`${label()} (${tabCounts[value]})`}
           aria-pressed={fragranceTab === value}
           onclick={() => (fragranceTab = value)}
           class={cn(
-            'oryx-transition flex h-8 w-9 items-center justify-center rounded-md md:h-9 md:w-10',
+            'oryx-transition flex min-h-10 min-w-9 flex-col items-center justify-center gap-0.5 rounded-md px-0.5 py-1 md:min-h-11 md:min-w-10',
             fragranceTab === value
               ? 'bg-surface text-foreground shadow-sm'
               : 'text-foreground-muted hover:text-foreground',
           )}
         >
-          <Icon size={layout === 'desktop' ? 16 : 15} strokeWidth={1.75} />
-          {#if !loading && tabCounts[value] > 0}
-            <span class="sr-only">{tabCounts[value]}</span>
+          <Icon size={layout === 'desktop' ? 16 : 15} strokeWidth={1.75} class="shrink-0" />
+          {#if !loading}
+            <span
+              class="text-[10px] leading-none font-semibold tabular-nums md:text-[11px]"
+              class:text-foreground={fragranceTab === value}
+              class:text-foreground-muted={fragranceTab !== value}
+            >
+              {tabCounts[value]}
+            </span>
           {/if}
         </button>
       {/each}
