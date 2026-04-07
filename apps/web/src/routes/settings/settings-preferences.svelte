@@ -18,7 +18,6 @@
   const themeContext = getThemeContext()
 
   let analytics = $state(false)
-  let rememberAi = $state(true)
 
   let minPyramidNotes = $state('1')
   let maxPyramidNotes = $state('5')
@@ -55,7 +54,7 @@
     if (!browser) return
 
     queueMicrotask(() => {
-      localStorage.setItem(PRIVACY_KEY, JSON.stringify({ analytics, rememberAi }))
+      localStorage.setItem(PRIVACY_KEY, JSON.stringify({ analytics }))
     })
   }
 
@@ -111,11 +110,9 @@
 
     if (privacyRaw) {
       try {
-        const parsed = JSON.parse(privacyRaw) as { analytics?: boolean; rememberAi?: boolean }
+        const parsed = JSON.parse(privacyRaw) as { analytics?: boolean; rememberAi?: unknown }
 
         if (typeof parsed.analytics === 'boolean') analytics = parsed.analytics
-
-        if (typeof parsed.rememberAi === 'boolean') rememberAi = parsed.rememberAi
       } catch {
         /* ignore */
       }
@@ -194,11 +191,6 @@
   </Accordion.Header>
   <Accordion.Content class="space-y-4 border-t border-border px-4 py-4">
     <SwitchField bind:checked={analytics} label={m.oryxel_analytics()} id="analytics" onCheckedChange={savePrivacy} />
-    <SwitchField
-      bind:checked={rememberAi}
-      label={m.oryxel_remember_context()}
-      id="rememberAi"
-      onCheckedChange={savePrivacy}
-    />
+    <p class="text-xs text-foreground-muted">{m.oryxel_settings_privacy_chat_context_hint()}</p>
   </Accordion.Content>
 </Accordion.Item>

@@ -251,58 +251,6 @@
       providerBusy = false
     }
   }
-
-  async function exportData(format: 'json' | 'md') {
-    providerBusy = true
-    providerError = ''
-    const exportErrorLabel =
-      format === 'json' ? m.oryxel_settings_error_export_json() : m.oryxel_settings_error_export_md()
-
-    try {
-      const response = await fetch(`/api/account/export?format=${format}`)
-
-      if (!response.ok) throw new Error(`Failed with ${response.status}`)
-
-      const blob = await response.blob()
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-
-      link.href = url
-      link.download = format === 'json' ? 'oryxel-export.json' : 'oryxel-export.md'
-      document.body.append(link)
-      link.click()
-      link.remove()
-      URL.revokeObjectURL(url)
-    } catch {
-      providerError = exportErrorLabel
-    } finally {
-      providerBusy = false
-    }
-  }
-
-  async function deleteAllData() {
-    const confirmDelete = globalThis.confirm(m.oryxel_delete_confirm())
-
-    if (!confirmDelete) return
-
-    providerBusy = true
-    providerError = ''
-    try {
-      const response = await fetch('/api/account/delete', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ confirmText: 'DELETE' }),
-      })
-
-      if (!response.ok) throw new Error(`Failed with ${response.status}`)
-
-      globalThis.location.href = '/login'
-    } catch {
-      providerError = m.oryxel_settings_error_delete_all()
-    } finally {
-      providerBusy = false
-    }
-  }
 </script>
 
 <Accordion.Item value="providers" class="rounded-xl border border-border bg-surface">
@@ -405,28 +353,6 @@
     {#if providerError}
       <p class="text-xs text-destructive">{providerError}</p>
     {/if}
-  </Accordion.Content>
-</Accordion.Item>
-
-<Accordion.Item value="data" class="rounded-xl border border-border bg-surface">
-  <Accordion.Header>
-    <Accordion.Trigger
-      class="oryx-transition flex w-full items-center justify-between rounded-t-xl px-4 py-3 text-left text-sm font-medium hover:bg-muted/30"
-    >
-      {m.oryxel_settings_data()}
-    </Accordion.Trigger>
-  </Accordion.Header>
-  <Accordion.Content class="flex flex-wrap gap-2 border-t border-border px-4 py-4">
-    <Button type="button" variant="secondary" disabled={providerBusy} onclick={() => exportData('json')}>
-      {m.oryxel_export_json()}
-    </Button>
-    <Button type="button" variant="secondary" disabled={providerBusy} onclick={() => exportData('md')}>
-      {m.oryxel_export_md()}
-    </Button>
-    <Button type="button" variant="secondary">{m.oryxel_import_csv()}</Button>
-    <Button type="button" variant="destructive" disabled={providerBusy} onclick={deleteAllData}>
-      {m.oryxel_delete_all()}
-    </Button>
   </Accordion.Content>
 </Accordion.Item>
 

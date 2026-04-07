@@ -29,6 +29,7 @@
         ['facebook', configured.facebook],
         ['vk', configured.vk],
         ['wechat', configured.wechat],
+        ['yandex', configured.yandex],
       ] as const
     ).filter(([, on]) => on),
   )
