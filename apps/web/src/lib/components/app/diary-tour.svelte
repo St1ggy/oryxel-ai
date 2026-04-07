@@ -50,6 +50,8 @@
   onMount(() => {
     if (!browser) return
 
+    const mobile = isMobileWidth()
+
     const driverObject = driver({
       showProgress: true,
       progressText: m.oryxel_tour_step_of({ current: '{{current}}', total: '{{total}}' }),
@@ -59,6 +61,10 @@
       allowClose: true,
       overlayOpacity: 0.62,
       smoothScroll: true,
+      /* Clear fixed bottom tab bar (h-16) + safe area; tighter stage on small screens */
+      popoverOffset: mobile ? 16 : 10,
+      stagePadding: mobile ? 8 : 10,
+      popoverClass: 'oryxel-driver-popover',
       steps: [
         {
           popover: {
@@ -88,8 +94,8 @@
           popover: {
             title: m.oryxel_tour_chat_title(),
             description: m.oryxel_tour_chat_desc(),
-            side: isMobileWidth() ? 'top' : 'right',
-            align: isMobileWidth() ? 'center' : 'start',
+            side: mobile ? 'top' : 'right',
+            align: mobile ? 'center' : 'start',
           },
         },
         {
@@ -99,7 +105,7 @@
             title: m.oryxel_tour_input_title(),
             description: m.oryxel_tour_input_desc(),
             side: 'top',
-            align: isMobileWidth() ? 'center' : 'start',
+            align: mobile ? 'center' : 'start',
           },
         },
         {
@@ -108,7 +114,7 @@
             title: m.oryxel_tour_tabs_title(),
             description: m.oryxel_tour_tabs_desc(),
             side: 'top',
-            align: isMobileWidth() ? 'center' : 'start',
+            align: mobile ? 'center' : 'start',
           },
         },
         {
@@ -123,7 +129,7 @@
             title: m.oryxel_tour_table_title(),
             description: m.oryxel_tour_table_desc(),
             side: 'bottom',
-            align: isMobileWidth() ? 'center' : 'start',
+            align: mobile ? 'center' : 'start',
           },
         },
         {
@@ -143,7 +149,7 @@
             title: m.oryxel_tour_profile_title(),
             description: m.oryxel_tour_profile_desc(),
             side: 'bottom',
-            align: isMobileWidth() ? 'center' : 'start',
+            align: mobile ? 'center' : 'start',
           },
         },
         {
@@ -151,8 +157,8 @@
           popover: {
             title: m.oryxel_tour_profile_radar_title(),
             description: m.oryxel_tour_profile_radar_desc(),
-            side: isMobileWidth() ? 'top' : 'right',
-            align: 'start',
+            side: mobile ? 'top' : 'right',
+            align: mobile ? 'center' : 'start',
           },
         },
         {
@@ -164,7 +170,7 @@
             title: m.oryxel_tour_notes_title(),
             description: m.oryxel_tour_notes_desc(),
             side: 'bottom',
-            align: isMobileWidth() ? 'center' : 'end',
+            align: mobile ? 'center' : 'end',
           },
         },
         {
@@ -173,7 +179,7 @@
             title: m.oryxel_tour_notes_sentiments_title(),
             description: m.oryxel_tour_notes_sentiments_desc(),
             side: 'top',
-            align: isMobileWidth() ? 'center' : 'start',
+            align: mobile ? 'center' : 'start',
           },
         },
         {
@@ -195,8 +201,8 @@
           popover: {
             title: m.oryxel_tour_settings_title(),
             description: m.oryxel_tour_settings_desc(),
-            side: isMobileWidth() ? 'top' : 'bottom',
-            align: isMobileWidth() ? 'center' : 'end',
+            side: mobile ? 'top' : 'bottom',
+            align: mobile ? 'center' : 'end',
           },
         },
         {
@@ -233,7 +239,8 @@
   }
 
   :global(.driver-popover) {
-    z-index: 50 !important;
+    z-index: 100 !important;
+    box-sizing: border-box !important;
     background-color: var(--color-surface) !important;
     color: var(--color-foreground) !important;
     border: 1px solid var(--color-border) !important;
@@ -242,6 +249,52 @@
     min-width: 280px !important;
     max-width: 320px !important;
     padding: 18px !important;
+  }
+
+  @media (max-width: 767px) {
+    :global(.driver-popover) {
+      min-width: 0 !important;
+      max-width: calc(100vw - 1rem) !important;
+      max-height: min(78dvh, calc(100dvh - 5.25rem - env(safe-area-inset-top, 0px))) !important;
+      overflow-x: hidden !important;
+      overflow-y: auto !important;
+      padding: max(14px, env(safe-area-inset-top, 0px)) max(14px, env(safe-area-inset-right, 0px)) 14px
+        max(14px, env(safe-area-inset-left, 0px)) !important;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    :global(.driver-popover-title),
+    :global(.driver-popover-description) {
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    :global(.driver-popover-footer) {
+      flex-wrap: wrap !important;
+      align-items: center !important;
+      gap: 10px !important;
+      row-gap: 10px !important;
+    }
+
+    :global(.driver-popover-progress-text) {
+      width: 100%;
+      order: -1;
+      margin-bottom: 2px;
+    }
+
+    :global(.driver-popover-navigation-btns) {
+      display: flex !important;
+      flex: 1 1 auto !important;
+      min-width: 0 !important;
+      justify-content: flex-end !important;
+      gap: 8px !important;
+      flex-wrap: wrap !important;
+    }
+
+    :global(.driver-popover-footer button) {
+      min-height: 44px !important;
+      padding: 8px 14px !important;
+    }
   }
 
   :global(.driver-popover-title) {
