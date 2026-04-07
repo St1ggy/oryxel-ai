@@ -1,12 +1,18 @@
-# Service Root Directory in Railway should stay `apps/job-stream-gateway`.
-# Install must run from the monorepo root so `workspace:*` resolves (bun workspaces).
-# If Railpack ignores this file, set the same commands under Settings → Build / Deploy.
+# Railway job-stream-gateway
+#
+# Required UI settings (Railpack ignores bun workspace installs in a subfolder):
+# 1. Root Directory: empty / "."  (MONOREPO ROOT — not apps/job-stream-gateway)
+# 2. Settings → Build: builder = Dockerfile
+# 3. Dockerfile path: apps/job-stream-gateway/Dockerfile
+#
+# If your project already uses root railway.toml for the worker, this file may be ignored;
+# the Dockerfile path above is what fixes "npm workspace:*" failures.
 
 [build]
-buildCommand = "cd ../.. && bun install"
-watchPatterns = ["/apps/job-stream-gateway/**", "/packages/**"]
+builder = "DOCKERFILE"
+dockerfilePath = "apps/job-stream-gateway/Dockerfile"
+watchPatterns = ["/apps/job-stream-gateway/**", "/packages/**", "/package.json", "/bun.lock"]
 
 [deploy]
-startCommand = "cd ../.. && bun run --cwd apps/job-stream-gateway start"
 healthcheckPath = "/health"
 healthcheckTimeout = 30

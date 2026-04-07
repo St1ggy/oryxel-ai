@@ -1,0 +1,9 @@
+node_modules
+**/node_modules
+.git
+.vercel
+**/.svelte-kit
+.cursor
+.env
+.env.*
+!.env.example
