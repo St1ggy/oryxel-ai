@@ -36,6 +36,19 @@ alwaysApply: true
 
 ---
 
+## 2026-04-07 — Railway: per-service `railway.toml`
+
+### What changed
+
+- Удалён корневой `railway.toml`. У **worker** и **job-stream-gateway** свой файл: [`apps/worker/railway.toml`](apps/worker/railway.toml), [`apps/job-stream-gateway/railway.toml`](apps/job-stream-gateway/railway.toml). В UI у каждого сервиса: **Root directory** = корень репо, **Config file** = путь к соответствующему toml.
+- В корневом `package.json` добавлены `name` и `packageManager: bun@1.2.12` для Railpack.
+
+### Why
+
+- Один источник правды на сервис и единый паттерн монорепо (`bun install` / Docker из корня).
+
+---
+
 ## 2026-04-07 — Job progress via Railway Redis + SSE gateway
 
 ### What changed

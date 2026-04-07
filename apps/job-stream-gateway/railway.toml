@@ -1,17 +1,23 @@
-# Railway job-stream-gateway
+# =============================================================================
+# @oryxel/job-stream-gateway — Railway (config-as-code)
 #
-# Required UI settings (Railpack ignores bun workspace installs in a subfolder):
-# 1. Root Directory: empty / "."  (MONOREPO ROOT — not apps/job-stream-gateway)
-# 2. Settings → Build: builder = Dockerfile
-# 3. Dockerfile path: apps/job-stream-gateway/Dockerfile
+# В UI Railway для этого сервиса:
+#   • Root directory: пусто / "."  (корень монорепозитория)
+#   • Config file: apps/job-stream-gateway/railway.toml
 #
-# If your project already uses root railway.toml for the worker, this file may be ignored;
-# the Dockerfile path above is what fixes "npm workspace:*" failures.
+# Образ собирается из корня: Dockerfile копирует весь монорепо и делает bun install,
+# иначе npm/railpack в подпапке ломается на workspace:*.
+# =============================================================================
 
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "apps/job-stream-gateway/Dockerfile"
-watchPatterns = ["/apps/job-stream-gateway/**", "/packages/**", "/package.json", "/bun.lock"]
+watchPatterns = [
+  "/apps/job-stream-gateway/**",
+  "/packages/**",
+  "/package.json",
+  "/bun.lock",
+]
 
 [deploy]
 healthcheckPath = "/health"
