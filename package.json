@@ -2,6 +2,8 @@
   "private": true,
   "workspaces": ["apps/*", "packages/*"],
   "scripts": {
+    "start:worker": "bun run --cwd apps/worker start",
+    "start:job-stream-gateway": "bun run --cwd apps/job-stream-gateway start",
     "dev": "bun run --cwd apps/web dev",
     "build": "bun run --cwd apps/web build",
     "check": "bun run --cwd apps/web check",

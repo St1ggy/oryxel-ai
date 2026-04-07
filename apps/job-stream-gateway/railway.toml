@@ -1,6 +1,12 @@
-# Railway: set root directory to apps/job-stream-gateway (or monorepo equivalent).
-# Health check for the HTTP server started by `bun run start`.
+# Service Root Directory in Railway should stay `apps/job-stream-gateway`.
+# Install must run from the monorepo root so `workspace:*` resolves (bun workspaces).
+# If Railpack ignores this file, set the same commands under Settings → Build / Deploy.
+
+[build]
+buildCommand = "cd ../.. && bun install"
+watchPatterns = ["/apps/job-stream-gateway/**", "/packages/**"]
 
 [deploy]
+startCommand = "cd ../.. && bun run --cwd apps/job-stream-gateway start"
 healthcheckPath = "/health"
 healthcheckTimeout = 30
