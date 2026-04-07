@@ -1,7 +1,7 @@
 import * as m from '$lib/paraglide/messages.js'
 
-/** Main diary shell: fragrances | notes | profile | guide */
-export const DIARY_PRIMARY_VIEWS = ['fragrances', 'notes', 'profile', 'guide'] as const
+/** Main diary shell: fragrances | notes | profile | guide | chat (mobile tab bar only) */
+export const DIARY_PRIMARY_VIEWS = ['fragrances', 'notes', 'profile', 'guide', 'chat'] as const
 
 export type DiaryPrimaryView = (typeof DIARY_PRIMARY_VIEWS)[number]
 
@@ -11,14 +11,11 @@ export const FRAGRANCE_LIST_TAB_VALUES = ['owned', 'to_try', 'liked', 'neutral',
 export type FragranceListTabValue = (typeof FRAGRANCE_LIST_TAB_VALUES)[number]
 
 /** @deprecated Use FRAGRANCE_LIST_TAB_VALUES + DiaryPrimaryView */
-export const DIARY_LIST_TAB_VALUES = [
-  ...FRAGRANCE_LIST_TAB_VALUES,
-  'profile',
-  'notes',
-  'guide',
-] as const
+
+export const DIARY_LIST_TAB_VALUES = [...FRAGRANCE_LIST_TAB_VALUES, 'profile', 'notes', 'guide'] as const
 
 /** @deprecated Use FragranceListTabValue */
+// eslint-disable-next-line sonarjs/deprecation -- derived from deprecated DIARY_LIST_TAB_VALUES
 export type DiaryListTabValue = (typeof DIARY_LIST_TAB_VALUES)[number]
 
 export function diaryPrimaryItems(): { value: DiaryPrimaryView; label: () => string }[] {
@@ -28,6 +25,19 @@ export function diaryPrimaryItems(): { value: DiaryPrimaryView; label: () => str
     { value: 'profile', label: () => m.oryxel_tab_profile() },
     { value: 'guide', label: () => m.oryxel_tab_guide() },
   ]
+}
+
+/** Desktop nav omits chat (sidebar assistant). Mobile adds chat as a fifth tab. */
+export function diaryPrimaryNavItems(
+  variant: 'desktop' | 'mobile',
+): { value: DiaryPrimaryView; label: () => string }[] {
+  const base = diaryPrimaryItems()
+
+  if (variant === 'mobile') {
+    return [...base, { value: 'chat', label: () => m.oryxel_chat_title() }]
+  }
+
+  return base
 }
 
 export function fragranceListTabItems(): { value: FragranceListTabValue; label: string }[] {
@@ -41,6 +51,7 @@ export function fragranceListTabItems(): { value: FragranceListTabValue; label: 
 }
 
 /** @deprecated */
+// eslint-disable-next-line sonarjs/deprecation -- DiaryListTabValue is legacy
 export function diaryListTabItems(): { value: DiaryListTabValue; label: string }[] {
   return [
     ...fragranceListTabItems(),

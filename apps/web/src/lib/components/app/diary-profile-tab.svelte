@@ -58,7 +58,7 @@
 <div class="flex flex-col gap-5">
   {#if isMobile}
     <!-- Mobile header: stacked layout -->
-    <div class="rounded-[20px] border border-border bg-surface px-5 py-5 shadow-sm">
+    <div class="rounded-[20px] border border-border bg-surface px-5 py-5 shadow-sm" data-tour="profile-header">
       <div class="flex items-center gap-3">
         <Avatar alt={m.oryxel_profile_default_user()} size="md" class="size-14 shrink-0" />
         <div class="min-w-0 flex-1">
@@ -88,6 +88,7 @@
           variant="secondary"
           class="h-9 flex-1 rounded-full border-subtle bg-subtle text-sm font-semibold shadow-sm"
           href={resolve('/settings/profile')}
+          data-tour="profile-settings"
         >
           {m.oryxel_nav_settings()}
         </Button>
@@ -132,6 +133,7 @@
           variant="secondary"
           class="h-[42px] rounded-full border-subtle bg-subtle px-5 text-sm font-semibold shadow-sm"
           href={resolve('/settings/profile')}
+          data-tour="profile-settings"
         >
           {m.oryxel_nav_settings()}
         </Button>

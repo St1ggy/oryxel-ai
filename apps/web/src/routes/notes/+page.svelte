@@ -1,6 +1,4 @@
 <script lang="ts">
-  import { untrack } from 'svelte'
-
   import * as m from '$lib/paraglide/messages.js'
 
   import type { NoteRelationship, NoteRelationshipSentiment } from '$lib/types/diary'
@@ -8,7 +6,13 @@
 
   const { data }: { data: PageData } = $props()
 
-  let relationships = $state<NoteRelationship[]>(untrack(() => [...data.noteRelationships]))
+  let relationships = $state<NoteRelationship[]>([])
+
+  $effect(() => {
+    void Promise.resolve(data.noteRelationships).then((rows) => {
+      relationships = [...rows]
+    })
+  })
   let editingLabel = $state<string | null>(null)
   let editingValue = $state('')
 

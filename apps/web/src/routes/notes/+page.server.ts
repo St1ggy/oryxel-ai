@@ -9,7 +9,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     throw redirect(302, `/login?redirectTo=${encodeURIComponent(url.pathname)}`)
   }
 
-  const profile = await loadProfileForUser(locals.user.id, locals.user.name || 'User')
+  const noteRelationships = loadProfileForUser(locals.user.id, locals.user.name || 'User').then(
+    (profile) => profile.noteRelationships,
+  )
 
-  return { noteRelationships: profile.noteRelationships }
+  return { noteRelationships }
 }

@@ -11,7 +11,6 @@
   const links = [
     { href: '/diary', label: () => m.oryxel_nav_diary() },
     { href: '/profile', label: () => m.oryxel_nav_profile() },
-    { href: '/settings', label: () => m.oryxel_nav_settings() },
   ] as const
 </script>
 

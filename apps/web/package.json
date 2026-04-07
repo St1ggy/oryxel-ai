@@ -63,6 +63,7 @@
     "vitest-browser-svelte": "^2.1.0"
   },
   "dependencies": {
+    "@aejkatappaja/phantom-ui": "^0.2.4",
     "@lucide/svelte": "^1.7.0",
     "@oryxel/ai": "workspace:*",
     "@oryxel/db": "workspace:*",

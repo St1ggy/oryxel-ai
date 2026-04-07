@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { BookOpen, Layers, Package, User } from '@lucide/svelte'
+  import { BookOpen, Layers, MessageSquare, Package, User } from '@lucide/svelte'
 
-  import { type DiaryPrimaryView, diaryPrimaryItems } from '$lib/diary/diary-tab-items'
+  import { type DiaryPrimaryView, diaryPrimaryNavItems } from '$lib/diary/diary-tab-items'
   import { cn } from '$lib/utils/cn'
 
   type Props = {
@@ -17,9 +17,10 @@
     notes: Layers,
     profile: User,
     guide: BookOpen,
+    chat: MessageSquare,
   }
 
-  const items = $derived(diaryPrimaryItems())
+  const items = $derived(diaryPrimaryNavItems(variant))
 </script>
 
 {#if variant === 'desktop'}

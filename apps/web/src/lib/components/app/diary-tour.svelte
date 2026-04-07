@@ -11,9 +11,30 @@
     completed: boolean
     onComplete: () => void
     onReady: (startFunction: () => void) => void
+    prepareChatPanel?: () => void
   }
 
-  const { completed, onComplete, onReady }: Props = $props()
+  const { completed, onComplete, onReady, prepareChatPanel }: Props = $props()
+
+  function firstVisible(selector: string): HTMLElement | undefined {
+    const nodes = document.querySelectorAll<HTMLElement>(selector)
+
+    for (const element of nodes) {
+      const style = getComputedStyle(element)
+
+      if (style.display === 'none' || style.visibility === 'hidden') continue
+
+      const rect = element.getBoundingClientRect()
+
+      if (rect.width < 2 || rect.height < 2) continue
+
+      return element
+    }
+  }
+
+  function isMobileWidth(): boolean {
+    return browser && globalThis.matchMedia('(max-width: 767px)').matches
+  }
 
   async function markCompleted(): Promise<void> {
     if (completed) return
@@ -31,13 +52,12 @@
 
     const driverObject = driver({
       showProgress: true,
-      // Pass Paraglide placeholders so driver.js substitutes {{current}}/{{total}}
       progressText: m.oryxel_tour_step_of({ current: '{{current}}', total: '{{total}}' }),
       nextBtnText: m.oryxel_tour_next(),
       prevBtnText: m.oryxel_tour_back(),
       doneBtnText: m.oryxel_tour_finish(),
       allowClose: true,
-      overlayOpacity: 0.72,
+      overlayOpacity: 0.62,
       smoothScroll: true,
       steps: [
         {
@@ -49,21 +69,37 @@
           },
         },
         {
-          element: '[data-tour="chat-panel"]',
+          element: () => {
+            prepareChatPanel?.()
+
+            return (
+              firstVisible('[data-tour="chat-panel"]') ??
+              (document.querySelector('[data-tour="diary-primary-tabs"]') as HTMLElement | null) ??
+              document.body
+            )
+          },
+          onHighlighted: (_element, _step, { driver: drv }) => {
+            if (firstVisible('[data-tour="chat-panel"]')) return
+
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => drv.refresh())
+            })
+          },
           popover: {
             title: m.oryxel_tour_chat_title(),
             description: m.oryxel_tour_chat_desc(),
-            side: 'right',
-            align: 'start',
+            side: isMobileWidth() ? 'top' : 'right',
+            align: isMobileWidth() ? 'center' : 'start',
           },
         },
         {
-          element: '[data-tour="chat-input"]',
+          element: () =>
+            firstVisible('[data-tour="chat-input"]') ?? firstVisible('[data-tour="chat-panel"]') ?? document.body,
           popover: {
             title: m.oryxel_tour_input_title(),
             description: m.oryxel_tour_input_desc(),
             side: 'top',
-            align: 'start',
+            align: isMobileWidth() ? 'center' : 'start',
           },
         },
         {
@@ -71,8 +107,8 @@
           popover: {
             title: m.oryxel_tour_tabs_title(),
             description: m.oryxel_tour_tabs_desc(),
-            side: 'bottom',
-            align: 'start',
+            side: 'top',
+            align: isMobileWidth() ? 'center' : 'start',
           },
         },
         {
@@ -86,20 +122,28 @@
           popover: {
             title: m.oryxel_tour_table_title(),
             description: m.oryxel_tour_table_desc(),
-            side: 'top',
-            align: 'start',
+            side: 'bottom',
+            align: isMobileWidth() ? 'center' : 'start',
           },
         },
         {
-          element: '[data-tour="profile-header"]',
+          element: () =>
+            firstVisible('[data-tour="profile-header"]') ??
+            (document.querySelector('[data-tour="diary-primary-tabs"]') as HTMLElement | null) ??
+            document.body,
           onHighlightStarted: () => {
             document.querySelector<HTMLElement>('[data-tour="primary-profile"]')?.click()
+          },
+          onHighlighted: (_element, _step, { driver: drv }) => {
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => drv.refresh())
+            })
           },
           popover: {
             title: m.oryxel_tour_profile_title(),
             description: m.oryxel_tour_profile_desc(),
             side: 'bottom',
-            align: 'start',
+            align: isMobileWidth() ? 'center' : 'start',
           },
         },
         {
@@ -107,7 +151,7 @@
           popover: {
             title: m.oryxel_tour_profile_radar_title(),
             description: m.oryxel_tour_profile_radar_desc(),
-            side: 'right',
+            side: isMobileWidth() ? 'top' : 'right',
             align: 'start',
           },
         },
@@ -120,7 +164,7 @@
             title: m.oryxel_tour_notes_title(),
             description: m.oryxel_tour_notes_desc(),
             side: 'bottom',
-            align: 'end',
+            align: isMobileWidth() ? 'center' : 'end',
           },
         },
         {
@@ -129,16 +173,30 @@
             title: m.oryxel_tour_notes_sentiments_title(),
             description: m.oryxel_tour_notes_sentiments_desc(),
             side: 'top',
-            align: 'start',
+            align: isMobileWidth() ? 'center' : 'start',
           },
         },
         {
-          element: '[data-tour="header-controls"]',
+          element: () => {
+            document.querySelector<HTMLElement>('[data-tour="primary-profile"]')?.click()
+
+            return (
+              firstVisible('[data-tour="profile-settings"]') ??
+              firstVisible('[data-tour="profile-header"]') ??
+              (document.querySelector('[data-tour="diary-primary-tabs"]') as HTMLElement | null) ??
+              document.body
+            )
+          },
+          onHighlighted: (_element, _step, { driver: drv }) => {
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => drv.refresh())
+            })
+          },
           popover: {
             title: m.oryxel_tour_settings_title(),
             description: m.oryxel_tour_settings_desc(),
-            side: 'bottom',
-            align: 'end',
+            side: isMobileWidth() ? 'top' : 'bottom',
+            align: isMobileWidth() ? 'center' : 'end',
           },
         },
         {
@@ -164,8 +222,18 @@
 </script>
 
 <style>
-  /* Override Driver.js default styles to match Oryxel themes */
+  :global(.driver-overlay) {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    z-index: 40 !important;
+  }
+
+  :global(.driver-active-element) {
+    z-index: 41 !important;
+  }
+
   :global(.driver-popover) {
+    z-index: 50 !important;
     background-color: var(--color-surface) !important;
     color: var(--color-foreground) !important;
     border: 1px solid var(--color-border) !important;
@@ -241,7 +309,6 @@
     opacity: 0.88 !important;
   }
 
-  /* Arrow color matches card background */
   :global(.driver-popover-arrow-side-left) {
     border-left-color: var(--color-surface) !important;
   }

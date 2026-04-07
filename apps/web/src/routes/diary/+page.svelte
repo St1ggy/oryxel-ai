@@ -1,7 +1,6 @@
 <script lang="ts">
-  import { ArrowLeft, MessageSquare, PanelLeftOpen, PanelRightOpen } from '@lucide/svelte'
+  import { PanelLeftOpen, PanelRightOpen } from '@lucide/svelte'
   import { untrack } from 'svelte'
-  import { fade } from 'svelte/transition'
 
   import AiStatusFloat from '$lib/components/app/ai-status-float.svelte'
   import AppChatPanel from '$lib/components/app/app-chat-panel.svelte'
@@ -11,7 +10,6 @@
   import DiaryHeaderControls from '$lib/components/app/diary-header-controls.svelte'
   import DiaryNotesTab from '$lib/components/app/diary-notes-tab.svelte'
   import DiaryPrimaryNav from '$lib/components/app/diary-primary-nav.svelte'
-  import DiaryProfileSkeleton from '$lib/components/app/diary-profile-skeleton.svelte'
   import DiaryProfileTab from '$lib/components/app/diary-profile-tab.svelte'
   import DiaryTour from '$lib/components/app/diary-tour.svelte'
   import FragranceDetailModal from '$lib/components/app/fragrance-detail-modal.svelte'
@@ -19,6 +17,7 @@
   import PatchDetailsModal from '$lib/components/app/patch-details-modal.svelte'
   import Button from '$lib/components/ui/button.svelte'
   import Modal from '$lib/components/ui/modal.svelte'
+  import PhantomUiShell from '$lib/components/ui/phantom-ui-shell.svelte'
   import * as m from '$lib/paraglide/messages.js'
   import { cn } from '$lib/utils/cn'
 
@@ -34,7 +33,6 @@
 
   let chatOpen = $state(true)
   let chatDraft = $state('')
-  let mobileChatOpen = $state(false)
   let primaryView = $state<DiaryPrimaryView>(untrack(() => data.initialView ?? 'fragrances'))
   let fragranceTab = $state<FragranceListTabValue>(untrack(() => data.initialFragranceTab ?? 'owned'))
   let editRow = $state<DiaryRow | null>(null)
@@ -58,6 +56,23 @@
     url.searchParams.delete('tab')
     history.replaceState({}, '', url)
   })
+
+  /** Chat is a mobile-only primary tab; normalize URL if the viewport is desktop. */
+  $effect(() => {
+    if (!browser || primaryView !== 'chat') return
+
+    if (globalThis.matchMedia('(min-width: 768px)').matches) {
+      primaryView = 'fragrances'
+    }
+  })
+
+  function prepareTourChatPanel() {
+    chatOpen = true
+
+    if (browser && globalThis.matchMedia('(max-width: 767px)').matches) {
+      primaryView = 'chat'
+    }
+  }
   let editOpen = $state(false)
 
   // ── Onboarding tour ────────────────────────────────────────────────────────
@@ -72,12 +87,7 @@
 
     tourAutoStarted = true
     const timer = setTimeout(() => {
-      chatOpen = true
-
-      if (globalThis.matchMedia('(max-width: 767px)').matches) {
-        mobileChatOpen = true
-      }
-
+      prepareTourChatPanel()
       startTour?.()
     }, 500)
 
@@ -679,10 +689,16 @@
   function onTriedRecommendation(brand: string, name: string) {
     chatDraft = m.oryxel_rec_tried_draft({ brand, name })
     chatOpen = true
-    mobileChatOpen = true
+
+    if (browser && globalThis.matchMedia('(max-width: 767px)').matches) {
+      primaryView = 'chat'
+    }
   }
 
-  const desktopContentWidthClass = $derived(primaryView === 'profile' ? 'mx-auto w-full max-w-[880px]' : 'w-full')
+  /** Desktop layout has no chat tab; treat chat like fragrances for main content. */
+  const desktopShellView = $derived(primaryView === 'chat' ? ('fragrances' as const) : primaryView)
+
+  const desktopContentWidthClass = $derived(desktopShellView === 'profile' ? 'mx-auto w-full max-w-[880px]' : 'w-full')
 
   function selectPrimaryView(view: DiaryPrimaryView) {
     primaryView = view
@@ -731,22 +747,17 @@
           {/if}
           <span class="sr-only">{chatOpen ? m.oryxel_chat_hide() : m.oryxel_chat_show()}</span>
         </Button>
-        <DiaryPrimaryNav variant="desktop" active={primaryView} onSelect={selectPrimaryView} />
+        <DiaryPrimaryNav variant="desktop" active={desktopShellView} onSelect={selectPrimaryView} />
         <DiaryHeaderControls
           onStartTour={() => {
-            chatOpen = true
-
-            if (browser && globalThis.matchMedia('(max-width: 767px)').matches) {
-              mobileChatOpen = true
-            }
-
+            prepareTourChatPanel()
             startTour?.()
           }}
         />
       </div>
       <div class="min-h-0 flex-1 overflow-y-auto p-4 md:p-9">
         <div class={cn('w-full', desktopContentWidthClass)}>
-          {#if primaryView === 'fragrances'}
+          {#if desktopShellView === 'fragrances'}
             <DiaryFragrancesPanel
               bind:fragranceTab
               {diaryState}
@@ -758,7 +769,7 @@
               canRefreshRecommendations={hasChatAccess && !thinking}
               layout="desktop"
             />
-          {:else if primaryView === 'notes'}
+          {:else if desktopShellView === 'notes'}
             <div data-tour="primary-notes">
               <DiaryNotesTab
                 diaryData={diaryState}
@@ -767,10 +778,8 @@
                 graphStyle={data.graphStyle}
               />
             </div>
-          {:else if primaryView === 'profile'}
-            {#if diaryLoading}
-              <DiaryProfileSkeleton variant="desktop" />
-            {:else}
+          {:else if desktopShellView === 'profile'}
+            <PhantomUiShell loading={diaryLoading}>
               <DiaryProfileTab
                 variant="desktop"
                 profile={profileData}
@@ -784,7 +793,7 @@
                   disliked: diaryState.disliked.length,
                 }}
               />
-            {/if}
+            </PhantomUiShell>
           {:else}
             <DiaryGuideTab layout="desktop" />
           {/if}
@@ -809,16 +818,54 @@
       ? 'flex min-h-svh flex-1 flex-col pb-28 md:hidden'
       : 'flex min-h-svh flex-1 flex-col pb-16 md:hidden'}
   >
-    {#key mobileChatOpen}
-      {#if mobileChatOpen}
-        <div class="flex min-h-0 flex-1 flex-col" in:fade={{ duration: 180 }} out:fade={{ duration: 120 }}>
-          <div class="flex shrink-0 items-center gap-2 border-b border-border bg-surface px-2 py-2">
-            <Button variant="ghost" size="sm" class="gap-2" onclick={() => (mobileChatOpen = false)}>
-              <ArrowLeft class="size-4" />
-              <span class="text-sm">{m.oryxel_back()}</span>
-            </Button>
-            <span class="text-sm font-medium">{m.oryxel_chat_title()}</span>
+    <div class="flex min-h-0 flex-1 flex-col">
+      <div class="flex shrink-0 items-center justify-end gap-2 border-b border-border bg-surface px-3 py-2">
+        <DiaryHeaderControls
+          onStartTour={() => {
+            prepareTourChatPanel()
+            startTour?.()
+          }}
+        />
+      </div>
+      <div class="min-h-0 flex-1 overflow-y-auto px-3 py-3">
+        {#if primaryView === 'fragrances'}
+          <DiaryFragrancesPanel
+            bind:fragranceTab
+            {diaryState}
+            loading={diaryLoading}
+            {onRatingChange}
+            onOpenDetail={openDetail}
+            {onRefreshRecommendations}
+            {refreshingRecommendations}
+            canRefreshRecommendations={hasChatAccess && !thinking}
+            layout="mobile"
+          />
+        {:else if primaryView === 'notes'}
+          <div data-tour="primary-notes">
+            <DiaryNotesTab
+              diaryData={diaryState}
+              noteRelationships={resolvedProfile?.noteRelationships ?? []}
+              layout="mobile"
+              graphStyle={data.graphStyle}
+            />
           </div>
+        {:else if primaryView === 'profile'}
+          <PhantomUiShell loading={diaryLoading}>
+            <DiaryProfileTab
+              variant="mobile"
+              profile={profileData}
+              onProfileSync={handleProfileSyncClick}
+              recentActivity={resolvedRecentActivity}
+              diaryCounts={{
+                owned: diaryState.owned.length,
+                to_try: diaryState.to_try.length,
+                liked: diaryState.liked.length,
+                neutral: diaryState.neutral.length,
+                disliked: diaryState.disliked.length,
+              }}
+            />
+          </PhantomUiShell>
+        {:else if primaryView === 'chat'}
           <AppChatPanel
             {messages}
             {thinking}
@@ -829,74 +876,14 @@
             {providerOptions}
             suggestions={profileData.suggestions}
           />
-        </div>
-      {:else}
-        <div class="flex min-h-0 flex-1 flex-col" in:fade={{ duration: 180 }} out:fade={{ duration: 120 }}>
-          <div class="flex shrink-0 items-center justify-between gap-2 border-b border-border bg-surface px-3 py-2">
-            <DiaryHeaderControls
-              onStartTour={() => {
-                chatOpen = true
-                mobileChatOpen = true
-                startTour?.()
-              }}
-            />
-            <Button variant="secondary" size="sm" class="shrink-0 gap-2" onclick={() => (mobileChatOpen = true)}>
-              <MessageSquare class="size-4" />
-              {m.oryxel_chat_title()}
-            </Button>
-          </div>
-          <div class="min-h-0 flex-1 overflow-y-auto px-3 py-3">
-            {#if primaryView === 'fragrances'}
-              <DiaryFragrancesPanel
-                bind:fragranceTab
-                {diaryState}
-                loading={diaryLoading}
-                {onRatingChange}
-                onOpenDetail={openDetail}
-                {onRefreshRecommendations}
-                {refreshingRecommendations}
-                canRefreshRecommendations={hasChatAccess && !thinking}
-                layout="mobile"
-              />
-            {:else if primaryView === 'notes'}
-              <div data-tour="primary-notes">
-                <DiaryNotesTab
-                  diaryData={diaryState}
-                  noteRelationships={resolvedProfile?.noteRelationships ?? []}
-                  layout="mobile"
-                  graphStyle={data.graphStyle}
-                />
-              </div>
-            {:else if primaryView === 'profile'}
-              {#if diaryLoading}
-                <DiaryProfileSkeleton variant="mobile" />
-              {:else}
-                <DiaryProfileTab
-                  variant="mobile"
-                  profile={profileData}
-                  onProfileSync={handleProfileSyncClick}
-                  recentActivity={resolvedRecentActivity}
-                  diaryCounts={{
-                    owned: diaryState.owned.length,
-                    to_try: diaryState.to_try.length,
-                    liked: diaryState.liked.length,
-                    neutral: diaryState.neutral.length,
-                    disliked: diaryState.disliked.length,
-                  }}
-                />
-              {/if}
-            {:else}
-              <DiaryGuideTab layout="mobile" />
-            {/if}
-          </div>
-        </div>
-      {/if}
-    {/key}
+        {:else}
+          <DiaryGuideTab layout="mobile" />
+        {/if}
+      </div>
+    </div>
   </div>
 
-  {#if !mobileChatOpen}
-    <DiaryPrimaryNav variant="mobile" active={primaryView} onSelect={selectPrimaryView} />
-  {/if}
+  <DiaryPrimaryNav variant="mobile" active={primaryView} onSelect={selectPrimaryView} />
 </div>
 
 <Modal
@@ -948,6 +935,7 @@
 
 <DiaryTour
   completed={onboardingCompleted}
+  prepareChatPanel={prepareTourChatPanel}
   onComplete={() => {
     onboardingCompleted = true
   }}
