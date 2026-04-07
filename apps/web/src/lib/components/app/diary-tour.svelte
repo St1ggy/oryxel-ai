@@ -5,6 +5,8 @@
 
   import * as m from '$lib/paraglide/messages.js'
 
+  import type { DriveStep } from 'driver.js'
+
   import { browser } from '$app/environment'
 
   type Props = {
@@ -64,6 +66,162 @@
     onComplete()
   }
 
+  function scheduleDriverRefresh(drv: { refresh: () => void }): void {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => drv.refresh())
+    })
+  }
+
+  function buildTourSteps(mobile: boolean): DriveStep[] {
+    return [
+      {
+        popover: {
+          title: m.oryxel_tour_welcome_title(),
+          description: m.oryxel_tour_welcome_desc(),
+          side: 'over',
+          align: 'center',
+        },
+      },
+      {
+        element: () => {
+          prepareChatPanel?.()
+
+          return firstVisible('[data-tour="chat-panel"]') ?? tourElement('[data-tour="diary-primary-tabs"]')
+        },
+        onHighlighted: (_element, _step, { driver: drv }) => {
+          if (firstVisible('[data-tour="chat-panel"]')) return
+
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => drv.refresh())
+          })
+        },
+        popover: {
+          title: m.oryxel_tour_chat_title(),
+          description: m.oryxel_tour_chat_desc(),
+          side: mobile ? 'top' : 'right',
+          align: mobile ? 'center' : 'start',
+        },
+      },
+      {
+        element: () =>
+          firstVisible('[data-tour="chat-input"]') ?? firstVisible('[data-tour="chat-panel"]') ?? document.body,
+        popover: {
+          title: m.oryxel_tour_input_title(),
+          description: m.oryxel_tour_input_desc(),
+          side: 'top',
+          align: mobile ? 'center' : 'start',
+        },
+      },
+      {
+        element: () => tourElement('[data-tour="diary-primary-tabs"]'),
+        popover: {
+          title: m.oryxel_tour_tabs_title(),
+          description: m.oryxel_tour_tabs_desc(),
+          side: 'top',
+          align: mobile ? 'center' : 'start',
+          onNextClick: async (_element, _step, { driver: drv }) => {
+            clickTourTarget('[data-tour="primary-fragrances"]')
+            await tick()
+            clickTourTarget('[data-tour="fragrance-list-owned"]')
+            await tick()
+            await tick()
+            drv.moveNext()
+          },
+        },
+      },
+      {
+        element: () => tourElement('[data-tour="diary-table"]'),
+        popover: {
+          title: m.oryxel_tour_table_title(),
+          description: m.oryxel_tour_table_desc(),
+          side: 'bottom',
+          align: mobile ? 'center' : 'start',
+          onNextClick: async (_element, _step, { driver: drv }) => {
+            await afterTabSwitchNavigate(drv, () => clickTourTarget('[data-tour="primary-profile"]'))
+          },
+        },
+      },
+      {
+        element: () => firstVisible('[data-tour="profile-header"]') ?? tourElement('[data-tour="diary-primary-tabs"]'),
+        onHighlighted: (_element, _step, { driver: drv }) => {
+          scheduleDriverRefresh(drv)
+        },
+        popover: {
+          title: m.oryxel_tour_profile_title(),
+          description: m.oryxel_tour_profile_desc(),
+          /* Mobile: bottom popover covers the card; keep tooltip above */
+          side: mobile ? 'top' : 'bottom',
+          align: mobile ? 'center' : 'start',
+        },
+      },
+      {
+        element: () => tourElement('[data-tour="profile-radar"]'),
+        onHighlighted: (_element, _step, { driver: drv }) => {
+          scheduleDriverRefresh(drv)
+        },
+        popover: {
+          title: m.oryxel_tour_profile_radar_title(),
+          description: m.oryxel_tour_profile_radar_desc(),
+          side: mobile ? 'top' : 'right',
+          align: mobile ? 'center' : 'start',
+          onNextClick: async (_element, _step, { driver: drv }) => {
+            await afterTabSwitchNavigate(drv, () => clickTourTarget('[data-tour="primary-notes"]'))
+          },
+        },
+      },
+      {
+        element: () => tourElement('[data-tour="notes-view-toggle"]'),
+        onHighlighted: (_element, _step, { driver: drv }) => {
+          scheduleDriverRefresh(drv)
+        },
+        popover: {
+          title: m.oryxel_tour_notes_title(),
+          description: m.oryxel_tour_notes_desc(),
+          side: mobile ? 'top' : 'bottom',
+          align: mobile ? 'center' : 'end',
+        },
+      },
+      {
+        element: () => tourElement('[data-tour="notes-content"]'),
+        onHighlighted: (_element, _step, { driver: drv }) => {
+          scheduleDriverRefresh(drv)
+        },
+        popover: {
+          title: m.oryxel_tour_notes_sentiments_title(),
+          description: m.oryxel_tour_notes_sentiments_desc(),
+          side: 'top',
+          align: mobile ? 'center' : 'start',
+          onNextClick: async (_element, _step, { driver: drv }) => {
+            await afterTabSwitchNavigate(drv, () => clickTourTarget('[data-tour="primary-profile"]'))
+          },
+        },
+      },
+      {
+        element: () =>
+          firstVisible('[data-tour="profile-settings"]') ??
+          firstVisible('[data-tour="profile-header"]') ??
+          tourElement('[data-tour="diary-primary-tabs"]'),
+        onHighlighted: (_element, _step, { driver: drv }) => {
+          scheduleDriverRefresh(drv)
+        },
+        popover: {
+          title: m.oryxel_tour_settings_title(),
+          description: m.oryxel_tour_settings_desc(),
+          side: mobile ? 'top' : 'bottom',
+          align: mobile ? 'center' : 'end',
+        },
+      },
+      {
+        popover: {
+          title: m.oryxel_tour_done_title(),
+          description: m.oryxel_tour_done_desc(),
+          side: 'over',
+          align: 'center',
+        },
+      },
+    ]
+  }
+
   onMount(() => {
     if (!browser) return
 
@@ -78,152 +236,10 @@
       allowClose: true,
       overlayOpacity: 0.62,
       smoothScroll: true,
-      /* Clear fixed bottom tab bar (h-16) + safe area; tighter stage on small screens */
       popoverOffset: mobile ? 16 : 10,
       stagePadding: mobile ? 8 : 10,
       popoverClass: 'oryxel-driver-popover',
-      steps: [
-        {
-          popover: {
-            title: m.oryxel_tour_welcome_title(),
-            description: m.oryxel_tour_welcome_desc(),
-            side: 'over',
-            align: 'center',
-          },
-        },
-        {
-          element: () => {
-            prepareChatPanel?.()
-
-            return firstVisible('[data-tour="chat-panel"]') ?? tourElement('[data-tour="diary-primary-tabs"]')
-          },
-          onHighlighted: (_element, _step, { driver: drv }) => {
-            if (firstVisible('[data-tour="chat-panel"]')) return
-
-            requestAnimationFrame(() => {
-              requestAnimationFrame(() => drv.refresh())
-            })
-          },
-          popover: {
-            title: m.oryxel_tour_chat_title(),
-            description: m.oryxel_tour_chat_desc(),
-            side: mobile ? 'top' : 'right',
-            align: mobile ? 'center' : 'start',
-          },
-        },
-        {
-          element: () =>
-            firstVisible('[data-tour="chat-input"]') ?? firstVisible('[data-tour="chat-panel"]') ?? document.body,
-          popover: {
-            title: m.oryxel_tour_input_title(),
-            description: m.oryxel_tour_input_desc(),
-            side: 'top',
-            align: mobile ? 'center' : 'start',
-          },
-        },
-        {
-          element: () => tourElement('[data-tour="diary-primary-tabs"]'),
-          popover: {
-            title: m.oryxel_tour_tabs_title(),
-            description: m.oryxel_tour_tabs_desc(),
-            side: 'top',
-            align: mobile ? 'center' : 'start',
-            onNextClick: async (_element, _step, { driver: drv }) => {
-              clickTourTarget('[data-tour="primary-fragrances"]')
-              await tick()
-              clickTourTarget('[data-tour="fragrance-list-owned"]')
-              await tick()
-              await tick()
-              drv.moveNext()
-            },
-          },
-        },
-        {
-          element: () => tourElement('[data-tour="diary-table"]'),
-          popover: {
-            title: m.oryxel_tour_table_title(),
-            description: m.oryxel_tour_table_desc(),
-            side: 'bottom',
-            align: mobile ? 'center' : 'start',
-            onNextClick: async (_element, _step, { driver: drv }) => {
-              await afterTabSwitchNavigate(drv, () => clickTourTarget('[data-tour="primary-profile"]'))
-            },
-          },
-        },
-        {
-          element: () =>
-            firstVisible('[data-tour="profile-header"]') ?? tourElement('[data-tour="diary-primary-tabs"]'),
-          onHighlighted: (_element, _step, { driver: drv }) => {
-            requestAnimationFrame(() => {
-              requestAnimationFrame(() => drv.refresh())
-            })
-          },
-          popover: {
-            title: m.oryxel_tour_profile_title(),
-            description: m.oryxel_tour_profile_desc(),
-            side: 'bottom',
-            align: mobile ? 'center' : 'start',
-          },
-        },
-        {
-          element: () => tourElement('[data-tour="profile-radar"]'),
-          popover: {
-            title: m.oryxel_tour_profile_radar_title(),
-            description: m.oryxel_tour_profile_radar_desc(),
-            side: mobile ? 'top' : 'right',
-            align: mobile ? 'center' : 'start',
-            onNextClick: async (_element, _step, { driver: drv }) => {
-              await afterTabSwitchNavigate(drv, () => clickTourTarget('[data-tour="primary-notes"]'))
-            },
-          },
-        },
-        {
-          element: () => tourElement('[data-tour="notes-view-toggle"]'),
-          popover: {
-            title: m.oryxel_tour_notes_title(),
-            description: m.oryxel_tour_notes_desc(),
-            side: 'bottom',
-            align: mobile ? 'center' : 'end',
-          },
-        },
-        {
-          element: () => tourElement('[data-tour="notes-content"]'),
-          popover: {
-            title: m.oryxel_tour_notes_sentiments_title(),
-            description: m.oryxel_tour_notes_sentiments_desc(),
-            side: 'top',
-            align: mobile ? 'center' : 'start',
-            onNextClick: async (_element, _step, { driver: drv }) => {
-              await afterTabSwitchNavigate(drv, () => clickTourTarget('[data-tour="primary-profile"]'))
-            },
-          },
-        },
-        {
-          element: () =>
-            firstVisible('[data-tour="profile-settings"]') ??
-            firstVisible('[data-tour="profile-header"]') ??
-            tourElement('[data-tour="diary-primary-tabs"]'),
-          onHighlighted: (_element, _step, { driver: drv }) => {
-            requestAnimationFrame(() => {
-              requestAnimationFrame(() => drv.refresh())
-            })
-          },
-          popover: {
-            title: m.oryxel_tour_settings_title(),
-            description: m.oryxel_tour_settings_desc(),
-            side: mobile ? 'top' : 'bottom',
-            align: mobile ? 'center' : 'end',
-          },
-        },
-        {
-          popover: {
-            title: m.oryxel_tour_done_title(),
-            description: m.oryxel_tour_done_desc(),
-            side: 'over',
-            align: 'center',
-          },
-        },
-      ],
+      steps: buildTourSteps(mobile),
       onDestroyed: () => {
         void markCompleted()
       },
@@ -246,6 +262,15 @@
 
   :global(.driver-active-element) {
     z-index: 41 !important;
+  }
+
+  /*
+   * driver.js: `:not(body):has(> .driver-active-element){overflow:hidden}`.
+   * When the highlighted node is a direct child of <phantom-ui>, that host gets overflow:hidden
+   * and can clip the spotlight area; shimmer host also uses position:relative.
+   */
+  :global(body.driver-active phantom-ui) {
+    overflow: visible !important;
   }
 
   :global(.driver-popover) {

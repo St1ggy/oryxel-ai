@@ -799,17 +799,42 @@
             />
           {:else if desktopShellView === 'notes'}
             <div data-tour="primary-notes">
-              <PhantomUiShell loading={diaryLoading || shellLoading}>
+              {#if diaryLoading || shellLoading}
+                <PhantomUiShell loading={true}>
+                  <DiaryNotesTab
+                    diaryData={diaryState}
+                    noteRelationships={resolvedProfile?.noteRelationships ?? []}
+                    layout="desktop"
+                    {graphStyle}
+                  />
+                </PhantomUiShell>
+              {:else}
                 <DiaryNotesTab
                   diaryData={diaryState}
                   noteRelationships={resolvedProfile?.noteRelationships ?? []}
                   layout="desktop"
                   {graphStyle}
                 />
-              </PhantomUiShell>
+              {/if}
             </div>
           {:else if desktopShellView === 'profile'}
-            <PhantomUiShell loading={diaryLoading || shellLoading}>
+            {#if diaryLoading || shellLoading}
+              <PhantomUiShell loading={true}>
+                <DiaryProfileTab
+                  variant="desktop"
+                  profile={profileData}
+                  onProfileSync={handleProfileSyncClick}
+                  recentActivity={resolvedRecentActivity}
+                  diaryCounts={{
+                    owned: diaryState.owned.length,
+                    to_try: diaryState.to_try.length,
+                    liked: diaryState.liked.length,
+                    neutral: diaryState.neutral.length,
+                    disliked: diaryState.disliked.length,
+                  }}
+                />
+              </PhantomUiShell>
+            {:else}
               <DiaryProfileTab
                 variant="desktop"
                 profile={profileData}
@@ -823,7 +848,7 @@
                   disliked: diaryState.disliked.length,
                 }}
               />
-            </PhantomUiShell>
+            {/if}
           {:else}
             <DiaryGuideTab layout="desktop" />
           {/if}
@@ -873,17 +898,42 @@
           />
         {:else if primaryView === 'notes'}
           <div data-tour="primary-notes">
-            <PhantomUiShell loading={diaryLoading || shellLoading}>
+            {#if diaryLoading || shellLoading}
+              <PhantomUiShell loading={true}>
+                <DiaryNotesTab
+                  diaryData={diaryState}
+                  noteRelationships={resolvedProfile?.noteRelationships ?? []}
+                  layout="mobile"
+                  {graphStyle}
+                />
+              </PhantomUiShell>
+            {:else}
               <DiaryNotesTab
                 diaryData={diaryState}
                 noteRelationships={resolvedProfile?.noteRelationships ?? []}
                 layout="mobile"
                 {graphStyle}
               />
-            </PhantomUiShell>
+            {/if}
           </div>
         {:else if primaryView === 'profile'}
-          <PhantomUiShell loading={diaryLoading || shellLoading}>
+          {#if diaryLoading || shellLoading}
+            <PhantomUiShell loading={true}>
+              <DiaryProfileTab
+                variant="mobile"
+                profile={profileData}
+                onProfileSync={handleProfileSyncClick}
+                recentActivity={resolvedRecentActivity}
+                diaryCounts={{
+                  owned: diaryState.owned.length,
+                  to_try: diaryState.to_try.length,
+                  liked: diaryState.liked.length,
+                  neutral: diaryState.neutral.length,
+                  disliked: diaryState.disliked.length,
+                }}
+              />
+            </PhantomUiShell>
+          {:else}
             <DiaryProfileTab
               variant="mobile"
               profile={profileData}
@@ -897,7 +947,7 @@
                 disliked: diaryState.disliked.length,
               }}
             />
-          </PhantomUiShell>
+          {/if}
         {:else if primaryView === 'chat'}
           <AppChatPanel
             loading={shellLoading}
