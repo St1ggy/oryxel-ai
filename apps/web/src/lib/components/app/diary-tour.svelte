@@ -1,7 +1,7 @@
 <script lang="ts">
   import { driver } from 'driver.js'
   import 'driver.js/dist/driver.css'
-  import { onMount } from 'svelte'
+  import { onMount, tick } from 'svelte'
 
   import * as m from '$lib/paraglide/messages.js'
 
@@ -30,6 +30,23 @@
 
       return element
     }
+  }
+
+  /** Clicks the first matching element that is actually on screen (skips `hidden md:flex` desktop clones). */
+  function clickTourTarget(selector: string): void {
+    firstVisible(selector)?.click()
+  }
+
+  function tourElement(selector: string): HTMLElement {
+    return firstVisible(selector) ?? document.body
+  }
+
+  /** driver.js resolves `element` before `onHighlightStarted`, so tab switches must run from the *previous* step’s Next via `tick()`. */
+  async function afterTabSwitchNavigate(drv: { moveNext: () => void }, function_: () => void): Promise<void> {
+    function_()
+    await tick()
+    await tick()
+    drv.moveNext()
   }
 
   function isMobileWidth(): boolean {
@@ -78,11 +95,7 @@
           element: () => {
             prepareChatPanel?.()
 
-            return (
-              firstVisible('[data-tour="chat-panel"]') ??
-              (document.querySelector('[data-tour="diary-primary-tabs"]') as HTMLElement | null) ??
-              document.body
-            )
+            return firstVisible('[data-tour="chat-panel"]') ?? tourElement('[data-tour="diary-primary-tabs"]')
           },
           onHighlighted: (_element, _step, { driver: drv }) => {
             if (firstVisible('[data-tour="chat-panel"]')) return
@@ -109,37 +122,37 @@
           },
         },
         {
-          element: '[data-tour="diary-primary-tabs"]',
+          element: () => tourElement('[data-tour="diary-primary-tabs"]'),
           popover: {
             title: m.oryxel_tour_tabs_title(),
             description: m.oryxel_tour_tabs_desc(),
             side: 'top',
             align: mobile ? 'center' : 'start',
+            onNextClick: async (_element, _step, { driver: drv }) => {
+              clickTourTarget('[data-tour="primary-fragrances"]')
+              await tick()
+              clickTourTarget('[data-tour="fragrance-list-owned"]')
+              await tick()
+              await tick()
+              drv.moveNext()
+            },
           },
         },
         {
-          element: '[data-tour="diary-table"]',
-          onHighlightStarted: () => {
-            document.querySelector<HTMLElement>('[data-tour="primary-fragrances"]')?.click()
-            requestAnimationFrame(() => {
-              document.querySelector<HTMLElement>('[data-tour="fragrance-list-owned"]')?.click()
-            })
-          },
+          element: () => tourElement('[data-tour="diary-table"]'),
           popover: {
             title: m.oryxel_tour_table_title(),
             description: m.oryxel_tour_table_desc(),
             side: 'bottom',
             align: mobile ? 'center' : 'start',
+            onNextClick: async (_element, _step, { driver: drv }) => {
+              await afterTabSwitchNavigate(drv, () => clickTourTarget('[data-tour="primary-profile"]'))
+            },
           },
         },
         {
           element: () =>
-            firstVisible('[data-tour="profile-header"]') ??
-            (document.querySelector('[data-tour="diary-primary-tabs"]') as HTMLElement | null) ??
-            document.body,
-          onHighlightStarted: () => {
-            document.querySelector<HTMLElement>('[data-tour="primary-profile"]')?.click()
-          },
+            firstVisible('[data-tour="profile-header"]') ?? tourElement('[data-tour="diary-primary-tabs"]'),
           onHighlighted: (_element, _step, { driver: drv }) => {
             requestAnimationFrame(() => {
               requestAnimationFrame(() => drv.refresh())
@@ -153,19 +166,19 @@
           },
         },
         {
-          element: '[data-tour="profile-radar"]',
+          element: () => tourElement('[data-tour="profile-radar"]'),
           popover: {
             title: m.oryxel_tour_profile_radar_title(),
             description: m.oryxel_tour_profile_radar_desc(),
             side: mobile ? 'top' : 'right',
             align: mobile ? 'center' : 'start',
+            onNextClick: async (_element, _step, { driver: drv }) => {
+              await afterTabSwitchNavigate(drv, () => clickTourTarget('[data-tour="primary-notes"]'))
+            },
           },
         },
         {
-          element: '[data-tour="notes-view-toggle"]',
-          onHighlightStarted: () => {
-            document.querySelector<HTMLElement>('[data-tour="primary-notes"]')?.click()
-          },
+          element: () => tourElement('[data-tour="notes-view-toggle"]'),
           popover: {
             title: m.oryxel_tour_notes_title(),
             description: m.oryxel_tour_notes_desc(),
@@ -174,25 +187,22 @@
           },
         },
         {
-          element: '[data-tour="notes-content"]',
+          element: () => tourElement('[data-tour="notes-content"]'),
           popover: {
             title: m.oryxel_tour_notes_sentiments_title(),
             description: m.oryxel_tour_notes_sentiments_desc(),
             side: 'top',
             align: mobile ? 'center' : 'start',
+            onNextClick: async (_element, _step, { driver: drv }) => {
+              await afterTabSwitchNavigate(drv, () => clickTourTarget('[data-tour="primary-profile"]'))
+            },
           },
         },
         {
-          element: () => {
-            document.querySelector<HTMLElement>('[data-tour="primary-profile"]')?.click()
-
-            return (
-              firstVisible('[data-tour="profile-settings"]') ??
-              firstVisible('[data-tour="profile-header"]') ??
-              (document.querySelector('[data-tour="diary-primary-tabs"]') as HTMLElement | null) ??
-              document.body
-            )
-          },
+          element: () =>
+            firstVisible('[data-tour="profile-settings"]') ??
+            firstVisible('[data-tour="profile-header"]') ??
+            tourElement('[data-tour="diary-primary-tabs"]'),
           onHighlighted: (_element, _step, { driver: drv }) => {
             requestAnimationFrame(() => {
               requestAnimationFrame(() => drv.refresh())
