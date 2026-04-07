@@ -40,12 +40,12 @@ alwaysApply: true
 
 ### What changed
 
-- Удалён корневой `railway.toml`. У **worker** и **job-stream-gateway** свой файл: [`apps/worker/railway.toml`](apps/worker/railway.toml), [`apps/job-stream-gateway/railway.toml`](apps/job-stream-gateway/railway.toml). В UI у каждого сервиса: **Root directory** = корень репо, **Config file** = путь к соответствующему toml.
+- Удалён корневой `railway.toml`. У **worker** и **job-stream-gateway** свой файл: [`apps/worker/railway.toml`](apps/worker/railway.toml), [`apps/job-stream-gateway/railway.toml`](apps/job-stream-gateway/railway.toml). Оба сервиса: **RAILPACK** + `bun install` из корня репо. В UI: **Root directory** = корень репо, **Config file** = путь к toml.
 - В корневом `package.json` добавлены `name` и `packageManager: bun@1.2.12` для Railpack.
 
 ### Why
 
-- Один источник правды на сервис и единый паттерн монорепо (`bun install` / Docker из корня).
+- Один источник правды на сервис и одинаковый билд-монорепо без отдельного Docker для gateway.
 
 ---
 

@@ -209,7 +209,7 @@ STREAM_CORS_ORIGIN
 
 `REDIS_URL` — worker + job-stream-gateway (Railway Redis). `JOB_STREAM_JWT_SECRET` — shared by web (stream-token) and gateway. `PUBLIC_JOB_STREAM_URL` — base URL of the gateway for browser `EventSource` (no trailing slash). `STREAM_CORS_ORIGIN` — gateway CORS (production web origin, or `*` for local).
 
-**Railway (monorepo):** no root `railway.toml`. Each service uses its own file — `apps/worker/railway.toml` (RAILPACK + `bun install` from repo root) and `apps/job-stream-gateway/railway.toml` (DOCKERFILE). In Railway UI: **Root directory** = repository root; **Config file** = that path per service.
+**Railway (monorepo):** no root `railway.toml`. Worker and job-stream-gateway each have `apps/<service>/railway.toml` with **RAILPACK**, `bun install --frozen-lockfile` from repo root, and a service-specific `startCommand`. In Railway UI: **Root directory** = repository root; **Config file** = that path per service.
 
 Extend this list in **`memory.mdc`** and here when new features add secrets.
 

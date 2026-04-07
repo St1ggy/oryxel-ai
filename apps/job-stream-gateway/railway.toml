@@ -5,13 +5,12 @@
 #   • Root directory: пусто / "."  (корень монорепозитория)
 #   • Config file: apps/job-stream-gateway/railway.toml
 #
-# Образ собирается из корня: Dockerfile копирует весь монорепо и делает bun install,
-# иначе npm/railpack в подпапке ломается на workspace:*.
+# Как у worker: Railpack + bun install из корня репо — иначе workspace:* не резолвится.
 # =============================================================================
 
 [build]
-builder = "DOCKERFILE"
-dockerfilePath = "apps/job-stream-gateway/Dockerfile"
+builder = "RAILPACK"
+buildCommand = "bun install --frozen-lockfile"
 watchPatterns = [
   "/apps/job-stream-gateway/**",
   "/packages/**",
@@ -20,5 +19,6 @@ watchPatterns = [
 ]
 
 [deploy]
+startCommand = "bun run --cwd apps/job-stream-gateway start"
 healthcheckPath = "/health"
 healthcheckTimeout = 30
