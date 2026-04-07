@@ -284,8 +284,20 @@
     }
   })
 
+  let jobStreamUrlMissingLogged = false
+
   function jobStreamEnabled(): boolean {
-    return Boolean(env.PUBLIC_JOB_STREAM_URL?.trim())
+    const url = env.PUBLIC_JOB_STREAM_URL?.trim() ?? ''
+
+    if (!url && browser && !jobStreamUrlMissingLogged) {
+      jobStreamUrlMissingLogged = true
+      // eslint-disable-next-line no-console -- intentional operator hint when SSE is disabled
+      console.info(
+        '[oryxel] Job updates use HTTP polling: set PUBLIC_JOB_STREAM_URL to your Railway gateway base URL (https, no trailing slash) in Vercel env and redeploy so the client can open EventSource.',
+      )
+    }
+
+    return Boolean(url)
   }
 
   async function streamJobUntilDone(
@@ -325,11 +337,18 @@
             signal: options.signal,
           })
 
+          const tokenPayload = (await tokenResponse.json().catch(() => null)) as { token?: string } | null
+
           if (!tokenResponse.ok) {
-            throw new Error('stream token failed')
+            throw new Error(`stream token failed: HTTP ${tokenResponse.status}`)
           }
 
-          const { token } = (await tokenResponse.json()) as { token: string }
+          const token = tokenPayload?.token
+
+          if (!token) {
+            throw new Error('stream token missing in response (is JOB_STREAM_JWT_SECRET set on Vercel?)')
+          }
+
           const base = env.PUBLIC_JOB_STREAM_URL!.trim().replace(/\/$/, '')
           const url = `${base}/stream?jobId=${jobId}&token=${encodeURIComponent(token)}`
 
@@ -351,7 +370,11 @@
           })
 
           es.addEventListener('error', () => {
-            fail(new Error('EventSource error'))
+            fail(
+              new Error(
+                `EventSource error for ${base}/stream (check gateway is up, STREAM_CORS_ORIGIN matches this site origin, https↔http mixed content)`,
+              ),
+            )
           })
         } catch (error) {
           fail(error instanceof Error ? error : new Error(String(error)))
@@ -394,8 +417,12 @@
     if (jobStreamEnabled()) {
       try {
         return await streamJobUntilDone(jobId, { signal, onUpdate })
-      } catch {
-        // Gateway unreachable or token misconfigured — fall back to polling.
+      } catch (error) {
+        // eslint-disable-next-line no-console -- intentional diagnostic when SSE falls back
+        console.warn(
+          '[oryxel] Job SSE failed; falling back to polling. See earlier error or verify PUBLIC_JOB_STREAM_URL, JOB_STREAM_JWT_SECRET, gateway STREAM_CORS_ORIGIN, and redeploy.',
+          error,
+        )
       }
     }
 
