@@ -1,7 +1,7 @@
 import { redirect } from '@sveltejs/kit'
 import { and, eq } from 'drizzle-orm'
 
-import { DIARY_LIST_TAB_VALUES } from '$lib/diary/diary-tab-items'
+import { parseDiaryUrlParams } from '$lib/diary/diary-url'
 import { cookieName } from '$lib/paraglide/runtime'
 import { applyPatchToDatabase } from '$lib/server/ai/apply'
 import { getActiveJobsForUser } from '$lib/server/ai/jobs'
@@ -94,10 +94,7 @@ export const load: PageServerLoad = async ({ locals, url, cookies }) => {
     .reverse()
     .map((row) => ({ id: `db-${row.id}`, role: row.role as 'user' | 'assistant', content: row.content }))
 
-  const rawTab = url.searchParams.get('tab') ?? ''
-  const initialTab = (DIARY_LIST_TAB_VALUES as readonly string[]).includes(rawTab)
-    ? (rawTab as (typeof DIARY_LIST_TAB_VALUES)[number])
-    : 'owned'
+  const { view: initialView, list: initialFragranceTab } = parseDiaryUrlParams(url.searchParams)
 
   return {
     diary,
@@ -110,7 +107,8 @@ export const load: PageServerLoad = async ({ locals, url, cookies }) => {
     hasChatAccess,
     chatProviders,
     chatHistory,
-    initialTab,
+    initialView,
+    initialFragranceTab,
     graphStyle,
     onboardingCompleted,
   }

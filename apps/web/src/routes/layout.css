@@ -332,13 +332,6 @@ html {
   );
 }
 
-/* Custom accent override (Settings picker) */
-[data-accent-custom='true'] {
-  --oryx-accent-solid: var(--oryx-custom-accent, var(--oryx-accent-solid));
-  --oryx-ring: var(--oryx-custom-accent, var(--oryx-ring));
-  --oryx-star-filled: var(--oryx-custom-accent, var(--oryx-star-filled));
-}
-
 @theme inline {
   --color-background: var(--oryx-bg-page);
   --color-surface: var(--oryx-bg-surface);

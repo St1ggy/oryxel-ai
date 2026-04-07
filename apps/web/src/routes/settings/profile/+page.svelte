@@ -10,6 +10,8 @@
   import Textarea from '$lib/components/ui/textarea.svelte'
   import * as m from '$lib/paraglide/messages.js'
 
+  import { resolve } from '$app/paths'
+
   let displayName = $state('')
   let bio = $state('')
   let tone = $state('')
@@ -74,8 +76,8 @@
   }
 </script>
 
-<div class="mx-auto max-w-[640px] space-y-8 bg-background px-4 py-8 md:px-8">
-  <h1 class="oryx-heading text-2xl font-medium tracking-tight">{m.oryxel_edit_title()}</h1>
+<div class="space-y-8">
+  <h2 class="oryx-heading text-xl font-medium tracking-tight">{m.oryxel_settings_nav_profile()}</h2>
 
   <Card class="space-y-4 p-6">
     <div>
@@ -93,7 +95,7 @@
   </Card>
 
   <Card class="space-y-4 p-6">
-    <h2 class="oryx-heading text-lg font-medium">{m.oryxel_ai_section()}</h2>
+    <h3 class="oryx-heading text-lg font-medium">{m.oryxel_ai_section()}</h3>
     <div>
       <Label for="tone">{m.oryxel_ai_tone()}</Label>
       <Input id="tone" class="mt-1" bind:value={tone} />
@@ -107,6 +109,6 @@
 
   <div class="flex flex-wrap gap-2">
     <Button onclick={save}>{m.oryxel_save()}</Button>
-    <Button variant="secondary" href="/profile">{m.oryxel_cancel()}</Button>
+    <Button variant="secondary" href={resolve('/diary?view=profile')}>{m.oryxel_cancel()}</Button>
   </div>
 </div>

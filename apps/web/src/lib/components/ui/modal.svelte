@@ -9,11 +9,13 @@
     open?: boolean
     title: string
     description?: string
+    /** Widen dialog (e.g. patch details). */
+    surfaceClass?: string
     children?: Snippet
     footer?: Snippet
   }
 
-  let { open = $bindable(false), title, description, children, footer }: Props = $props()
+  let { open = $bindable(false), title, description, surfaceClass, children, footer }: Props = $props()
 </script>
 
 <Dialog.Root bind:open>
@@ -37,6 +39,7 @@
           data-state={contentOpen ? 'open' : 'closed'}
           class={cn(
             'oryx-dialog-surface fixed top-1/2 left-1/2 z-50 max-h-[min(90vh,40rem)] w-[min(100%-2rem,28rem)] overflow-y-auto rounded-2xl border border-border bg-surface p-6 shadow-[var(--oryx-shadow-lg)]',
+            surfaceClass,
             props.class as string | undefined,
           )}
         >

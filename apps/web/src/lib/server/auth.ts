@@ -36,6 +36,12 @@ export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
   database: drizzleAdapter(db, { provider: 'pg', schema }),
   emailAndPassword: { enabled: false },
+  account: {
+    accountLinking: {
+      enabled: true,
+      allowDifferentEmails: true,
+    },
+  },
   socialProviders,
   plugins: [
     ...(env.YANDEX_CLIENT_ID && env.YANDEX_CLIENT_SECRET

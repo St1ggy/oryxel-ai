@@ -11,6 +11,7 @@
     summary: string | null
     status: string
     patchType: string
+    payload?: Record<string, unknown> | null
   }
 
   type SyncPhase = 'owned' | 'liked' | 'disliked' | 'profile' | 'recommendations' | 'to_try'
@@ -25,9 +26,20 @@
     // When true, renders as a plain block at the bottom of its parent (desktop use).
     // When false (default), renders as a fixed overlay above the mobile nav.
     inline?: boolean
+    onOpenPatchDetails?: (payload: Record<string, unknown>, summary: string | null) => void
+    /** After user confirms and server applies the patch. */
+    onPatchApplied?: (summary: string, payload: Record<string, unknown>) => void
   }
 
-  const { thinking = false, patches = [], syncProgress = null, patchProgress = null, inline = false }: Props = $props()
+  const {
+    thinking = false,
+    patches = [],
+    syncProgress = null,
+    patchProgress = null,
+    inline = false,
+    onOpenPatchDetails,
+    onPatchApplied,
+  }: Props = $props()
 
   const pendingPatches = $derived(patches.filter((p) => p.status === 'created'))
   const activeProgress = $derived(patchProgress ?? syncProgress)
@@ -70,14 +82,33 @@
 
   let busyId = $state<number | null>(null)
 
-  async function submitDecision(patchId: number, decision: 'confirm' | 'reject') {
-    busyId = patchId
+  async function submitDecision(patch: PendingPatch, decision: 'confirm' | 'reject') {
+    busyId = patch.id
     try {
-      await fetch('/api/agent/preferences/confirm', {
+      const response = await fetch('/api/agent/preferences/confirm', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ patchId, decision }),
+        body: JSON.stringify({ patchId: patch.id, decision }),
       })
+      const data = (await response.json().catch(() => null)) as {
+        status?: string
+        appliedPatch?: Record<string, unknown>
+      } | null
+
+      if (!response.ok) {
+        await invalidateAll()
+
+        return
+      }
+
+      if (decision === 'confirm' && data?.status === 'applied' && onPatchApplied) {
+        const payload =
+          data.appliedPatch ??
+          (patch.payload && typeof patch.payload === 'object' ? patch.payload : ({} as Record<string, unknown>))
+
+        onPatchApplied(patch.summary ?? '', payload)
+      }
+
       await invalidateAll()
     } finally {
       busyId = null
@@ -97,12 +128,29 @@
               &nbsp;—&nbsp;
               {patch.summary ?? m.oryxel_pending_fallback_summary()}
             </p>
-            <div class="flex shrink-0 items-center gap-2">
+            <div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
+              {#if onOpenPatchDetails}
+                <button
+                  type="button"
+                  class="oryx-transition rounded-lg border border-border bg-muted/40 px-3 py-1.5 text-xs font-medium text-foreground-muted hover:border-border-strong hover:text-foreground disabled:opacity-50"
+                  disabled={busyId !== null}
+                  onclick={() =>
+                    onOpenPatchDetails(
+                      (patch.payload && typeof patch.payload === 'object' ? patch.payload : {}) as Record<
+                        string,
+                        unknown
+                      >,
+                      patch.summary,
+                    )}
+                >
+                  {m.oryxel_patch_details_cta()}
+                </button>
+              {/if}
               <button
                 type="button"
                 class="oryx-transition oryx-btn-primary rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-50"
                 disabled={busyId !== null}
-                onclick={() => submitDecision(patch.id, 'confirm')}
+                onclick={() => submitDecision(patch, 'confirm')}
               >
                 {m.oryxel_action_confirm()}
               </button>
@@ -110,7 +158,7 @@
                 type="button"
                 class="oryx-transition rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground-muted hover:border-border-strong hover:text-foreground disabled:opacity-50"
                 disabled={busyId !== null}
-                onclick={() => submitDecision(patch.id, 'reject')}
+                onclick={() => submitDecision(patch, 'reject')}
               >
                 {m.oryxel_action_reject()}
               </button>
@@ -167,11 +215,28 @@
                   <span class="text-foreground-muted">{patch.summary ?? m.oryxel_pending_fallback_summary()}</span>
                 </p>
                 <div class="flex shrink-0 flex-col gap-1.5 pt-0.5">
+                  {#if onOpenPatchDetails}
+                    <button
+                      type="button"
+                      class="oryx-transition rounded-lg border border-border bg-muted/40 px-3 py-1.5 text-xs font-medium text-foreground-muted disabled:opacity-50"
+                      disabled={busyId !== null}
+                      onclick={() =>
+                        onOpenPatchDetails(
+                          (patch.payload && typeof patch.payload === 'object' ? patch.payload : {}) as Record<
+                            string,
+                            unknown
+                          >,
+                          patch.summary,
+                        )}
+                    >
+                      {m.oryxel_patch_details_cta()}
+                    </button>
+                  {/if}
                   <button
                     type="button"
                     class="oryx-transition oryx-btn-primary rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-50"
                     disabled={busyId !== null}
-                    onclick={() => submitDecision(patch.id, 'confirm')}
+                    onclick={() => submitDecision(patch, 'confirm')}
                   >
                     {m.oryxel_action_confirm()}
                   </button>
@@ -179,7 +244,7 @@
                     type="button"
                     class="oryx-transition rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground-muted disabled:opacity-50"
                     disabled={busyId !== null}
-                    onclick={() => submitDecision(patch.id, 'reject')}
+                    onclick={() => submitDecision(patch, 'reject')}
                   >
                     {m.oryxel_action_reject()}
                   </button>

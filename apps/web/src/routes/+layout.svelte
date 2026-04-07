@@ -21,9 +21,17 @@
   const secondaryTitle = $derived.by((): string => {
     if (path.startsWith('/login')) return m.oryxel_login_title_signin()
 
-    if (path.startsWith('/settings')) return m.oryxel_settings_title()
+    if (path.startsWith('/settings/profile')) return m.oryxel_settings_nav_profile()
 
-    if (path.startsWith('/profile/edit')) return m.oryxel_edit_title()
+    if (path.startsWith('/settings/appearance')) return m.oryxel_settings_nav_appearance()
+
+    if (path.startsWith('/settings/security')) return m.oryxel_settings_security_title()
+
+    if (path.startsWith('/settings/agents/memory')) return m.oryxel_settings_nav_agent_memory()
+
+    if (path.startsWith('/settings/agents')) return m.oryxel_settings_nav_agents()
+
+    if (path.startsWith('/settings')) return m.oryxel_settings_title()
 
     if (path.startsWith('/profile')) return m.oryxel_nav_profile()
 

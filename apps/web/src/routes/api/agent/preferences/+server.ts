@@ -1,7 +1,7 @@
 import { error, json } from '@sveltejs/kit'
 import { z } from 'zod'
 
-import { applyPatchToDatabase } from '$lib/server/ai/apply'
+import { applyPatchToDatabase, listAgentMemoryEntriesForUser } from '$lib/server/ai/apply'
 import { isCriticalPatch } from '$lib/server/ai/decision'
 import { getUserDefaultProvider } from '$lib/server/ai/keys/service'
 import { analyzePreferences } from '$lib/server/ai/router'
@@ -247,11 +247,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     scenario,
   })
 
-  const [profile, diary, defaultProvider, recentMessages] = await Promise.all([
+  const [profile, diary, defaultProvider, recentMessages, agentMemoryEntries] = await Promise.all([
     loadProfileForUser(locals.user.id, locals.user.name || 'User'),
     loadDiaryForUser(locals.user.id, locale),
     getUserDefaultProvider(locals.user.id),
     loadRecentChatMessages(locals.user.id, 6),
+    listAgentMemoryEntriesForUser(locals.user.id),
   ])
 
   const context = {
@@ -308,6 +309,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     },
     budget: body.context?.budget,
     recentMessages,
+    agentMemoryEntries: agentMemoryEntries.length > 0 ? agentMemoryEntries : undefined,
   }
 
   const router = await analyzePreferences({
@@ -375,5 +377,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     summary: patch.summary,
     reply: patch.reply,
     attempts: router.attempts,
+    ...(critical ? {} : { appliedPatch: patch as unknown as Record<string, unknown> }),
   })
 }

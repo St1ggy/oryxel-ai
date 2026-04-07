@@ -7,5 +7,5 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     throw redirect(302, `/login?redirectTo=${encodeURIComponent(url.pathname + url.search)}`)
   }
 
-  return {}
+  throw redirect(302, '/settings/profile')
 }

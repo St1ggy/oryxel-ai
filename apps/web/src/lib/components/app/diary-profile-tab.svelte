@@ -87,9 +87,9 @@
         <Button
           variant="secondary"
           class="h-9 flex-1 rounded-full border-subtle bg-subtle text-sm font-semibold shadow-sm"
-          href={resolve('/profile/edit')}
+          href={resolve('/settings/profile')}
         >
-          {m.oryxel_profile_edit()}
+          {m.oryxel_nav_settings()}
         </Button>
         <Button
           variant="ghost"
@@ -131,9 +131,9 @@
         <Button
           variant="secondary"
           class="h-[42px] rounded-full border-subtle bg-subtle px-5 text-sm font-semibold shadow-sm"
-          href={resolve('/profile/edit')}
+          href={resolve('/settings/profile')}
         >
-          {m.oryxel_profile_edit()}
+          {m.oryxel_nav_settings()}
         </Button>
         <Button
           variant="ghost"

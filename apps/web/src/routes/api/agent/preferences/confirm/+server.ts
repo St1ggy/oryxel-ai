@@ -55,7 +55,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       action: 'applied',
     })
 
-    return json({ ok: true, status: 'applied' })
+    return json({
+      ok: true,
+      status: 'applied',
+      appliedPatch: patch.payload as Record<string, unknown>,
+    })
   } catch (error_) {
     await updatePatchStatus({
       patchId: patch.id,

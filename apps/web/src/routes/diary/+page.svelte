@@ -1,24 +1,29 @@
 <script lang="ts">
-  import { PanelLeftOpen, PanelRightOpen } from '@lucide/svelte'
+  import { ArrowLeft, MessageSquare, PanelLeftOpen, PanelRightOpen } from '@lucide/svelte'
   import { untrack } from 'svelte'
   import { fade } from 'svelte/transition'
 
   import AiStatusFloat from '$lib/components/app/ai-status-float.svelte'
   import AppChatPanel from '$lib/components/app/app-chat-panel.svelte'
   import DiaryEditModal from '$lib/components/app/diary-edit-modal.svelte'
+  import DiaryFragrancesPanel from '$lib/components/app/diary-fragrances-panel.svelte'
+  import DiaryGuideTab from '$lib/components/app/diary-guide-tab.svelte'
   import DiaryHeaderControls from '$lib/components/app/diary-header-controls.svelte'
-  import DiaryListTabs from '$lib/components/app/diary-list-tabs.svelte'
+  import DiaryNotesTab from '$lib/components/app/diary-notes-tab.svelte'
+  import DiaryPrimaryNav from '$lib/components/app/diary-primary-nav.svelte'
+  import DiaryProfileSkeleton from '$lib/components/app/diary-profile-skeleton.svelte'
   import DiaryProfileTab from '$lib/components/app/diary-profile-tab.svelte'
   import DiaryTour from '$lib/components/app/diary-tour.svelte'
   import FragranceDetailModal from '$lib/components/app/fragrance-detail-modal.svelte'
-  import MobilePrimaryNav from '$lib/components/app/mobile-primary-nav.svelte'
+  import PatchAppliedToast from '$lib/components/app/patch-applied-toast.svelte'
+  import PatchDetailsModal from '$lib/components/app/patch-details-modal.svelte'
   import Button from '$lib/components/ui/button.svelte'
   import Modal from '$lib/components/ui/modal.svelte'
   import * as m from '$lib/paraglide/messages.js'
   import { cn } from '$lib/utils/cn'
 
-  import type { DiaryListTabValue } from '$lib/diary/diary-tab-items'
-  import type { ChatMessage, DiaryData, DiaryMobileTab, DiaryRow, FragranceListType } from '$lib/types/diary'
+  import type { DiaryPrimaryView, FragranceListTabValue } from '$lib/diary/diary-tab-items'
+  import type { ChatMessage, DiaryData, DiaryRow, FragranceListType } from '$lib/types/diary'
   import type { PageData } from './$types'
 
   import { browser } from '$app/environment'
@@ -29,19 +34,28 @@
 
   let chatOpen = $state(true)
   let chatDraft = $state('')
-  let mobileTab = $state<DiaryMobileTab>('lists')
-  let listTab = $state<DiaryListTabValue>(untrack(() => data.initialTab ?? 'owned'))
+  let mobileChatOpen = $state(false)
+  let primaryView = $state<DiaryPrimaryView>(untrack(() => data.initialView ?? 'fragrances'))
+  let fragranceTab = $state<FragranceListTabValue>(untrack(() => data.initialFragranceTab ?? 'owned'))
   let editRow = $state<DiaryRow | null>(null)
   let detailOpen = $state(false)
   let detailRow = $state<DiaryRow | null>(null)
   let detailContext = $state<'diary' | 'to_try'>('diary')
 
   $effect(() => {
-    // Use history.replaceState directly — SvelteKit's goto() re-runs the load function
-    // even with replaceState:true, triggering a full server round-trip on every tab switch.
+    if (!browser) return
+
     const url = new URL(location.href)
 
-    url.searchParams.set('tab', listTab)
+    url.searchParams.set('view', primaryView)
+
+    if (primaryView === 'fragrances') {
+      url.searchParams.set('list', fragranceTab)
+    } else {
+      url.searchParams.delete('list')
+    }
+
+    url.searchParams.delete('tab')
     history.replaceState({}, '', url)
   })
   let editOpen = $state(false)
@@ -59,6 +73,11 @@
     tourAutoStarted = true
     const timer = setTimeout(() => {
       chatOpen = true
+
+      if (globalThis.matchMedia('(max-width: 767px)').matches) {
+        mobileChatOpen = true
+      }
+
       startTour?.()
     }, 500)
 
@@ -189,6 +208,35 @@
   let patchProgress = $state<PatchProgress>(null)
   let syncConfirmOpen = $state(false)
   let thinking = $state(false)
+  let refreshingRecommendations = $state(false)
+
+  let patchAppliedToast = $state<{ summary: string; payload: Record<string, unknown> } | null>(null)
+  let patchDetailsOpen = $state(false)
+  let patchDetailsPayload = $state<Record<string, unknown> | null>(null)
+  let patchDetailsSubtitle = $state<string | null>(null)
+
+  function openPatchDetailsModal(payload: Record<string, unknown>, subtitle: string | null) {
+    patchDetailsPayload = payload
+    patchDetailsSubtitle = subtitle
+    patchDetailsOpen = true
+  }
+
+  function dismissPatchToast() {
+    patchAppliedToast = null
+  }
+
+  function notifyPatchAppliedFromJobResult(result: Record<string, unknown>) {
+    if (result['requiresConfirmation'] === true) return
+
+    const summary = (result['summary'] as string) ?? ''
+    const applied = result['appliedPatch']
+    const payload =
+      applied && typeof applied === 'object' && !Array.isArray(applied)
+        ? (applied as Record<string, unknown>)
+        : { summary, reply: result['reply'] }
+
+    patchAppliedToast = { summary, payload }
+  }
 
   // Aborted when the component is destroyed (navigation away) — stops all in-flight fetches.
   let pageAbort = new AbortController()
@@ -253,6 +301,8 @@
 
           if (job.status !== 'failed') {
             const result = job.result ?? {}
+
+            notifyPatchAppliedFromJobResult(result)
 
             if (result.triggerSync) void triggerProfileSync()
           }
@@ -471,6 +521,63 @@
     }
   }
 
+  async function onRefreshRecommendations() {
+    if (!hasChatAccess || thinking || refreshingRecommendations) return
+
+    const refreshMessage = m.oryxel_rec_refresh_chat_message()
+
+    messages = [...messages, { id: crypto.randomUUID(), role: 'user', content: refreshMessage }]
+    refreshingRecommendations = true
+
+    try {
+      const response = await fetch('/api/agent/preferences/stream', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          message: refreshMessage,
+          locale: data.locale,
+          scenario: 'recommendation',
+          recommendationsOnly: true,
+          provider: selectedProvider || undefined,
+        }),
+        signal: pageAbort.signal,
+      })
+
+      if (!response.ok) throw new Error('Agent request failed')
+
+      const { jobId } = (await response.json()) as { jobId: number }
+
+      const job = await waitForJob(jobId, pageAbort.signal, (index) => {
+        const latest = index.progress.at(-1)
+
+        if (latest?.phase === 'applying') {
+          patchProgress = { step: latest.step, total: latest.total }
+        }
+      })
+
+      patchProgress = null
+
+      if (job.status === 'failed') throw new Error(job.errorMessage ?? 'Agent failed')
+
+      const result = job.result ?? {}
+      const summary = (result.summary as string | null) ?? ''
+      const responseText =
+        (result.reply as string | undefined) ??
+        (result.requiresConfirmation
+          ? m.oryxel_chat_critical_pending({ summary })
+          : m.oryxel_chat_patch_applied({ summary }))
+
+      messages = [...messages, { id: crypto.randomUUID(), role: 'assistant', content: responseText }]
+      notifyPatchAppliedFromJobResult(result)
+    } catch {
+      messages = [...messages, { id: crypto.randomUUID(), role: 'assistant', content: m.oryxel_chat_error_generic() }]
+    } finally {
+      refreshingRecommendations = false
+      patchProgress = null
+      void invalidateAll()
+    }
+  }
+
   async function onSend(text: string) {
     messages = [...messages, { id: crypto.randomUUID(), role: 'user', content: text }]
     thinking = true
@@ -514,6 +621,7 @@
           : m.oryxel_chat_patch_applied({ summary }))
 
       messages = [...messages, { id: crypto.randomUUID(), role: 'assistant', content: responseText }]
+      notifyPatchAppliedFromJobResult(result)
     } catch {
       messages = [...messages, { id: crypto.randomUUID(), role: 'assistant', content: m.oryxel_chat_error_generic() }]
     } finally {
@@ -568,26 +676,25 @@
     void invalidateAll()
   }
 
-  function onMobileNav(tab: DiaryMobileTab) {
-    if (tab === 'lists' && mobileTab === 'profile' && listTab === 'profile') {
-      listTab = 'owned'
-    }
-
-    mobileTab = tab
-  }
-
   function onTriedRecommendation(brand: string, name: string) {
     chatDraft = m.oryxel_rec_tried_draft({ brand, name })
     chatOpen = true
-
-    if (mobileTab !== 'chat') mobileTab = 'chat'
+    mobileChatOpen = true
   }
 
-  const desktopContentWidthClass = $derived(listTab === 'profile' ? 'mx-auto w-full max-w-[880px]' : 'w-full')
+  const desktopContentWidthClass = $derived(primaryView === 'profile' ? 'mx-auto w-full max-w-[880px]' : 'w-full')
+
+  function selectPrimaryView(view: DiaryPrimaryView) {
+    primaryView = view
+  }
 
   // Extra bottom padding on mobile when the fixed status bar is visible.
   const mobileStatusVisible = $derived(
-    thinking || pendingItems.some((p) => p.status === 'created') || !!patchProgress || !!syncProgress,
+    thinking ||
+      refreshingRecommendations ||
+      pendingItems.some((p) => p.status === 'created') ||
+      !!patchProgress ||
+      !!syncProgress,
   )
 </script>
 
@@ -612,41 +719,88 @@
       />
     </section>
     <section class="flex min-h-0 min-w-0 flex-1 flex-col bg-background">
-      <DiaryListTabs
-        bind:listTab
-        {diaryState}
-        loading={diaryLoading}
-        {onRatingChange}
-        onOpenDetail={openDetail}
-        onProfileSync={handleProfileSyncClick}
-        profile={profileData}
-        recentActivity={resolvedRecentActivity}
-        noteRelationships={resolvedProfile?.noteRelationships}
-        layout="desktop"
-        contentWidthClass={desktopContentWidthClass}
-        graphStyle={data.graphStyle}
+      <div
+        class="flex h-[68px] shrink-0 items-center gap-2 border-b border-border bg-surface px-4 md:gap-4 md:px-10"
+        data-tour="diary-shell-header"
       >
-        {#snippet headerStart()}
-          <Button variant="ghost" size="sm" class="shrink-0 p-2" onclick={() => (chatOpen = !chatOpen)}>
-            {#if chatOpen}
-              <PanelRightOpen class="size-5" />
+        <Button variant="ghost" size="sm" class="shrink-0 p-2" onclick={() => (chatOpen = !chatOpen)}>
+          {#if chatOpen}
+            <PanelRightOpen class="size-5" />
+          {:else}
+            <PanelLeftOpen class="size-5" />
+          {/if}
+          <span class="sr-only">{chatOpen ? m.oryxel_chat_hide() : m.oryxel_chat_show()}</span>
+        </Button>
+        <DiaryPrimaryNav variant="desktop" active={primaryView} onSelect={selectPrimaryView} />
+        <DiaryHeaderControls
+          onStartTour={() => {
+            chatOpen = true
+
+            if (browser && globalThis.matchMedia('(max-width: 767px)').matches) {
+              mobileChatOpen = true
+            }
+
+            startTour?.()
+          }}
+        />
+      </div>
+      <div class="min-h-0 flex-1 overflow-y-auto p-4 md:p-9">
+        <div class={cn('w-full', desktopContentWidthClass)}>
+          {#if primaryView === 'fragrances'}
+            <DiaryFragrancesPanel
+              bind:fragranceTab
+              {diaryState}
+              loading={diaryLoading}
+              {onRatingChange}
+              onOpenDetail={openDetail}
+              {onRefreshRecommendations}
+              {refreshingRecommendations}
+              canRefreshRecommendations={hasChatAccess && !thinking}
+              layout="desktop"
+            />
+          {:else if primaryView === 'notes'}
+            <div data-tour="primary-notes">
+              <DiaryNotesTab
+                diaryData={diaryState}
+                noteRelationships={resolvedProfile?.noteRelationships ?? []}
+                layout="desktop"
+                graphStyle={data.graphStyle}
+              />
+            </div>
+          {:else if primaryView === 'profile'}
+            {#if diaryLoading}
+              <DiaryProfileSkeleton variant="desktop" />
             {:else}
-              <PanelLeftOpen class="size-5" />
+              <DiaryProfileTab
+                variant="desktop"
+                profile={profileData}
+                onProfileSync={handleProfileSyncClick}
+                recentActivity={resolvedRecentActivity}
+                diaryCounts={{
+                  owned: diaryState.owned.length,
+                  to_try: diaryState.to_try.length,
+                  liked: diaryState.liked.length,
+                  neutral: diaryState.neutral.length,
+                  disliked: diaryState.disliked.length,
+                }}
+              />
             {/if}
-            <span class="sr-only">{chatOpen ? m.oryxel_chat_hide() : m.oryxel_chat_show()}</span>
-          </Button>
-        {/snippet}
-        {#snippet headerEnd()}
-          <DiaryHeaderControls
-            onStartTour={() => {
-              chatOpen = true
-              startTour?.()
-            }}
-          />
-        {/snippet}
-      </DiaryListTabs>
-      <!-- Desktop status bar — inline at bottom of right panel, never overlaps chat -->
-      <AiStatusFloat {thinking} patches={pendingItems} {syncProgress} {patchProgress} inline />
+          {:else}
+            <DiaryGuideTab layout="desktop" />
+          {/if}
+        </div>
+      </div>
+      <AiStatusFloat
+        thinking={thinking || refreshingRecommendations}
+        patches={pendingItems}
+        {syncProgress}
+        {patchProgress}
+        inline
+        onOpenPatchDetails={(payload, summary) => openPatchDetailsModal(payload, summary)}
+        onPatchApplied={(summary, payload) => {
+          patchAppliedToast = { summary, payload }
+        }}
+      />
     </section>
   </div>
 
@@ -655,9 +809,16 @@
       ? 'flex min-h-svh flex-1 flex-col pb-28 md:hidden'
       : 'flex min-h-svh flex-1 flex-col pb-16 md:hidden'}
   >
-    {#key mobileTab}
-      {#if mobileTab === 'chat'}
+    {#key mobileChatOpen}
+      {#if mobileChatOpen}
         <div class="flex min-h-0 flex-1 flex-col" in:fade={{ duration: 180 }} out:fade={{ duration: 120 }}>
+          <div class="flex shrink-0 items-center gap-2 border-b border-border bg-surface px-2 py-2">
+            <Button variant="ghost" size="sm" class="gap-2" onclick={() => (mobileChatOpen = false)}>
+              <ArrowLeft class="size-4" />
+              <span class="text-sm">{m.oryxel_back()}</span>
+            </Button>
+            <span class="text-sm font-medium">{m.oryxel_chat_title()}</span>
+          </div>
           <AppChatPanel
             {messages}
             {thinking}
@@ -666,44 +827,76 @@
             bind:selectedProvider
             bind:draft={chatDraft}
             {providerOptions}
-          />
-        </div>
-      {:else if mobileTab === 'profile'}
-        <div class="min-h-0 flex-1 overflow-y-auto px-3 py-3" in:fade={{ duration: 180 }} out:fade={{ duration: 120 }}>
-          <DiaryProfileTab
-            variant="mobile"
-            profile={profileData}
-            onProfileSync={handleProfileSyncClick}
-            recentActivity={resolvedRecentActivity}
-            diaryCounts={{
-              owned: diaryState.owned.length,
-              to_try: diaryState.to_try.length,
-              liked: diaryState.liked.length,
-              neutral: diaryState.neutral.length,
-              disliked: diaryState.disliked.length,
-            }}
+            suggestions={profileData.suggestions}
           />
         </div>
       {:else}
-        <div class="min-h-0 flex-1 overflow-y-auto px-3 py-3" in:fade={{ duration: 180 }} out:fade={{ duration: 120 }}>
-          <DiaryListTabs
-            bind:listTab
-            {diaryState}
-            loading={diaryLoading}
-            {onRatingChange}
-            onOpenDetail={openDetail}
-            onProfileSync={handleProfileSyncClick}
-            profile={profileData}
-            noteRelationships={resolvedProfile?.noteRelationships}
-            layout="mobile"
-            graphStyle={data.graphStyle}
-          />
+        <div class="flex min-h-0 flex-1 flex-col" in:fade={{ duration: 180 }} out:fade={{ duration: 120 }}>
+          <div class="flex shrink-0 items-center justify-between gap-2 border-b border-border bg-surface px-3 py-2">
+            <DiaryHeaderControls
+              onStartTour={() => {
+                chatOpen = true
+                mobileChatOpen = true
+                startTour?.()
+              }}
+            />
+            <Button variant="secondary" size="sm" class="shrink-0 gap-2" onclick={() => (mobileChatOpen = true)}>
+              <MessageSquare class="size-4" />
+              {m.oryxel_chat_title()}
+            </Button>
+          </div>
+          <div class="min-h-0 flex-1 overflow-y-auto px-3 py-3">
+            {#if primaryView === 'fragrances'}
+              <DiaryFragrancesPanel
+                bind:fragranceTab
+                {diaryState}
+                loading={diaryLoading}
+                {onRatingChange}
+                onOpenDetail={openDetail}
+                {onRefreshRecommendations}
+                {refreshingRecommendations}
+                canRefreshRecommendations={hasChatAccess && !thinking}
+                layout="mobile"
+              />
+            {:else if primaryView === 'notes'}
+              <div data-tour="primary-notes">
+                <DiaryNotesTab
+                  diaryData={diaryState}
+                  noteRelationships={resolvedProfile?.noteRelationships ?? []}
+                  layout="mobile"
+                  graphStyle={data.graphStyle}
+                />
+              </div>
+            {:else if primaryView === 'profile'}
+              {#if diaryLoading}
+                <DiaryProfileSkeleton variant="mobile" />
+              {:else}
+                <DiaryProfileTab
+                  variant="mobile"
+                  profile={profileData}
+                  onProfileSync={handleProfileSyncClick}
+                  recentActivity={resolvedRecentActivity}
+                  diaryCounts={{
+                    owned: diaryState.owned.length,
+                    to_try: diaryState.to_try.length,
+                    liked: diaryState.liked.length,
+                    neutral: diaryState.neutral.length,
+                    disliked: diaryState.disliked.length,
+                  }}
+                />
+              {/if}
+            {:else}
+              <DiaryGuideTab layout="mobile" />
+            {/if}
+          </div>
         </div>
       {/if}
     {/key}
   </div>
 
-  <MobilePrimaryNav active={mobileTab} onSelect={onMobileNav} />
+  {#if !mobileChatOpen}
+    <DiaryPrimaryNav variant="mobile" active={primaryView} onSelect={selectPrimaryView} />
+  {/if}
 </div>
 
 <Modal
@@ -734,8 +927,24 @@
 />
 <!-- Mobile status bar — fixed above bottom nav, only on mobile -->
 <div class="md:hidden">
-  <AiStatusFloat {thinking} patches={pendingItems} {syncProgress} {patchProgress} />
+  <AiStatusFloat
+    thinking={thinking || refreshingRecommendations}
+    patches={pendingItems}
+    {syncProgress}
+    {patchProgress}
+    onOpenPatchDetails={(payload, summary) => openPatchDetailsModal(payload, summary)}
+    onPatchApplied={(summary, payload) => {
+      patchAppliedToast = { summary, payload }
+    }}
+  />
 </div>
+
+<PatchAppliedToast
+  toast={patchAppliedToast}
+  onDismiss={dismissPatchToast}
+  onViewDetails={(payload, summary) => openPatchDetailsModal(payload, summary)}
+/>
+<PatchDetailsModal bind:open={patchDetailsOpen} payload={patchDetailsPayload} subtitle={patchDetailsSubtitle} />
 
 <DiaryTour
   completed={onboardingCompleted}

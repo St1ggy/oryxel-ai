@@ -82,6 +82,7 @@ function makeRow(fragranceId: number, options: { top?: string; mid?: string; bas
     isTried: false,
     isLiked: false,
     isDisliked: false,
+    isRecommendation: false,
     pyramidTop: options.top ?? null,
     pyramidMid: options.mid ?? null,
     pyramidBase: options.base ?? null,

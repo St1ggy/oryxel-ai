@@ -11,6 +11,8 @@ const bodySchema = z.object({
   locale: z.string().min(2).max(10).optional(),
   provider: z.enum(['openai', 'anthropic', 'gemini', 'qwen', 'perplexity', 'groq', 'deepseek']).optional(),
   scenario: z.enum(['analog', 'pyramid', 'recommendation', 'comparison', 'command']).optional(),
+  /** When true, worker applies only recommendations[] (diary lists and profile unchanged). */
+  recommendationsOnly: z.boolean().optional(),
   context: z
     .object({
       budget: z.string().max(120).optional(),
@@ -203,7 +205,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
   const body = bodySchema.parse(await request.json())
   const locale = body.locale ?? 'en'
-  const scenario = body.scenario ?? inferScenarioFromMessage(body.message)
+  const scenario =
+    body.recommendationsOnly === true ? 'recommendation' : (body.scenario ?? inferScenarioFromMessage(body.message))
   const userId = locals.user.id
 
   await createChatMessage({ userId, role: 'user', content: body.message, locale, scenario })
@@ -214,6 +217,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     scenario,
     provider: body.provider ?? undefined,
     budget: body.context?.budget ?? undefined,
+    recommendationsOnly: body.recommendationsOnly === true,
   })
 
   return json({ jobId })

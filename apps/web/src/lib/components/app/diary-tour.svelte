@@ -67,7 +67,7 @@
           },
         },
         {
-          element: '[data-tour="diary-tabs"]',
+          element: '[data-tour="diary-primary-tabs"]',
           popover: {
             title: m.oryxel_tour_tabs_title(),
             description: m.oryxel_tour_tabs_desc(),
@@ -78,7 +78,10 @@
         {
           element: '[data-tour="diary-table"]',
           onHighlightStarted: () => {
-            document.querySelector<HTMLElement>('[data-tour="owned-tab"]')?.click()
+            document.querySelector<HTMLElement>('[data-tour="primary-fragrances"]')?.click()
+            requestAnimationFrame(() => {
+              document.querySelector<HTMLElement>('[data-tour="fragrance-list-owned"]')?.click()
+            })
           },
           popover: {
             title: m.oryxel_tour_table_title(),
@@ -90,7 +93,7 @@
         {
           element: '[data-tour="profile-header"]',
           onHighlightStarted: () => {
-            document.querySelector<HTMLElement>('[data-tour="profile-tab"]')?.click()
+            document.querySelector<HTMLElement>('[data-tour="primary-profile"]')?.click()
           },
           popover: {
             title: m.oryxel_tour_profile_title(),
@@ -111,7 +114,7 @@
         {
           element: '[data-tour="notes-view-toggle"]',
           onHighlightStarted: () => {
-            document.querySelector<HTMLElement>('[data-tour="notes-tab"]')?.click()
+            document.querySelector<HTMLElement>('[data-tour="primary-notes"]')?.click()
           },
           popover: {
             title: m.oryxel_tour_notes_title(),

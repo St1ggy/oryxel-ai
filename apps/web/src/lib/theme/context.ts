@@ -5,8 +5,6 @@ import type { OryxelThemeId } from './constants'
 export type ThemeContextValue = {
   readonly theme: OryxelThemeId
   setTheme: (next: OryxelThemeId) => void
-  readonly customAccent: string | null
-  setCustomAccent: (hex: string | null) => void
 }
 
 const THEME_CONTEXT_KEY = Symbol('oryxel-theme')

@@ -19,7 +19,6 @@
 
   let analytics = $state(false)
   let rememberAi = $state(true)
-  let accentHex = $state('#c4a982')
 
   let minPyramidNotes = $state('1')
   let maxPyramidNotes = $state('5')
@@ -50,14 +49,6 @@
     }
 
     return titles[id]()
-  }
-
-  function applyAccent() {
-    themeContext.setCustomAccent(accentHex)
-  }
-
-  function clearAccent() {
-    themeContext.setCustomAccent(null)
   }
 
   function savePrivacy() {
@@ -150,21 +141,6 @@
           onclick={() => themeContext.setTheme(tid)}
         />
       {/each}
-    </div>
-    <div class="mt-4 flex flex-wrap items-end gap-3">
-      <div>
-        <Label for="accent">{m.oryxel_settings_accent()}</Label>
-        <div class="mt-1 flex gap-2">
-          <input
-            id="accent"
-            type="color"
-            class="h-9 w-14 cursor-pointer rounded border border-border bg-surface"
-            bind:value={accentHex}
-          />
-          <Button type="button" size="sm" onclick={applyAccent}>{m.oryxel_save()}</Button>
-          <Button type="button" variant="ghost" size="sm" onclick={clearAccent}>{m.oryxel_cancel()}</Button>
-        </div>
-      </div>
     </div>
   </Accordion.Content>
 </Accordion.Item>
