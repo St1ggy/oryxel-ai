@@ -4,8 +4,8 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "start": "tsx src/index.ts",
-    "dev": "tsx watch src/index.ts",
+    "start": "bun ./src/index.ts",
+    "dev": "bun --watch ./src/index.ts",
     "lint": "prettier --check . && eslint .",
     "format": "prettier --write ."
   },
@@ -13,8 +13,7 @@
     "@oryxel/ai": "workspace:*",
     "@oryxel/db": "workspace:*",
     "ioredis": "^5.9.2",
-    "jose": "^6.1.3",
-    "tsx": "^4.21.0"
+    "jose": "^6.1.3"
   },
   "devDependencies": {
     "@st1ggy/linter-config": "^2.42.0",

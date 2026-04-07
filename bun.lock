@@ -16,7 +16,6 @@
         "@oryxel/db": "workspace:*",
         "ioredis": "^5.9.2",
         "jose": "^6.1.3",
-        "tsx": "^4.21.0",
       },
       "devDependencies": {
         "@st1ggy/linter-config": "^2.42.0",
