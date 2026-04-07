@@ -1,6 +1,5 @@
+import { buildPrompt } from '@oryxel/ai'
 import { describe, expect, it } from 'vitest'
-
-import { buildPrompt } from './shared'
 
 describe('buildPrompt', () => {
   it('includes locale-specific language directive', () => {
@@ -11,8 +10,8 @@ describe('buildPrompt', () => {
       scenario: 'recommendation',
     })
 
-    expect(prompt).toContain('Write all human-readable text fields')
     expect(prompt).toContain('Russian')
+    expect(prompt).toContain('USER DISPLAY LIMITS')
   })
 
   it('includes context and scenario blocks', () => {

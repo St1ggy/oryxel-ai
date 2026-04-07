@@ -135,13 +135,6 @@ export default defineConfig([
     },
   },
   {
-    files: ['src/lib/server/ai/providers/openai.ts', 'src/lib/server/ai/providers/anthropic.ts'],
-    rules: {
-      // Upstream API payload uses snake_case keys.
-      camelcase: 'off',
-    },
-  },
-  {
     files: ['src/lib/components/ui/button.svelte'],
     rules: {
       // `href` may be pre-localized via Paraglide (`localizeHref`).
@@ -166,6 +159,13 @@ export default defineConfig([
     files: ['src/routes/login/+page.svelte'],
     rules: {
       // Login intent links are built via localized helper function.
+      'svelte/no-navigation-without-resolve': 'off',
+    },
+  },
+  {
+    files: ['src/routes/settings/+layout.svelte'],
+    rules: {
+      // Tab hrefs are pre-localized via Paraglide `resolve()`.
       'svelte/no-navigation-without-resolve': 'off',
     },
   },
