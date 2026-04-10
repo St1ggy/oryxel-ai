@@ -1,8 +1,9 @@
 import { db, fragrance, userAgentMemory, userFragrance, userProfile } from '@oryxel/db'
 import { and, count, eq } from 'drizzle-orm'
 
-import { AGENT_MEMORY_MAX_ROWS } from './agent-memory'
 import { findOrCreateBrand, findOrCreateFragrance } from '../diary/find-or-create'
+
+import { AGENT_MEMORY_MAX_ROWS } from './agent-memory'
 
 import type { AgentMemoryOp, StructuredPreferencePatch, TableOperation } from './contracts'
 import type { NoteRelationship } from '../types/diary'

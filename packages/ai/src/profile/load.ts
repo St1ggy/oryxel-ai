@@ -6,7 +6,6 @@ import { lookupTranslations } from '../translation/service'
 import type { NoteRelationship, RadarAxes, RadarAxis } from '../types/diary'
 
 /** Handles both new plain strings and old locale-map JSON (backward compat). */
-// eslint-disable-next-line sonarjs/function-return-type
 function resolveStringOrMap(value: unknown, locale: string): string | null {
   if (!value) return null
 
