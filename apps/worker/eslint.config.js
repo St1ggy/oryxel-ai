@@ -1,4 +1,4 @@
-/* eslint-disable import/default -- package provides default export */
+/* eslint-disable import-x/default -- package provides default export */
 import commonConfig from '@st1ggy/linter-config/eslint-common'
 import { defineConfig } from 'eslint/config'
 

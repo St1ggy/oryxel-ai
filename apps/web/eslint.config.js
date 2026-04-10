@@ -1,4 +1,4 @@
-/* eslint-disable import/default -- package provides default export */
+/* eslint-disable import-x/default -- package provides default export */
 import st1ggySvelte from '@st1ggy/linter-config/eslint-svelte'
 import { defineConfig } from 'eslint/config'
 import path from 'node:path'
@@ -48,7 +48,7 @@ export default defineConfig([
   },
   {
     settings: {
-      'import/resolver': {
+      'import-x/resolver': {
         typescript: {
           alwaysTryTypes: true,
         },
@@ -91,8 +91,8 @@ export default defineConfig([
   },
   {
     rules: {
-      'import/no-unresolved': 'off',
-      'import/extensions': 'off',
+      'import-x/no-unresolved': 'off',
+      'import-x/extensions': 'off',
       // We use [...arr].reverse() for Node <20 compatibility (worker shares packages/ai).
       'unicorn/no-array-reverse': 'off',
       // sonarjs false positives: SvelteKit's onNavigate and runes() return mixed types by design;
@@ -112,7 +112,7 @@ export default defineConfig([
     rules: {
       'unicorn/filename-case': 'off',
       'unicorn/prevent-abbreviations': 'off',
-      'import/extensions': 'off',
+      'import-x/extensions': 'off',
     },
   },
   {
@@ -124,7 +124,7 @@ export default defineConfig([
   {
     files: ['stylelint.config.js'],
     rules: {
-      'import/default': 'off',
+      'import-x/default': 'off',
     },
   },
   {
@@ -187,7 +187,7 @@ export default defineConfig([
     files: ['src/lib/locale.svelte.ts'],
     rules: {
       // Paraglide runtime module cannot be statically resolved by the import plugin.
-      'import/namespace': 'off',
+      'import-x/namespace': 'off',
     },
   },
   {
@@ -195,6 +195,12 @@ export default defineConfig([
     rules: {
       // Seed scripts intentionally use console output.
       'no-console': 'off',
+    },
+  },
+  {
+    rules: {
+      // v5 shared config enables this; type-aware setup is inconsistent for config/e2e/tooling paths with projectService.
+      '@typescript-eslint/switch-exhaustiveness-check': 'off',
     },
   },
 ])
