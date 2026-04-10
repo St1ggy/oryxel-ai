@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Switch } from 'bits-ui'
 
-  type Props = {
+  interface Props {
     checked?: boolean
     disabled?: boolean
     id?: string

@@ -18,11 +18,6 @@ declare global {
       user?: User
       session?: Session
     }
-
-    // interface Error {}
-    // interface PageData {}
-    // interface PageState {}
-    // interface Platform {}
   }
 }
 

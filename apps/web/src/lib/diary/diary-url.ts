@@ -1,23 +1,24 @@
 import {
   DIARY_PRIMARY_VIEWS,
-  FRAGRANCE_LIST_TAB_VALUES,
   type DiaryPrimaryView,
+  FRAGRANCE_LIST_TAB_VALUES,
   type FragranceListTabValue,
 } from './diary-tab-items'
 
+/* eslint-disable sonarjs/cognitive-complexity -- explicit URL parsing branches */
 export function parseDiaryUrlParams(searchParams: URLSearchParams): {
   view: DiaryPrimaryView
   list: FragranceListTabValue
 } {
-  const viewParam = searchParams.get('view')
-  const listParam = searchParams.get('list')
+  const viewParameter = searchParams.get('view')
+  const listParameter = searchParams.get('list')
   const tabLegacy = searchParams.get('tab')
 
-  if (viewParam && (DIARY_PRIMARY_VIEWS as readonly string[]).includes(viewParam)) {
-    const view = viewParam as DiaryPrimaryView
+  if (viewParameter && (DIARY_PRIMARY_VIEWS as readonly string[]).includes(viewParameter)) {
+    const view = viewParameter as DiaryPrimaryView
     const list =
-      listParam && (FRAGRANCE_LIST_TAB_VALUES as readonly string[]).includes(listParam)
-        ? (listParam as FragranceListTabValue)
+      listParameter && (FRAGRANCE_LIST_TAB_VALUES as readonly string[]).includes(listParameter)
+        ? (listParameter as FragranceListTabValue)
         : 'owned'
 
     return { view, list: view === 'fragrances' ? list : 'owned' }
@@ -37,3 +38,4 @@ export function parseDiaryUrlParams(searchParams: URLSearchParams): {
 
   return { view: 'fragrances', list: 'owned' }
 }
+/* eslint-enable sonarjs/cognitive-complexity */

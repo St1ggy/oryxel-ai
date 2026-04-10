@@ -11,7 +11,13 @@
 
   import type { ActivityEntry, RadarAxis } from '$lib/types/diary'
 
-  type DiaryCounts = { owned: number; to_try: number; liked: number; neutral: number; disliked: number }
+  interface DiaryCounts {
+    owned: number
+    to_try: number
+    liked: number
+    neutral: number
+    disliked: number
+  }
 
   import { goto } from '$app/navigation'
   import { resolve } from '$app/paths'
@@ -21,7 +27,7 @@
     await goto(resolve('/'))
   }
 
-  type ProfileData = {
+  interface ProfileData {
     displayName: string
     totalCount: number
     favoriteNote: string | null
@@ -30,7 +36,7 @@
     suggestions: string[]
   }
 
-  type Props = {
+  interface Props {
     variant: 'desktop' | 'mobile'
     profile?: ProfileData
     onProfileSync?: () => void

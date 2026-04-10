@@ -1,5 +1,5 @@
 <script lang="ts">
-  type Props = {
+  interface Props {
     label: string
     variant?: 'inline' | 'bubble'
   }

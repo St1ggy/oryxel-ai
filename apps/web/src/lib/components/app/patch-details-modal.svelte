@@ -3,7 +3,7 @@
   import * as m from '$lib/paraglide/messages.js'
   import { type ParsedTableOp, parsePatchPreview, patchPreviewHasBody } from '$lib/patch/parse-patch-preview'
 
-  type Props = {
+  interface Props {
     open?: boolean
     payload: Record<string, unknown> | null
     /** Shown under the title (e.g. patch summary line). */

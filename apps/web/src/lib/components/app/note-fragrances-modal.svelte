@@ -7,12 +7,12 @@
 
   type ListLabel = 'liked' | 'owned' | 'neutral'
 
-  type FragranceEntry = {
+  interface FragranceEntry {
     row: DiaryRow
     list: ListLabel
   }
 
-  type Props = {
+  interface Props {
     open: boolean
     node: NoteNode | null
     diaryData: DiaryData

@@ -7,7 +7,7 @@
 
   import type { ConfiguredOAuthProviders } from '$lib/server/auth/providers'
 
-  type LinkedAccount = {
+  interface LinkedAccount {
     id: string
     providerId: string
     accountId: string

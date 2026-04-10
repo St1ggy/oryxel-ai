@@ -1,8 +1,5 @@
-import type * as d3 from 'd3'
-
 import type { NoteLink, NoteNode } from '$lib/utils/note-graph'
-
-export type { NoteLink, NoteNode }
+import type * as d3 from 'd3'
 
 export type GraphStyle = 'default' | 'constellation' | 'bubble' | 'ink' | 'cluster' | 'timeline'
 
@@ -36,7 +33,7 @@ export type RenderedSelections = {
 }
 
 export type StyleRenderer = {
-  init(ctx: StyleContext): RenderedSelections
+  init(context: StyleContext): RenderedSelections
   tick(sel: RenderedSelections, nodes: NoteNode[], links: NoteLink[]): void
   buildSimulation(
     nodes: NoteNode[],
@@ -45,3 +42,5 @@ export type StyleRenderer = {
     height: number,
   ): d3.Simulation<NoteNode, NoteLink>
 }
+
+export { type NoteLink, type NoteNode } from '$lib/utils/note-graph'

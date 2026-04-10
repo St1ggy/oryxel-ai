@@ -6,7 +6,7 @@
 
   import type { ActivityEntry } from '$lib/types/diary'
 
-  type Props = {
+  interface Props {
     entries: ActivityEntry[]
   }
 

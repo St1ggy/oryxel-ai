@@ -5,7 +5,7 @@
   import Button from '$lib/components/ui/button.svelte'
   import * as m from '$lib/paraglide/messages.js'
 
-  type Props = {
+  interface Props {
     /** When non-null, the toast is visible. */
     toast: { summary: string; payload: Record<string, unknown> } | null
     onDismiss: () => void

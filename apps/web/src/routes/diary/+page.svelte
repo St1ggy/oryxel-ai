@@ -233,7 +233,7 @@
 
   type PatchProgress = { step: number; total: number } | null
 
-  type JobResult = {
+  interface JobResult {
     id: number
     status: string
     progress: { step: number; total: number; phase: string }[]

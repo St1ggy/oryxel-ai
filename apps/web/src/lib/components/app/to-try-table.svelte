@@ -13,7 +13,7 @@
 
   type SortCol = 'brand' | 'fragrance'
 
-  type Props = {
+  interface Props {
     rows: DiaryRow[]
     onOpenDetail?: (row: DiaryRow) => void
     emptyTitle?: string

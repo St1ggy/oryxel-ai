@@ -9,7 +9,7 @@
 
   import { browser } from '$app/environment'
 
-  type Props = {
+  interface Props {
     completed: boolean
     onComplete: () => void
     onReady: (startFunction: () => void) => void

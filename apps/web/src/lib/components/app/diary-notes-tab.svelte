@@ -20,7 +20,7 @@
   import type { DiaryData, NoteRelationship, NoteRelationshipSentiment } from '$lib/types/diary'
   import type { FamilyDefinition } from '$lib/utils/note-graph'
 
-  type Props = {
+  interface Props {
     diaryData: DiaryData
     noteRelationships: NoteRelationship[]
     layout: 'desktop' | 'mobile'

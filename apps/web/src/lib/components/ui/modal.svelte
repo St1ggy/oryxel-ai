@@ -5,7 +5,7 @@
 
   import type { Snippet } from 'svelte'
 
-  type Props = {
+  interface Props {
     open?: boolean
     title: string
     description?: string

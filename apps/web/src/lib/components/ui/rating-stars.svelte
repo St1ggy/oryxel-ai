@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Star } from '@lucide/svelte'
 
-  type Props = {
+  interface Props {
     value?: number
     max?: number
     readonly?: boolean

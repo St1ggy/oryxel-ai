@@ -5,7 +5,7 @@
 
   import { resolve } from '$app/paths'
 
-  type Props = {
+  interface Props {
     title?: string
     backHref?: string
   }

@@ -8,7 +8,7 @@
 
   import { browser } from '$app/environment'
 
-  type Props = {
+  interface Props {
     children: Snippet
   }
 

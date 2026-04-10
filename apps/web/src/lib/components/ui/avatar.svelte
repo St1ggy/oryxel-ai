@@ -3,7 +3,7 @@
 
   import { cn } from '$lib/utils/cn'
 
-  type Props = {
+  interface Props {
     src?: string | null
     alt: string
     size?: 'sm' | 'md' | 'lg'

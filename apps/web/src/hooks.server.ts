@@ -20,7 +20,7 @@ const handleParaglide: Handle = ({ event, resolve }) =>
   })
 
 const handleBetterAuth: Handle = async ({ event, resolve }) => {
-  let session: Awaited<ReturnType<typeof auth.api.getSession>> = null
+  let session: Awaited<ReturnType<typeof auth.api.getSession>> | null
 
   try {
     session = await auth.api.getSession({ headers: event.request.headers })

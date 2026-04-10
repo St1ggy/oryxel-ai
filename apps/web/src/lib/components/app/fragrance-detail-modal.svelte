@@ -1,9 +1,9 @@
 <script lang="ts">
-  /* eslint-disable import/no-duplicates */
   import { Sparkles } from '@lucide/svelte'
+  /* eslint-disable import-x/no-duplicates -- easing vs transition are separate runtime modules */
   import { cubicOut } from 'svelte/easing'
   import { fade, fly } from 'svelte/transition'
-  /* eslint-enable import/no-duplicates */
+  /* eslint-enable import-x/no-duplicates */
 
   import FragranceActionsMenu from '$lib/components/app/fragrance-actions-menu.svelte'
   import FragranceMetaChips from '$lib/components/app/fragrance-meta-chips.svelte'
@@ -13,7 +13,7 @@
 
   import type { DiaryRow } from '$lib/types/diary'
 
-  type Props = {
+  interface Props {
     open: boolean
     row: DiaryRow | null
     onRatingChange?: (id: number, fragranceId: number, rating: number) => void

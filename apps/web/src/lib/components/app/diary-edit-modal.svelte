@@ -9,9 +9,13 @@
 
   type StatusValue = 'to_try' | 'liked' | 'neutral' | 'disliked'
 
-  type SaveData = { listType: StatusValue; userComment: string; isOwned: boolean }
+  interface SaveData {
+    listType: StatusValue
+    userComment: string
+    isOwned: boolean
+  }
 
-  type Props = {
+  interface Props {
     row?: DiaryRow | null
     open?: boolean
     onSave?: (id: number, data: SaveData) => Promise<void>

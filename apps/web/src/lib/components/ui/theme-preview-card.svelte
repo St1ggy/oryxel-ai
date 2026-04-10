@@ -3,7 +3,7 @@
 
   import type { OryxelThemeId } from '$lib/theme/constants'
 
-  type Props = {
+  interface Props {
     themeId: OryxelThemeId
     title: string
     selected?: boolean

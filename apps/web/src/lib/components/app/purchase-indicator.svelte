@@ -3,7 +3,7 @@
 
   import TooltipHint from '$lib/components/ui/tooltip-hint.svelte'
 
-  type Props = {
+  interface Props {
     owned: boolean
     label: string
   }

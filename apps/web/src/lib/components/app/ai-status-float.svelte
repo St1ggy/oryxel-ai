@@ -7,7 +7,7 @@
 
   import { invalidateAll } from '$app/navigation'
 
-  type PendingPatch = {
+  interface PendingPatch {
     id: number
     summary: string | null
     status: string
@@ -16,10 +16,17 @@
   }
 
   type SyncPhase = 'owned' | 'liked' | 'disliked' | 'profile' | 'recommendations' | 'to_try'
-  type SyncProgress = { step: number; total: number; phase: SyncPhase }
-  type PatchProgress = { step: number; total: number }
+  interface SyncProgress {
+    step: number
+    total: number
+    phase: SyncPhase
+  }
+  interface PatchProgress {
+    step: number
+    total: number
+  }
 
-  type Props = {
+  interface Props {
     /** Pending patches / progress not loaded yet */
     loading?: boolean
     thinking?: boolean

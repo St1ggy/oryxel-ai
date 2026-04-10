@@ -14,7 +14,12 @@
   const pageData = page.data as PageData
   const maxRows = pageData.agentMemoryMaxRows
 
-  type Row = { id: number; content: string; createdAt: string; updatedAt: string }
+  interface Row {
+    id: number
+    content: string
+    createdAt: string
+    updatedAt: string
+  }
 
   let items = $state<Row[]>([])
   let draft = $state('')
