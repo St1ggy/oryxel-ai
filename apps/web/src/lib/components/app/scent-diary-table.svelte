@@ -15,7 +15,7 @@
 
   type SortCol = 'brand' | 'fragrance' | 'rating'
 
-  interface Props {
+  type Props = {
     rows: DiaryRow[]
     onRatingChange?: (id: number, fragranceId: number, rating: number) => void
     onOpenDetail?: (row: DiaryRow) => void

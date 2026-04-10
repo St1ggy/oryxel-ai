@@ -8,7 +8,7 @@
     oryxel_chat_network_info?: () => string
   }
 
-  interface Props {
+  type Props = {
     modelLabel: string
   }
 

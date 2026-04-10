@@ -3,7 +3,7 @@
 
   import type { Snippet } from 'svelte'
 
-  interface Props {
+  type Props = {
     role: 'user' | 'assistant'
     class?: string
     children?: Snippet

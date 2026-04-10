@@ -6,7 +6,7 @@
   import IconButton from './icon-button.svelte'
   import Input from './input.svelte'
 
-  interface Props {
+  type Props = {
     value?: string
     placeholder?: string
     id?: string

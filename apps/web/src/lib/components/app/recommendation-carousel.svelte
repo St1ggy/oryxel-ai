@@ -1,7 +1,7 @@
 <script lang="ts">
   import * as m from '$lib/paraglide/messages.js'
 
-  interface Rec {
+  type Rec = {
     id: string
     brand: string
     name: string
@@ -9,7 +9,7 @@
     notes?: string[]
   }
 
-  interface Props {
+  type Props = {
     items: Rec[]
     onTried?: (brand: string, name: string) => void
   }

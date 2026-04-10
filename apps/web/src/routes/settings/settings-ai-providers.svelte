@@ -18,7 +18,7 @@
 
   const LEGACY_PROVIDERS_KEY = 'oryxel:providers'
 
-  interface ProviderRow {
+  type ProviderRow = {
     id: number
     provider: ProviderGuideId
     label: string
@@ -26,7 +26,7 @@
     keyHint: string
   }
 
-  interface LegacyProviderRow {
+  type LegacyProviderRow = {
     provider: string
     label?: string
     active?: boolean

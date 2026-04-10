@@ -3,7 +3,7 @@
 
   import Button from './button.svelte'
 
-  interface Props {
+  type Props = {
     page: number
     pageCount: number
     onPageChange?: (next: number) => void

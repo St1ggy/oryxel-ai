@@ -5,7 +5,7 @@
 
   import type { Snippet } from 'svelte'
 
-  interface Props {
+  type Props = {
     loading: boolean
     class?: string
     children: Snippet

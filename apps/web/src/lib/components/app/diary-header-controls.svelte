@@ -12,7 +12,7 @@
 
   import { invalidateAll } from '$app/navigation'
 
-  interface Props {
+  type Props = {
     onStartTour?: () => void
   }
 

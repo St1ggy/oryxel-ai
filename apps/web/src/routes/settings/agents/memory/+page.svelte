@@ -14,7 +14,7 @@
   const pageData = page.data as PageData
   const maxRows = pageData.agentMemoryMaxRows
 
-  interface Row {
+  type Row = {
     id: number
     content: string
     createdAt: string

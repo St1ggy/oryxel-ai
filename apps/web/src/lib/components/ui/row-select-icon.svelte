@@ -3,7 +3,7 @@
 
   import { cn } from '$lib/utils/cn'
 
-  interface Props {
+  type Props = {
     selected: boolean
     ariaLabel: string
     disabled?: boolean

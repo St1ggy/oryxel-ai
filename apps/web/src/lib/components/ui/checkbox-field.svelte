@@ -2,7 +2,7 @@
   import { Check } from '@lucide/svelte'
   import { Checkbox } from 'bits-ui'
 
-  interface Props {
+  type Props = {
     checked?: boolean
     disabled?: boolean
     'aria-label'?: string

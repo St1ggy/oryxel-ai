@@ -3,7 +3,7 @@
 
   import * as m from '$lib/paraglide/messages.js'
 
-  interface Props {
+  type Props = {
     layout: 'desktop' | 'mobile'
   }
 

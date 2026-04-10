@@ -3,7 +3,7 @@
 
   import { cn } from '$lib/utils/cn'
 
-  export interface SelectOption {
+  export type SelectOption = {
     value: string
     label: string
     meta?: string
@@ -11,7 +11,7 @@
     disabled?: boolean
   }
 
-  interface Props {
+  type Props = {
     value?: string
     options: SelectOption[]
     placeholder?: string

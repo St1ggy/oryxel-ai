@@ -5,7 +5,7 @@
 
   type Tone = 'neutral' | 'success' | 'warning' | 'destructive' | 'accent'
 
-  interface Props {
+  type Props = {
     tone?: Tone
     class?: string
     children?: Snippet

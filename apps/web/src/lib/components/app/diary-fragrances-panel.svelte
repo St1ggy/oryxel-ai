@@ -11,7 +11,7 @@
   import type { FragranceListTabValue } from '$lib/diary/diary-tab-items'
   import type { DiaryData, DiaryRow } from '$lib/types/diary'
 
-  interface Props {
+  type Props = {
     fragranceTab: FragranceListTabValue
     diaryState: DiaryData
     loading?: boolean

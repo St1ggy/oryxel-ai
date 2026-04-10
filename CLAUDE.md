@@ -235,7 +235,7 @@ bun run check
 | 2026-03-30 | Workspace rules retargeted to **oryxel-ai** (Drizzle + Better Auth + `src/routes/`).               |
 | 2026-03-31 | Added AI router + critical-confirm baseline and mandatory social auth guard (Google/Apple/Yandex). |
 | 2026-04-10 | **`@st1ggy/linter-config` v5**, ESLint 10 + **import-x**; Biome from the same package evaluated and **not** adopted; Prettier + ESLint + stylelint (web) remain. |
-| 2026-04-11 | **`@st1ggy/linter-config` `^6.3.0`** on root + web + job-stream-gateway. |
+| 2026-04-11 | **`@st1ggy/linter-config` `6.3.1`**, `type` aliases in Svelte via local `consistent-type-definitions` override. |
 
 ### `memory.mdc`
 
@@ -287,15 +287,15 @@ bun run check
 
 ---
 
-## 2026-04-11 — `@st1ggy/linter-config` 6.3.0
+## 2026-04-11 — `@st1ggy/linter-config` 6.3.x (`type` aliases)
 
 ### What changed
 
-- Bumped **`@st1ggy/linter-config` to `^6.3.0`** (root, `apps/web`, `apps/job-stream-gateway`). Lint (`prettier`, `eslint`, `stylelint` where applicable) and `bun run check` pass with no new suppressions.
+- **`@st1ggy/linter-config` `6.3.1`** (root, `apps/web`, `apps/job-stream-gateway`). Preset applies `@typescript-eslint/consistent-type-definitions: ['error', 'type']` only on **type-aware non-Svelte** globs; **`apps/web/eslint.config.js`** adds the same rule for **`*.svelte`** so component scripts use **`type`**, not `interface` (except `app.d.ts` augmentation, where `interface` stays with existing eslint-disable for SvelteKit merges).
 
 ### Why
 
-- Stay current on shared ESLint/Prettier/Stylelint presets from the same package family.
+- Match the shared preset’s **`type`‑first** style; avoid duplicating the earlier mistake of mass‑converting to `interface` when the rule did not run inside `.svelte` scripts.
 
 ---
 

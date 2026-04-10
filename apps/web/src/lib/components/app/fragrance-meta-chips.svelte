@@ -5,7 +5,7 @@
 
   import type { DiaryRow } from '$lib/types/diary'
 
-  interface Props {
+  type Props = {
     row: DiaryRow | null
   }
 

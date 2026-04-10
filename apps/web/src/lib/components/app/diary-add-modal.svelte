@@ -9,14 +9,14 @@
 
   import type { FragranceListType } from '$lib/types/diary'
 
-  interface SaveData {
+  type SaveData = {
     brand: string
     fragrance: string
     notes: string
     listType: FragranceListType
   }
 
-  interface Props {
+  type Props = {
     open?: boolean
     defaultListType?: FragranceListType
     onSave?: (data: SaveData) => Promise<void>

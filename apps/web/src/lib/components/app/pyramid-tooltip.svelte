@@ -4,7 +4,7 @@
 
   import * as m from '$lib/paraglide/messages.js'
 
-  interface Props {
+  type Props = {
     top: string | null
     mid: string | null
     base: string | null

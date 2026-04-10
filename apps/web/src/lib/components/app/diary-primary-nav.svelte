@@ -4,7 +4,7 @@
   import { type DiaryPrimaryView, diaryPrimaryNavItems } from '$lib/diary/diary-tab-items'
   import { cn } from '$lib/utils/cn'
 
-  interface Props {
+  type Props = {
     active: DiaryPrimaryView
     onSelect: (view: DiaryPrimaryView) => void
     variant: 'desktop' | 'mobile'

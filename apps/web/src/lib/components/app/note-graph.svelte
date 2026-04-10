@@ -10,12 +10,12 @@
   import type { NoteGraph, NoteNode } from '$lib/utils/note-graph'
 
   type ListLabel = 'liked' | 'owned' | 'neutral'
-  interface FragranceEntry {
+  type FragranceEntry = {
     row: DiaryRow
     list: ListLabel
   }
 
-  interface Props {
+  type Props = {
     graph: NoteGraph
     diaryData: DiaryData
     onNodeClick?: (node: NoteNode) => void

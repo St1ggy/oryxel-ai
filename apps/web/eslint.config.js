@@ -87,6 +87,8 @@ export default defineConfig([
       'sonarjs/deprecation': 'off',
       // Svelte `$props()` destructuring is not a good fit for `prefer-const`.
       'prefer-const': 'off',
+      // Shared TS config sets this only for `filesTypeAware` (no `.svelte`); align Svelte scripts with `type`.
+      '@typescript-eslint/consistent-type-definitions': ['error', 'type'],
     },
   },
   {

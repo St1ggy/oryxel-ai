@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { RadarAxis } from '$lib/types/diary'
 
-  interface Props {
+  type Props = {
     axes: RadarAxis[]
     size?: number
   }

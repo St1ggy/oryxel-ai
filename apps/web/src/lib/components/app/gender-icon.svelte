@@ -2,7 +2,7 @@
   import TooltipHint from '$lib/components/ui/tooltip-hint.svelte'
   import * as m from '$lib/paraglide/messages.js'
 
-  interface Props {
+  type Props = {
     value: string | null
   }
 

@@ -5,14 +5,14 @@
 
   import { invalidateAll } from '$app/navigation'
 
-  interface PendingPatch {
+  type PendingPatch = {
     id: number
     summary: string | null
     status: string
     patchType: string
   }
 
-  interface Props {
+  type Props = {
     patches: PendingPatch[]
   }
 

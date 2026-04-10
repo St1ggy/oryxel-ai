@@ -1,5 +1,5 @@
 <script lang="ts">
-  interface AccordionItem {
+  type AccordionItem = {
     question: string
     answer: string
   }

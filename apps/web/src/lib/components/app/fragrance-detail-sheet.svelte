@@ -10,7 +10,7 @@
 
   import type { DiaryRow } from '$lib/types/diary'
 
-  interface Props {
+  type Props = {
     open: boolean
     row: DiaryRow | null
     onRatingChange?: (id: number, fragranceId: number, rating: number) => void

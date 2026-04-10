@@ -6,13 +6,13 @@
 
   import IconButton from './icon-button.svelte'
 
-  interface Item {
+  type Item = {
     label: string
     onclick: () => void
     danger?: boolean
   }
 
-  interface Props {
+  type Props = {
     items: Item[]
   }
 

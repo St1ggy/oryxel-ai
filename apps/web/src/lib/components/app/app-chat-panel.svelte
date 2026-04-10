@@ -14,7 +14,7 @@
 
   import type { ChatMessage } from '$lib/types/diary'
 
-  interface Props {
+  type Props = {
     /** Server meta (keys, history) not ready yet — shimmer shell, not “add key”. */
     loading?: boolean
     messages: ChatMessage[]
