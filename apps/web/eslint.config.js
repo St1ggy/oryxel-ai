@@ -1,4 +1,3 @@
-/* eslint-disable import-x/default -- package provides default export */
 import st1ggySvelte from '@st1ggy/linter-config/eslint-svelte'
 import { defineConfig } from 'eslint/config'
 import path from 'node:path'
