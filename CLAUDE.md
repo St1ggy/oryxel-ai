@@ -234,6 +234,8 @@ bun run check
 | ---------- | -------------------------------------------------------------------------------------------------- |
 | 2026-03-30 | Workspace rules retargeted to **oryxel-ai** (Drizzle + Better Auth + `src/routes/`).               |
 | 2026-03-31 | Added AI router + critical-confirm baseline and mandatory social auth guard (Google/Apple/Yandex). |
+| 2026-04-10 | **`@st1ggy/linter-config` v5**, ESLint 10 + **import-x**; Biome from the same package evaluated and **not** adopted; Prettier + ESLint + stylelint (web) remain. |
+| 2026-04-11 | **`@st1ggy/linter-config` `^6.3.0`** on root + web + job-stream-gateway. |
 
 ### `memory.mdc`
 
@@ -267,6 +269,33 @@ bun run check
 
 - Product now relies on AI-generated structured updates and explicit confirmation for critical changes.
 - Diary/profile access must be protected behind authentication for MVP requirements.
+
+---
+
+## 2026-04-10 — `@st1ggy/linter-config` v5; Biome evaluated, ESLint+Prettier kept
+
+### What changed
+
+- Bumped **`@st1ggy/linter-config` to `^5.0.0`** (root + `apps/web` + `apps/job-stream-gateway`); root **`devDependencies`** include the package for hoisting.
+- **`eslint` `^10.2.0`** in `apps/web`; shared stack uses **`eslint-plugin-import-x`** — local overrides use `import-x/*` rules and `import-x/resolver`; **`@typescript-eslint/switch-exhaustiveness-check`** turned off in `apps/web/eslint.config.js` (typed lint + `projectService` gaps on tooling paths).
+- **Biome** from the same package was tried on the full monorepo; **not adopted** (very large diagnostic surface + noise). Lint/format remain **Prettier + ESLint + stylelint (web CSS)**.
+- **`apps/web/.prettierignore`**: `.vercel/`, `src/paraglide/` so local builds/generated output are not checked.
+
+### Why
+
+- v5 aligns with current ESLint 10 + import-x; Biome as a drop-in for this Svelte/Tailwind repo was not practical without a dedicated migration.
+
+---
+
+## 2026-04-11 — `@st1ggy/linter-config` 6.3.0
+
+### What changed
+
+- Bumped **`@st1ggy/linter-config` to `^6.3.0`** (root, `apps/web`, `apps/job-stream-gateway`). Lint (`prettier`, `eslint`, `stylelint` where applicable) and `bun run check` pass with no new suppressions.
+
+### Why
+
+- Stay current on shared ESLint/Prettier/Stylelint presets from the same package family.
 
 ---
 
