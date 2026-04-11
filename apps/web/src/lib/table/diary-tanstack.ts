@@ -46,7 +46,12 @@ export function createDiaryDataTable<T extends DiaryRow | RecommendationRow>(
   return createTable<T>({
     data,
     columns,
-    state: { sorting },
+    // Partial controlled `state` replaces the whole slice; without `columnPinning`,
+    // `getHeaderGroups` reads `getState().columnPinning.left` and throws.
+    state: {
+      sorting,
+      columnPinning: { left: [], right: [] },
+    },
     onSortingChange,
     // Controlled sorting via `onSortingChange`; full table state is not mirrored here.
     onStateChange: () => {
