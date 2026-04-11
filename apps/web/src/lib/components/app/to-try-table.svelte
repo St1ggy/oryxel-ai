@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Inbox } from '@lucide/svelte'
 
+
   import AgentCommentIcon from '$lib/components/app/agent-comment-icon.svelte'
   import GenderIcon from '$lib/components/app/gender-icon.svelte'
   import PyramidTooltip from '$lib/components/app/pyramid-tooltip.svelte'
@@ -8,10 +9,10 @@
   import TimeOfDayIcon from '$lib/components/app/time-of-day-icon.svelte'
   import NoteTags from '$lib/components/ui/note-tags.svelte'
   import * as m from '$lib/paraglide/messages.js'
+  import { createDiaryDataTable, functionalUpdate, toTryDiaryColumns } from '$lib/table/diary-tanstack'
 
   import type { DiaryRow } from '$lib/types/diary'
-
-  type SortCol = 'brand' | 'fragrance'
+  import type { SortingState } from '@tanstack/table-core'
 
   type Props = {
     rows: DiaryRow[]
@@ -22,35 +23,46 @@
 
   const { rows, onOpenDetail, emptyTitle, emptyHint }: Props = $props()
 
-  let sortCol = $state<SortCol | null>(null)
-  let sortDirection = $state<'asc' | 'desc'>('asc')
+  let sorting = $state<SortingState>([])
 
-  function toggleSort(col: SortCol) {
-    if (sortCol === col) {
-      sortDirection = sortDirection === 'asc' ? 'desc' : 'asc'
-    } else {
-      sortCol = col
-      sortDirection = 'asc'
+  const table = $derived.by(() =>
+    createDiaryDataTable(
+      rows,
+      toTryDiaryColumns,
+      sorting,
+      (updater) => {
+        sorting = functionalUpdate(updater, sorting)
+      },
+      (row) => String(row.id),
+    ),
+  )
+
+  function headerLabel(columnId: string): string {
+    switch (columnId) {
+      case 'brand': {
+        return m.oryxel_table_brand()
+      }
+
+      case 'fragrance': {
+        return m.oryxel_table_fragrance()
+      }
+
+      case 'notes': {
+        return m.oryxel_table_notes()
+      }
+
+      default: {
+        return columnId
+      }
     }
   }
-
-  const sortedRows = $derived.by(() => {
-    if (!sortCol) return rows
-
-    const col = sortCol
-
-    return rows.toSorted((a, b) => {
-      const cmp = col === 'brand' ? a.brand.localeCompare(b.brand) : a.fragrance.localeCompare(b.fragrance)
-
-      return sortDirection === 'asc' ? cmp : -cmp
-    })
-  })
 </script>
 
-{#snippet sortIcon(col: SortCol)}
-  {@const arrow = sortDirection === 'asc' ? '↑' : '↓'}
-  <span class="ml-1 inline-block text-[10px] opacity-40" class:opacity-100={sortCol === col}>
-    {sortCol === col ? arrow : '↕'}
+{#snippet sortIcon(columnId: string)}
+  {@const sorted = table.getColumn(columnId)?.getIsSorted() ?? false}
+  {@const arrow = sorted === 'asc' ? '↑' : '↓'}
+  <span class="ml-1 inline-block text-[10px] opacity-40" class:opacity-100={Boolean(sorted)}>
+    {sorted ? arrow : '↕'}
   </span>
 {/snippet}
 
@@ -68,60 +80,68 @@
   >
     <table class="w-full min-w-[480px] border-collapse text-left text-sm">
       <thead>
-        <tr
-          class="border-b border-border bg-muted/50 text-xs font-medium tracking-wide text-foreground-muted uppercase"
-        >
-          <th class="px-5 py-4">
-            <button
-              type="button"
-              class="flex items-center gap-0.5 hover:text-foreground"
-              onclick={() => toggleSort('brand')}
-            >
-              {m.oryxel_table_brand()}
-              <!-- eslint-disable-next-line sonarjs/no-use-of-empty-return-value -->
-              {@render sortIcon('brand')}
-            </button>
-          </th>
-          <th class="px-5 py-4">
-            <button
-              type="button"
-              class="flex items-center gap-0.5 hover:text-foreground"
-              onclick={() => toggleSort('fragrance')}
-            >
-              {m.oryxel_table_fragrance()}
-              <!-- eslint-disable-next-line sonarjs/no-use-of-empty-return-value -->
-              {@render sortIcon('fragrance')}
-            </button>
-          </th>
-          <th class="px-5 py-4">{m.oryxel_table_notes()}</th>
-        </tr>
+        {#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
+          <tr
+            class="border-b border-border bg-muted/50 text-xs font-medium tracking-wide text-foreground-muted uppercase"
+          >
+            {#each headerGroup.headers as header (header.id)}
+              {@const columnId = header.column.id}
+              <th class="px-5 py-4">
+                {#if header.column.getCanSort()}
+                  <button
+                    type="button"
+                    class="flex items-center gap-0.5 hover:text-foreground"
+                    onclick={header.column.getToggleSortingHandler()}
+                  >
+                    {headerLabel(columnId)}
+                    <!-- eslint-disable-next-line sonarjs/no-use-of-empty-return-value -->
+                    {@render sortIcon(columnId)}
+                  </button>
+                {:else}
+                  {headerLabel(columnId)}
+                {/if}
+              </th>
+            {/each}
+          </tr>
+        {/each}
       </thead>
       <tbody>
-        {#each sortedRows as row (row.id)}
+        {#each table.getRowModel().rows as row (row.id)}
+          {@const diaryRow = row.original}
           <tr
             class="oryx-transition cursor-pointer border-b border-border last:border-0 hover:bg-(--oryx-table-hover)"
-            onclick={() => onOpenDetail?.(row)}
+            onclick={() => onOpenDetail?.(diaryRow)}
           >
-            <td class="px-5 py-4 align-middle font-semibold text-foreground">{row.brand}</td>
-            <td class="px-5 py-4 align-middle">
-              <div class="flex items-center justify-between gap-3">
-                <span class="text-foreground">{row.fragrance}</span>
-                <div class="flex shrink-0 items-center gap-1.5">
-                  {#if row.pyramidTop || row.pyramidMid || row.pyramidBase}
-                    <PyramidTooltip top={row.pyramidTop} mid={row.pyramidMid} base={row.pyramidBase} />
-                  {/if}
-                  <SeasonIcon value={row.season} />
-                  <TimeOfDayIcon value={row.timeOfDay} />
-                  <GenderIcon value={row.gender} />
-                  {#if row.agentComment}
-                    <AgentCommentIcon comment={row.agentComment} />
-                  {/if}
-                </div>
-              </div>
-            </td>
-            <td class="px-5 py-4 align-middle">
-              <NoteTags notes={row.notes} />
-            </td>
+            {#each row.getVisibleCells() as cell (cell.id)}
+              {#if cell.column.id === 'brand'}
+                <td class="px-5 py-4 align-middle font-semibold text-foreground">{diaryRow.brand}</td>
+              {:else if cell.column.id === 'fragrance'}
+                <td class="px-5 py-4 align-middle">
+                  <div class="flex items-center justify-between gap-3">
+                    <span class="text-foreground">{diaryRow.fragrance}</span>
+                    <div class="flex shrink-0 items-center gap-1.5">
+                      {#if diaryRow.pyramidTop || diaryRow.pyramidMid || diaryRow.pyramidBase}
+                        <PyramidTooltip
+                          top={diaryRow.pyramidTop}
+                          mid={diaryRow.pyramidMid}
+                          base={diaryRow.pyramidBase}
+                        />
+                      {/if}
+                      <SeasonIcon value={diaryRow.season} />
+                      <TimeOfDayIcon value={diaryRow.timeOfDay} />
+                      <GenderIcon value={diaryRow.gender} />
+                      {#if diaryRow.agentComment}
+                        <AgentCommentIcon comment={diaryRow.agentComment} />
+                      {/if}
+                    </div>
+                  </div>
+                </td>
+              {:else if cell.column.id === 'notes'}
+                <td class="px-5 py-4 align-middle">
+                  <NoteTags notes={diaryRow.notes} />
+                </td>
+              {/if}
+            {/each}
           </tr>
         {/each}
       </tbody>
