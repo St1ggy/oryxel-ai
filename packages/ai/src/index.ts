@@ -6,7 +6,16 @@ export * from './ai/job-notify'
 export * from './ai/storage'
 export * from './ai/apply'
 export * from './ai/router'
-export { buildPrompt, parseStructuredPatch } from './ai/providers/shared'
+export {
+  buildPrompt,
+  buildPromptInstructionBlock,
+  buildPromptSections,
+  buildPromptWithOptions,
+  estimatePromptTokensApprox,
+  parseStructuredPatch,
+} from './ai/providers/shared'
+export type { PromptSection, SystemPromptMode } from './ai/providers/shared'
+export { createPromptPreviewSampleRequest } from './ai/prompt-preview'
 export * from './ai/policy'
 export * from './ai/agent-memory'
 export * from './ai/display-limits'

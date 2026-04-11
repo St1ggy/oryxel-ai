@@ -59,11 +59,11 @@ function buildUserDisplayHardLimits(request: AnalyzePreferencesRequest): string[
   const analogMax = Math.min(5, maxR)
 
   return [
-    'USER DISPLAY LIMITS (hard constraints — output that breaks these rules is INVALID and may be rejected):',
-    `- Pyramid: For each of pyramidTop, pyramidMid, pyramidBase, if the string is non-empty, note count = comma-separated tokens after trim (drop empty). Each non-empty tier MUST have between ${minP} and ${maxP} notes inclusive.`,
-    `- Scenario "recommendation": recommendations array length MUST be between ${minR} and ${maxR} inclusive. MUST NOT return fewer than ${minR} or more than ${maxR}.`,
-    `- Scenario "analog": prefer at most ${analogMax} op=add alternatives in one response unless the user clearly asks for more; never exceed ${maxR} new rows.`,
-    `- Whenever you set pyramid tiers on op=add or op=status (non-bulk), all populated tiers MUST obey the pyramid min/max above.`,
+    'USER DISPLAY LIMITS (violations → INVALID):',
+    `- Pyramid (pyramidTop|Mid|Base): non-empty tier = comma-separated tokens after trim (drop empties); ${minP}–${maxP} notes per non-empty tier.`,
+    `- recommendation scenario: recommendations.length must be ${minR}–${maxR} inclusive (not fewer, not more).`,
+    `- analog scenario: at most ${analogMax} op=add per reply unless the user clearly asks for more; never more than ${maxR} new rows.`,
+    `- Non-bulk op=add|op=status: populated tiers obey the pyramid bounds above.`,
   ]
 }
 
@@ -81,42 +81,39 @@ function buildBaseInstructions(request: AnalyzePreferencesRequest): string[] {
     : 'Detail level: balanced — enough context without being verbose.'
 
   return [
-    "You are a helpful fragrance assistant for Oryxel. You can chat naturally, analyze preferences, and manage the user's fragrance diary.",
+    "You are a helpful fragrance assistant for Oryxel — chat naturally, analyze preferences, manage the user's diary.",
     toneInstruction,
     depthInstruction,
-    `The 'reply' and 'summary' fields MUST be written in ${language} for the user.`,
-    `notesSummary, pyramidTop, pyramidMid, pyramidBase MUST be plain English, all lowercase (e.g. "bergamot, lavender, musk"). Profile fields archetype and favoriteNote MUST be written in ${language}.`,
-    `agentComment and recommendations[].tag MUST be written in ${language} — they are shown directly to the user without translation.`,
-    'Return ONLY compact JSON — no markdown, no code fences, no extra text outside the JSON object.',
-    'Required JSON keys: reply (string), confidence (0-1), summary (string), tableOps (array, may be empty).',
+    `reply & summary: ${language}. notesSummary, pyramidTop|Mid|Base: English lowercase (e.g. "bergamot, lavender, musk"). archetype, favoriteNote: ${language}. agentComment, recommendations[].tag: ${language} (shown as-is).`,
+    'Output: one JSON object only — no markdown, fences, or extra text.',
+    'Required keys: reply (string), confidence (0–1), summary (string), tableOps (array; may be []).',
     allowAgentMemoryOps
-      ? 'Optional JSON keys: profile (object), recommendations (array), suggestions (array), agentMemoryOps (array).'
-      : 'Optional JSON keys: profile (object), recommendations (array), suggestions (array). Do NOT include agentMemoryOps — long-term memory cannot be changed from this channel.',
-    'The "reply" field: your conversational response to the user.',
-    'The "summary" field: a 1-2 sentence human-readable description of what changed.',
-    'Table operations — op values: add, move, rate, status, remove.',
-    'Fragrance state is stored as flags: isOwned (bool), isTried (bool), isLiked (bool, default false), isDisliked (bool, default false).',
-    'Flag combinations: not tried yet → isTried=false, isLiked=false, isDisliked=false, isOwned=false; liked → isTried=true, isLiked=true, isDisliked=false; disliked → isTried=true, isLiked=false, isDisliked=true; neutral (tried, no strong opinion) → isTried=true, isLiked=false, isDisliked=false, isOwned=false; in collection → isOwned=true (can combine with liked/disliked).',
-    `UI list names: to_try="${tableNames.to_try}" (isTried=false, isOwned=false), liked="${tableNames.liked}" (isTried=true, isLiked=true), neutral="${tableNames.neutral}" (isTried=true, isLiked=false, isDisliked=false, isOwned=false), disliked="${tableNames.disliked}" (isTried=true, isDisliked=true), owned="${tableNames.owned}" (isOwned=true). Use these names in your reply.`,
-    'For op=add: set brandName and fragranceName (strings). Set isOwned/isTried/isLiked/isDisliked flags. Do NOT use fragranceId for new fragrances.',
-    'For op=add: ALWAYS set notesSummary — comma-separated list of up to 5 key fragrance notes in English.',
-    `For op=add or op=status: ALWAYS set pyramidTop, pyramidMid, pyramidBase as comma-separated note names in English. Fill all three tiers if you know the fragrance. Each tier must contain between ${request.minPyramidNotes ?? 1} and ${request.maxPyramidNotes ?? 5} notes.`,
-    `For op=add or op=status: ALWAYS set agentComment — a punchy one-line phrase in ${language}, max 80 chars. Capture the scent essence (e.g. "Warm amber with smoky oud"). No sentences, no "because", no user references.`,
-    `For op=add or op=status: you MAY set userComment — the user's own words about this fragrance in their language. Only set when the user explicitly shared an opinion. Max 200 chars.`,
-    'For op=add or op=status: ALWAYS set season — comma-separated applicable seasons from: spring, summer, autumn, winter. E.g. "summer" for fresh aquatics, "autumn,winter" for heavy orientals, "spring,summer" for florals.',
-    'For op=add or op=status: ALWAYS set timeOfDay — comma-separated from: day, evening, night. E.g. "evening,night" for intense/heavy fragrances, "day" for light/fresh ones.',
-    'For op=add or op=status: ALWAYS set gender — one of: female, male, unisex. Base on fragrance character and notes, not just marketing. Unisex when it genuinely works for all.',
-    'For op=move: set rowId and the new flag values (isOwned/isTried/isLiked/isDisliked).',
-    'For op=rate/status/move/remove: rowId MUST be the exact integer id from the diary context below. NEVER guess or invent a rowId. If the fragrance is not listed in the diary, use op=add instead.',
-    `OUTPUT SIZE: For bulk imports (many fragrances), omit suggestions.`,
+      ? 'Optional keys: profile, recommendations, suggestions, agentMemoryOps.'
+      : 'Optional keys: profile, recommendations, suggestions — omit agentMemoryOps (memory not editable here).',
+    'reply: conversational answer. summary: 1–2 sentences on what changed.',
+    'tableOps op: add | move | rate | status | remove.',
+    'Flags: isOwned, isTried, isLiked (default false), isDisliked (default false).',
+    'Flag mapping: not tried yet → isTried=false,isLiked=false,isDisliked=false,isOwned=false; liked → isTried=true,isLiked=true,isDisliked=false; disliked → isTried=true,isLiked=false,isDisliked=true; neutral (tried, no strong opinion) → isTried=true,isLiked=false,isDisliked=false,isOwned=false; collection → isOwned=true (may combine with liked/disliked).',
+    `UI list names in reply — to_try="${tableNames.to_try}" (isTried=false,isOwned=false); liked="${tableNames.liked}" (isTried=true,isLiked=true); neutral="${tableNames.neutral}" (isTried=true,isLiked=false,isDisliked=false,isOwned=false); disliked="${tableNames.disliked}" (isTried=true,isDisliked=true); owned="${tableNames.owned}" (isOwned=true).`,
+    'op=add: brandName, fragranceName; set flags; no fragranceId for new rows.',
+    'op=add: notesSummary — up to 5 key notes, English, comma-separated.',
+    `op=add|op=status: pyramidTop|Mid|Base — English comma-separated; fill all three if known; ${request.minPyramidNotes ?? 1}–${request.maxPyramidNotes ?? 5} notes per tier.`,
+    `op=add|op=status: agentComment — one punchy line in ${language}, ≤80 chars, scent essence (e.g. "Warm amber with smoky oud"); no full sentences, no "because", no user reference.`,
+    `op=add|op=status: userComment optional — user's words only if they stated an opinion; ≤200 chars.`,
+    'op=add|op=status: season — CSV from spring,summer,autumn,winter (e.g. summer aquatics; autumn,winter heavy orientals; spring,summer florals).',
+    'op=add|op=status: timeOfDay — CSV from day,evening,night (e.g. evening,night heavy; day light).',
+    `op=add|op=status: gender — female | male | unisex from character/notes (not marketing only); unisex when truly fitting.`,
+    'op=move: rowId + new flag values.',
+    'op=rate|status|move|remove: rowId = exact id from diary context below — never invent. If row missing → op=add.',
+    'Bulk import (many rows): omit suggestions.',
     ...(allowAgentMemoryOps
       ? [
-          'agentMemoryOps (optional): only when the user clearly asks to remember, forget, or correct long-term memory. Max 10 items per response. Each item is one of: { op: "add", content: string } (plain text, max 500 chars, English or user language as appropriate), { op: "update", id: number, content: string } (id MUST match an id listed under Long-term memory in context), { op: "remove", id: number }. Never invent ids. If the user did not ask to change memory, omit agentMemoryOps or use [].',
+          'agentMemoryOps (optional): only if user asks to remember/forget/fix memory; ≤10 items. Shapes: {op:"add",content} (≤500 chars); {op:"update",id,content} (id from Long-term memory in context); {op:"remove",id}. No invented ids. Else [].',
         ]
       : []),
     ...(recommendationsOnly
       ? [
-          'MODE: Refresh recommendations only. Output a full new recommendations[] that replaces the prior AI suggestion list. tableOps MUST be []. Do not output profile, suggestions, or agentMemoryOps.',
+          'MODE: recommendations refresh only — full new recommendations[]; tableOps []; omit profile, suggestions, agentMemoryOps.',
         ]
       : []),
   ]
@@ -163,13 +160,11 @@ function buildContextBlock(request: AnalyzePreferencesRequest): string[] {
     'Context:',
     `- profile: ${JSON.stringify({ ...profile, preferences: undefined, noteRelationships: undefined })}`,
     profile.gender !== undefined && profile.gender !== null
-      ? `- user gender: ${profile.gender} (use appropriate pronouns in Russian and other gendered languages)`
-      : `- user gender: not specified`,
-    profile.preferences
-      ? `- user preferences (verbatim, use when generating recommendations): ${profile.preferences}`
-      : '',
+      ? `- gender: ${profile.gender} (pronouns: gendered langs e.g. Russian)`
+      : '- gender: not specified',
+    profile.preferences ? `- preferences (verbatim, for recs): ${profile.preferences}` : '',
     profile.noteRelationships && profile.noteRelationships.length > 0
-      ? `- user note relationships (use when generating recommendations and profile): ${JSON.stringify(profile.noteRelationships)}`
+      ? `- noteRelationships (recs + profile): ${JSON.stringify(profile.noteRelationships)}`
       : '',
     `- budget: ${context.budget ?? 'not provided'}`,
   ].filter(Boolean)
@@ -178,7 +173,7 @@ function buildContextBlock(request: AnalyzePreferencesRequest): string[] {
 
   if (diary) {
     lines.push(
-      'Diary — CRITICAL: for op=move/rate/status/remove, rowId MUST be the exact integer id shown below. NEVER invent or guess an id. If a fragrance is not in this list, use op=add. notes/top/mid/base show current data:',
+      'Diary — rowId for move/rate/status/remove: exact id below; never invent; missing row → op=add. Fields notes/top/mid/base = current:',
       `- owned: ${formatDiaryList((diary.owned ?? []) as DiaryContextEntry[])}`,
       `- to_try: ${formatDiaryList((diary.to_try ?? []) as DiaryContextEntry[])}`,
       `- liked: ${formatDiaryList((diary.liked ?? []) as DiaryContextEntry[])}`,
@@ -188,7 +183,7 @@ function buildContextBlock(request: AnalyzePreferencesRequest): string[] {
   }
 
   if (context.recentMessages && context.recentMessages.length > 0) {
-    lines.push('Recent conversation:')
+    lines.push('Recent messages:')
 
     for (const message of context.recentMessages) {
       lines.push(`- ${message.role === 'user' ? 'User' : 'Assistant'}: ${message.content}`)
@@ -196,10 +191,10 @@ function buildContextBlock(request: AnalyzePreferencesRequest): string[] {
   }
 
   if (context.agentMemoryEntries && context.agentMemoryEntries.length > 0) {
-    lines.push('Long-term memory (treat as stable facts; use numeric id for agentMemoryOps update/remove only):')
+    lines.push('Long-term memory (stable; ids for agentMemoryOps update/remove):')
 
     for (const entry of context.agentMemoryEntries) {
-      lines.push(`- id ${entry.id}: ${entry.content}`)
+      lines.push(`- ${entry.id}: ${entry.content}`)
     }
   }
 
@@ -216,61 +211,123 @@ function buildScenarioBlock(request: AnalyzePreferencesRequest): string[] {
   const maxR = request.maxRecommendations ?? 20
   const analogMax = Math.min(5, maxR)
   const scenarioInstructions: Record<AnalyzePreferencesRequest['scenario'], string> = {
-    analog: `Scenario analog: find the closest scent analogs for a fragrance the user mentions. Output at most ${analogMax} alternatives as tableOps (op=add, isTried=false, isLiked=false, isDisliked=false, isOwned=false) unless the user explicitly requests more — never exceed ${maxR}. For each: set notesSummary (lowercase English), pyramidTop/Mid/Base (lowercase English) when populated each tier MUST have ${minP}-${maxP} notes, and agentComment (in ${language}). Write a friendly reply in ${language} explaining the picks and scent similarities.`,
+    analog: `analog: closest scent analogs. ≤${analogMax} op=add (isTried=false,isLiked=false,isDisliked=false,isOwned=false) unless user asks more; ≤${maxR} rows. Each: notesSummary + pyramid (English lowercase, ${minP}–${maxP} notes/tier when set), agentComment (${language}). Reply (${language}): picks + scent similarities.`,
     pyramid: [
-      'Scenario pyramid: the user wants to know or update the olfactory pyramid (top/mid/base notes) of one or more fragrances.',
-      'For each relevant fragrance already in the diary, generate a tableOp with op=status and rowId, setting pyramidTop, pyramidMid, pyramidBase (all lowercase English).',
-      'If the fragrance is not yet in the diary, use op=add with brandName, fragranceName, isTried=false, isLiked=false, isDisliked=false, isOwned=false, and fill pyramidTop/Mid/Base (lowercase English).',
-      `IMPORTANT: Always populate ALL THREE pyramid fields. Each tier MUST contain between ${minP} and ${maxP} comma-separated notes (count rule in USER DISPLAY LIMITS).`,
-      `Include a reply in ${language} describing the pyramid in a natural, conversational way.`,
+      `pyramid: top/mid/base. Existing diary row → op=status, rowId, pyramid (English lc). Not listed → op=add, isTried=false,isLiked=false,isDisliked=false,isOwned=false, brand+name, pyramid (English lc). Fill all three tiers when known.`,
+      `${minP}–${maxP} comma-separated notes per non-empty tier (USER DISPLAY LIMITS). Reply (${language}), natural/conversational.`,
     ].join(' '),
-    recommendation: `Scenario recommendation: suggest fragrances the user would likely enjoy based on their diary and preferences. HARD REQUIREMENT: the recommendations array length MUST be between ${minR} and ${maxR} inclusive — responses outside this range are INVALID. Personalization rules: (1) If profile.gender is "male" prefer male/unisex fragrances; if "female" prefer female/unisex; if absent include all. (2) If profile.bio or profile.preferences exist, use them to understand the user's personality, lifestyle, and aesthetic — tailor picks accordingly. (3) If noteRelationships exist, favor fragrances with "love"/"like" notes and avoid "redflag"/"dislike" notes. For each recommendation: id (unique string), brand, name, notesSummary (comma-separated lowercase English notes), pyramidTop/Mid/Base if known (lowercase English), tag (plain string in ${language} — WHY this fragrance suits THIS specific user based on their profile and diary), gender (one of: female, male, unisex), timeOfDay (comma-separated: day, evening, night), season (comma-separated: spring, summer, autumn, winter). This REPLACES the current recommendation list. Update suggestions to exactly 3 short first-person user messages in ${language} (max 60 chars each, e.g. "Find an analog for Santal 33", "What works for date nights?") — these appear as tappable chips the user can send. Include a helpful reply in ${language} presenting your picks and explaining how they match the user's personal style.`,
-    comparison: `Scenario comparison: compare two or more fragrances mentioned by the user. Highlight differences in notes, character, and suitability. Update ratings or move rows (using flags) if the user indicates clear preference. Include a reply in ${language} summarizing the comparison.`,
+    recommendation: `recommendation: suggest from diary + prefs. HARD: recommendations.length ${minR}–${maxR} (else INVALID). (1) gender male→male/unisex; female→female/unisex; else all. (2) bio + preferences → personality/aesthetic. (3) noteRelationships → prefer love/like; avoid redflag/dislike. Each: id (unique), brand, name, notesSummary (English lc), pyramid if known, tag (${language}, why for THIS user), gender, timeOfDay CSV, season CSV. Replaces list. suggestions: 3 first-person chips, ${language}, ≤60 chars. Reply (${language}): picks + fit to user style.`,
+    comparison: `comparison: compare ≥2 named frags — notes, character, fit. Rate/move if user shows preference. Reply (${language}).`,
     command: [
-      'Scenario command: the user gave a direct instruction OR a structured bulk import. Execute it precisely.',
-      'BULK IMPORT: If the message contains section headers (like "# В НАЛИЧИИ", "В НАЛИЧИИ", "НРАВИТСЯ", "НЕ НРАВИТСЯ", "ПРИОРИТЕТ НА ТЕСТ", "В КОЛЛЕКЦИИ", "ХОЧУ ПОПРОБОВАТЬ", or English equivalents "OWNED", "LIKED", "DISLIKED", "TO TRY") treat each section as a list and generate op=add tableOps for EVERY fragrance listed.',
-      'Map sections to flags: В НАЛИЧИИ/OWNED → isOwned=true, isTried=false, isLiked=false, isDisliked=false; НРАВИТСЯ/LIKED → isTried=true, isLiked=true, isDisliked=false, isOwned=false; НЕ НРАВИТСЯ/DISLIKED → isTried=true, isLiked=false, isDisliked=true, isOwned=false; ПРИОРИТЕТ НА ТЕСТ/TO TRY → isTried=false, isLiked=false, isDisliked=false, isOwned=false.',
-      'For fragrances in both НРАВИТСЯ and В НАЛИЧИИ: isOwned=true, isTried=true, isLiked=true.',
-      `Skip any fragrance already in the diary (check the context). For each op=add set notesSummary (lowercase English) and agentComment (in ${language}). Skip pyramidTop/Mid/Base for bulk import to keep response small.`,
-      `PREFERENCES SECTION: If the message contains "ПРОФИЛЬ ПРЕДПОЧТЕНИЙ" or "PREFERENCES", save the full text verbatim to profile.preferences. Also update profile.archetype and profile.favoriteNote in ${language}.`,
-      'BULK IMPORT OUTPUT SIZE: Omit suggestions for bulk imports.',
-      `Single instruction: If adding a fragrance to try: use op=add with isTried=false, isLiked=false, isDisliked=false, isOwned=false, set brandName, fragranceName, notesSummary (lowercase English), pyramidTop/Mid/Base if known (lowercase English), and agentComment (in ${language} — WHY the user should try it). If adding to owned/liked/disliked: set flags accordingly (isLiked=true for liked; isDisliked=true for disliked).`,
-      'If the user shares their opinion about a fragrance: use op=status with rowId and set userComment to their words (in their language).',
-      'If rating: op=rate with rowId and rating (0-5).',
-      'If moving between lists: op=move with rowId and new flag values.',
-      `If updating agent comment: op=status with rowId and agentComment (in ${language}).`,
-      'If removing: op=remove with rowId.',
-      `If updating pyramid notes: op=status with rowId, set pyramidTop, pyramidMid, pyramidBase (lowercase English). Each non-empty tier MUST have between ${minP} and ${maxP} notes (comma-separated count rule).`,
-      'Set tableOps:[] only if the message is a pure question with no action requested.',
-      `Always include a reply in ${language} confirming what you did, or answering the question.`,
+      'command: direct instruction or bulk import — execute exactly.',
+      'BULK: headers "# В НАЛИЧИИ","В НАЛИЧИИ","НРАВИТСЯ","НЕ НРАВИТСЯ","ПРИОРИТЕТ НА ТЕСТ","В КОЛЛЕКЦИИ","ХОЧУ ПОПРОБОВАТЬ" or "OWNED","LIKED","DISLIKED","TO TRY" → each section is a list; op=add for EVERY row.',
+      'Map: В НАЛИЧИИ/OWNED → isOwned=true,isTried=false,isLiked=false,isDisliked=false; НРАВИТСЯ/LIKED → isTried=true,isLiked=true,isDisliked=false,isOwned=false; НЕ НРАВИТСЯ/DISLIKED → isTried=true,isLiked=false,isDisliked=true,isOwned=false; ПРИОРИТЕТ НА ТЕСТ/TO TRY → isTried=false,isLiked=false,isDisliked=false,isOwned=false.',
+      'In both НРАВИТСЯ and В НАЛИЧИИ: isOwned=true,isTried=true,isLiked=true.',
+      `Skip rows already in diary. Bulk op=add: notesSummary (English lc) + agentComment (${language}); omit pyramid.`,
+      `If "ПРОФИЛЬ ПРЕДПОЧТЕНИЙ" or "PREFERENCES": save verbatim → profile.preferences; set archetype + favoriteNote (${language}).`,
+      'Bulk: omit suggestions.',
+      `Single add to try: op=add, isTried=false,isLiked=false,isDisliked=false,isOwned=false, brand+name, notesSummary, pyramid if known, agentComment (${language}, why try). Other lists: flags per Map line.`,
+      'User opinion on row: op=status + userComment (their words).',
+      'Rating: op=rate, rowId, 0–5.',
+      'Move list: op=move, rowId, new flags.',
+      `Agent comment only: op=status, rowId, agentComment (${language}).`,
+      'Remove: op=remove, rowId.',
+      `Pyramid update: op=status, rowId, pyramid (English lc); non-empty tiers ${minP}–${maxP} notes.`,
+      'Pure Q, no action → tableOps [].',
+      `Reply (${language}): confirm or answer.`,
     ].join(' '),
     // eslint-disable-next-line camelcase
     profile_sync: [
-      'Scenario profile_sync: analyze the diary and update the user profile. No entry filling, no recommendations. Do not output agentMemoryOps.',
-      'UPDATE PROFILE: Base calculations on ALL lists: "owned", "liked", "neutral", and "disliked". Also consider user note relationships from context if provided.',
-      `profile.archetype: a compact 2-4 word personality descriptor in ${language} based on patterns in pyramids/notes. Not a sentence, not a label — a concise personality tag (e.g. "фруктово-цитрусовый гурман", "цитрусовый эстет", "пряный oriental lover", "woody minimalist").`,
-      `profile.favoriteNote: the single most prominent note in ${language} across liked/owned entries.`,
-      'profile.radar: 4-7 lowercase English axis keys (e.g. "oud", "floral", "citrus", "woody"), integer values 0-100.',
-      `profile.radarLabels: flat object keyed by axis key, values are labels in ${language}. Format: { "woody": "Древесный", "citrus": "Цитрусовый" }.`,
-      `profile.rationale: brief explanation in ${language}.`,
-      `profile.noteRelationships: analyze notes from ALL lists (liked, owned, disliked, neutral) — identify which notes appear consistently in liked/owned vs disliked entries. Output 5-20 entries. Each: note (English lowercase, e.g. "synthetic musk", "citrus", "oud"), sentiment (love|like|neutral|dislike|redflag), label (human-friendly phrase in ${language}, e.g. "Цитрусы — обожаю"), agentComment (1 sentence in ${language} describing the note's character, typical use-case, and effect — e.g. "Бодрящий и свежий, лучше всего в дневных лёгких ароматах"). IMPORTANT: for entries where lockedByUser=true in context, keep the existing sentiment and label unchanged — only you may update agentComment.`,
-      `suggestions: exactly 3 short first-person user messages in ${language} (max 60 chars each, e.g. "What suits me for evenings?") — tappable chips the user can send to continue the conversation.`,
-      'If all diary lists are empty: set suggestions=[], skip profile updates.',
-      `Include a brief reply in ${language} summarizing what was updated.`,
+      `profile_sync: diary → profile updates only; no diary rows, no recommendations, no agentMemoryOps.`,
+      'Ground in owned, liked, neutral, disliked + noteRelationships from context if present.',
+      `profile.archetype: 2–4 words, ${language}, from pyramids/notes — tag not prose (e.g. "фруктово-цитрусовый гурман","цитрусовый эстет","пряный oriental lover","woody minimalist").`,
+      `profile.favoriteNote: single most prominent note in ${language} across liked+owned.`,
+      'profile.radar: 4–7 English lc axis keys (oud,floral,citrus,woody), 0–100.',
+      `profile.radarLabels: axis→label in ${language}, e.g. {"woody":"Древесный","citrus":"Цитрусовый"}.`,
+      `profile.rationale: brief, ${language}.`,
+      `profile.noteRelationships: 5–20 entries from all lists — patterns in liked/owned vs disliked. Each: note (English lc), sentiment love|like|neutral|dislike|redflag, label (${language}), agentComment (1 sentence, ${language}). If lockedByUser=true: keep sentiment+label; only agentComment may change.`,
+      `suggestions: 3 first-person lines, ${language}, ≤60 chars — tappable chips.`,
+      'All diary empty → suggestions=[], skip profile fields.',
+      `Reply (${language}): brief summary of updates.`,
     ].join(' '),
   }
 
   return [`Scenario: ${scenario}`, scenarioInstructions[scenario]]
 }
 
-export function buildPrompt(request: AnalyzePreferencesRequest): string {
+/** Rough token estimate (Latin + Cyrillic mixed; ~4 chars/token). Not a billing count. */
+export function estimatePromptTokensApprox(text: string): number {
+  return Math.ceil(text.length / 4)
+}
+
+/** Instruction blocks only (no trailing `User message:` line). */
+export function buildPromptInstructionBlock(request: AnalyzePreferencesRequest): string {
   return [
     ...buildBaseInstructions(request),
     ...buildUserDisplayHardLimits(request),
     ...buildContextBlock(request),
     ...buildScenarioBlock(request),
-    `User message: ${request.message}`,
   ].join('\n')
+}
+
+export type PromptSection = { key: string; label: string; content: string }
+
+/** Structured breakdown for UI (token map). */
+export function buildPromptSections(request: AnalyzePreferencesRequest): PromptSection[] {
+  const sections: PromptSection[] = [
+    { key: 'base', label: 'Base instructions', content: buildBaseInstructions(request).join('\n') },
+    { key: 'limits', label: 'User display limits', content: buildUserDisplayHardLimits(request).join('\n') },
+    { key: 'context', label: 'Context', content: buildContextBlock(request).join('\n') },
+    { key: 'scenario', label: 'Scenario', content: buildScenarioBlock(request).join('\n') },
+    { key: 'user_message', label: 'User message', content: `User message: ${request.message}` },
+  ]
+
+  return sections
+}
+
+export type SystemPromptMode = 'default' | 'append' | 'replace'
+
+export function buildPromptWithOptions(
+  request: AnalyzePreferencesRequest,
+  options?: {
+    mode?: SystemPromptMode
+    append?: string | null
+    replace?: string | null
+  },
+): string {
+  const instructionBlock = buildPromptInstructionBlock(request)
+  const userLine = `User message: ${request.message}`
+  const mode = options?.mode ?? 'default'
+
+  if (mode === 'replace' && options?.replace?.trim()) {
+    return `${options.replace.trim()}\n\n${userLine}`
+  }
+
+  if (mode === 'append' && options?.append?.trim()) {
+    return `${instructionBlock}\n\n--- Additional instructions ---\n${options.append.trim()}\n\n${userLine}`
+  }
+
+  return `${instructionBlock}\n${userLine}`
+}
+
+function resolvePromptOptions(request: AnalyzePreferencesRequest): {
+  mode: SystemPromptMode
+  append: string | null
+  replace: string | null
+} {
+  const mode = request.systemPromptMode ?? 'default'
+
+  return {
+    mode,
+    append: request.systemPromptAppend ?? null,
+    replace: request.systemPromptReplace ?? null,
+  }
+}
+
+export function buildPrompt(request: AnalyzePreferencesRequest): string {
+  const o = resolvePromptOptions(request)
+
+  return buildPromptWithOptions(request, { mode: o.mode, append: o.append, replace: o.replace })
 }
 
 export function parseStructuredPatch(raw: unknown): StructuredPreferencePatch {

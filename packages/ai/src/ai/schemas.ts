@@ -81,6 +81,10 @@ export const analyzePreferencesRequestSchema = z.object({
   allowAgentMemoryOps: z.boolean().optional(),
   /** When true, prompt steers the model to only output recommendations[]; worker sanitizes the patch before apply. */
   recommendationsOnly: z.boolean().optional(),
+  /** Optional system prompt override (stored per user; applied when building the user message payload). */
+  systemPromptMode: z.enum(['default', 'append', 'replace']).optional(),
+  systemPromptAppend: z.string().max(16000).optional().nullable(),
+  systemPromptReplace: z.string().max(32000).optional().nullable(),
 })
 
 export const tableOperationSchema = z.object({
