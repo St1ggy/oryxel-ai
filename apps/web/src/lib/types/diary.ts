@@ -52,6 +52,8 @@ export type ChatMessage = {
   id: string
   role: 'user' | 'assistant'
   content: string
+  /** Defaults: user → plain, assistant → markdown in UI when omitted. */
+  contentFormat?: 'plain' | 'markdown'
 }
 
 export type ActivityEntry = {

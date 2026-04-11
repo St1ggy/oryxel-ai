@@ -1,5 +1,7 @@
 <script lang="ts">
   import { Send } from '@lucide/svelte'
+  import { createVirtualizer } from '@tanstack/svelte-virtual'
+  import { get } from 'svelte/store'
   import { fade, fly } from 'svelte/transition'
 
   import AiModelHeader from '$lib/components/app/ai-model-header.svelte'
@@ -13,6 +15,8 @@
   import { cn } from '$lib/utils/cn'
 
   import type { ChatMessage } from '$lib/types/diary'
+
+  const CHAT_VIRTUAL_THRESHOLD = 48
 
   type Props = {
     /** Server meta (keys, history) not ready yet — shimmer shell, not “add key”. */
@@ -81,6 +85,22 @@
   let scrollElement = $state<HTMLDivElement | null>(null)
   let draftElement = $state<HTMLTextAreaElement | null>(null)
 
+  const useVirtualMessages = $derived(messages.length >= CHAT_VIRTUAL_THRESHOLD)
+
+  const messageVirtualizer = createVirtualizer({
+    count: 0,
+    getScrollElement: () => scrollElement,
+    estimateSize: () => 96,
+    overscan: 8,
+  })
+
+  $effect(() => {
+    get(messageVirtualizer).setOptions({
+      count: messages.length,
+      getItemKey: (index: number) => messages[index]?.id ?? index,
+    })
+  })
+
   let chipsElement = $state<HTMLDivElement | null>(null)
   let chipsAtStart = $state(true)
   let chipsAtEnd = $state(true)
@@ -111,7 +131,19 @@
   })
 
   function scrollToBottom() {
-    if (scrollElement) scrollElement.scrollTop = scrollElement.scrollHeight
+    if (!scrollElement) return
+
+    if (useVirtualMessages) {
+      const last = messages.length - 1
+
+      if (last >= 0) {
+        get(messageVirtualizer).scrollToIndex(last, { align: 'end' })
+      }
+
+      return
+    }
+
+    scrollElement.scrollTop = scrollElement.scrollHeight
   }
 
   $effect(() => {
@@ -164,14 +196,42 @@
   {:else}
     <AiModelHeader modelLabel={m.oryxel_chat_model()} />
     {#if hasApiKey}
-      <div bind:this={scrollElement} class="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 pt-5 pb-6">
-        {#each messages as message (message.id)}
-          <div in:fly={{ y: 8, duration: 280, opacity: 0.9 }}>
-            <ChatBubble role={message.role}>
-              {message.content}
-            </ChatBubble>
+      <div bind:this={scrollElement} class="min-h-0 flex-1 overflow-y-auto px-6 pt-5 pb-6">
+        {#if useVirtualMessages}
+          <div
+            class="relative w-full"
+            style="height: {$messageVirtualizer.getTotalSize()}px;"
+          >
+            {#each $messageVirtualizer.getVirtualItems() as row (row.key)}
+              {@const message = messages[row.index]}
+              <div
+                class="absolute top-0 left-0 w-[calc(100%-0px)] px-0 py-2.5"
+                data-index={row.index}
+                style="transform: translateY({row.start}px);"
+              >
+                <div in:fly={{ y: 8, duration: 280, opacity: 0.9 }}>
+                  <ChatBubble
+                    role={message.role}
+                    text={message.content}
+                    contentFormat={message.contentFormat}
+                  />
+                </div>
+              </div>
+            {/each}
           </div>
-        {/each}
+        {:else}
+          <div class="space-y-5">
+            {#each messages as message (message.id)}
+              <div in:fly={{ y: 8, duration: 280, opacity: 0.9 }}>
+                <ChatBubble
+                  role={message.role}
+                  text={message.content}
+                  contentFormat={message.contentFormat}
+                />
+              </div>
+            {/each}
+          </div>
+        {/if}
         {#if thinking}
           <div in:fade={{ duration: 180 }} out:fade={{ duration: 140 }}>
             <TypingIndicator label={m.oryxel_chat_thinking({ model: modelLabel })} variant="bubble" />
