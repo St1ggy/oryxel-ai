@@ -1,11 +1,15 @@
-import * as d3 from 'd3'
+import { hsl } from 'd3-color'
+import { type Selection, select } from 'd3-selection'
+import 'd3-transition'
+import { type ZoomBehavior, zoom, zoomIdentity } from 'd3-zoom'
 
 import type { GraphControls, NoteLink, NoteNode } from './types'
+import type { Simulation } from 'd3-force'
 
 // ── Color utilities ──────────────────────────────────────────────────────────
 
 export function lightenHex(hex: string, amount: number): string {
-  const color = d3.hsl(hex)
+  const color = hsl(hex)
 
   color.l = Math.min(0.97, color.l + amount)
 
@@ -76,7 +80,7 @@ export function buildAdjacency(links: NoteLink[]): Set<string> {
 
 // ── SVG defs builders ─────────────────────────────────────────────────────────
 
-export function buildShadowFilter(defs: d3.Selection<SVGDefsElement, unknown, null, undefined>, uid: string): void {
+export function buildShadowFilter(defs: Selection<SVGDefsElement, unknown, null, undefined>, uid: string): void {
   const shadow = defs
     .append('filter')
     .attr('id', `${uid}-shadow`)
@@ -94,10 +98,10 @@ export function buildShadowFilter(defs: d3.Selection<SVGDefsElement, unknown, nu
 }
 
 export function buildNodeGradients(
-  defs: d3.Selection<SVGDefsElement, unknown, null, undefined>,
+  defs: Selection<SVGDefsElement, unknown, null, undefined>,
   nodes: NoteNode[],
   uid: string,
-): d3.Selection<SVGRadialGradientElement, NoteNode, SVGDefsElement, unknown> {
+): Selection<SVGRadialGradientElement, NoteNode, SVGDefsElement, unknown> {
   const nodeGrads = defs
     .selectAll<SVGRadialGradientElement, NoteNode>('radialGradient')
     .data(nodes)
@@ -128,10 +132,10 @@ export function buildNodeGradients(
 }
 
 export function buildLinkGradients(
-  defs: d3.Selection<SVGDefsElement, unknown, null, undefined>,
+  defs: Selection<SVGDefsElement, unknown, null, undefined>,
   links: NoteLink[],
   uid: string,
-): d3.Selection<SVGLinearGradientElement, NoteLink, SVGDefsElement, unknown> {
+): Selection<SVGLinearGradientElement, NoteLink, SVGDefsElement, unknown> {
   const linkGrads = defs
     .selectAll<SVGLinearGradientElement, NoteLink>('linearGradient')
     .data(links)
@@ -156,11 +160,10 @@ export function buildLinkGradients(
 // ── Zoom ──────────────────────────────────────────────────────────────────────
 
 export function attachZoom(
-  svg: d3.Selection<SVGSVGElement, unknown, null, undefined>,
-  g: d3.Selection<SVGGElement, unknown, null, undefined>,
-): d3.ZoomBehavior<SVGSVGElement, unknown> {
-  const zoomBehavior = d3
-    .zoom<SVGSVGElement, unknown>()
+  svg: Selection<SVGSVGElement, unknown, null, undefined>,
+  g: Selection<SVGGElement, unknown, null, undefined>,
+): ZoomBehavior<SVGSVGElement, unknown> {
+  const zoomBehavior = zoom<SVGSVGElement, unknown>()
     .scaleExtent([0.2, 6])
     .on('zoom', (event) => {
       g.attr('transform', event.transform.toString())
@@ -169,7 +172,7 @@ export function attachZoom(
   svg.call(zoomBehavior)
   svg.on('dblclick.zoom', null)
   // Reset any stale zoom state from a previous init so the first pan/zoom doesn't jump.
-  svg.call(zoomBehavior.transform, d3.zoomIdentity)
+  svg.call(zoomBehavior.transform, zoomIdentity)
 
   return zoomBehavior
 }
@@ -178,18 +181,17 @@ export function attachZoom(
 
 export function makeControls(
   svgElement: SVGSVGElement,
-  zoomBehavior: d3.ZoomBehavior<SVGSVGElement, unknown>,
-  simulation: d3.Simulation<NoteNode, NoteLink>,
+  zoomBehavior: ZoomBehavior<SVGSVGElement, unknown>,
+  simulation: Simulation<NoteNode, NoteLink>,
 ): GraphControls {
   return {
     cleanup: () => simulation.stop(),
-    zoomIn: () => d3.select(svgElement).transition().duration(250).call(zoomBehavior.scaleBy, 1.4),
+    zoomIn: () => select(svgElement).transition().duration(250).call(zoomBehavior.scaleBy, 1.4),
     zoomOut: () =>
-      d3
-        .select(svgElement)
+      select(svgElement)
         .transition()
         .duration(250)
         .call(zoomBehavior.scaleBy, 1 / 1.4),
-    resetView: () => d3.select(svgElement).transition().duration(350).call(zoomBehavior.transform, d3.zoomIdentity),
+    resetView: () => select(svgElement).transition().duration(350).call(zoomBehavior.transform, zoomIdentity),
   }
 }

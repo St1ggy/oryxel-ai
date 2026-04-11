@@ -1,4 +1,4 @@
-import * as d3 from 'd3'
+import { type Simulation, forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY } from 'd3-force'
 
 import { lightenHex, linkDistanceFactor, linkOpacity, linkThickness, truncateLabel } from '../common'
 
@@ -134,14 +134,12 @@ const buildSimulation = (
   links: NoteLink[],
   width: number,
   height: number,
-): d3.Simulation<NoteNode, NoteLink> =>
-  d3
-    .forceSimulation<NoteNode>(nodes)
+): Simulation<NoteNode, NoteLink> =>
+  forceSimulation<NoteNode>(nodes)
     .velocityDecay(0.32)
     .force(
       'link',
-      d3
-        .forceLink<NoteNode, NoteLink>(links)
+      forceLink<NoteNode, NoteLink>(links)
         .id((d) => d.id)
         .distance(
           (lk) =>
@@ -150,13 +148,13 @@ const buildSimulation = (
     )
     .force(
       'charge',
-      d3.forceManyBody<NoteNode>().strength((d) => -(400 + d.size * 5)),
+      forceManyBody<NoteNode>().strength((d) => -(400 + d.size * 5)),
     )
-    .force('x', d3.forceX<NoteNode>(width / 2).strength(0.05))
-    .force('y', d3.forceY<NoteNode>(height / 2).strength(0.05))
+    .force('x', forceX<NoteNode>(width / 2).strength(0.05))
+    .force('y', forceY<NoteNode>(height / 2).strength(0.05))
     .force(
       'collide',
-      d3.forceCollide<NoteNode>().radius((d) => d.size + 18),
+      forceCollide<NoteNode>().radius((d) => d.size + 18),
     )
 
 export const bubbleRenderer: StyleRenderer = { init, tick, buildSimulation }

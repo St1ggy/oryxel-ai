@@ -1,4 +1,5 @@
-import * as d3 from 'd3'
+import { type Simulation, forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY } from 'd3-force'
+import { select } from 'd3-selection'
 
 import { buildAdjacency, lightenHex, linkDistanceFactor, linkOpacity, linkThickness, truncateLabel } from '../common'
 
@@ -22,7 +23,7 @@ const init = (context: StyleContext): RenderedSelections => {
 
   // Background sky + stars — inserted directly into the SVG (outside zoom group)
   // so they stay fixed when the user pans/zooms.
-  const svgSel = d3.select(svgElement)
+  const svgSel = select(svgElement)
   const bgGroup = svgSel.insert('g', ':first-child').attr('class', 'constellation-bg')
 
   bgGroup.append('rect').attr('width', width).attr('height', height).attr('fill', '#080b1a')
@@ -207,14 +208,12 @@ const buildSimulation = (
   links: NoteLink[],
   width: number,
   height: number,
-): d3.Simulation<NoteNode, NoteLink> =>
-  d3
-    .forceSimulation<NoteNode>(nodes)
+): Simulation<NoteNode, NoteLink> =>
+  forceSimulation<NoteNode>(nodes)
     .velocityDecay(0.22)
     .force(
       'link',
-      d3
-        .forceLink<NoteNode, NoteLink>(links)
+      forceLink<NoteNode, NoteLink>(links)
         .id((d) => d.id)
         .distance(
           (lk) =>
@@ -226,14 +225,14 @@ const buildSimulation = (
     // Mild repulsion for personal space (prevents dense pileups at attractors)
     .force(
       'charge',
-      d3.forceManyBody<NoteNode>().strength((d) => -(40 + d.size * 1.5)),
+      forceManyBody<NoteNode>().strength((d) => -(40 + d.size * 1.5)),
     )
     // Soft centering — weaker than before so gravity can pull nodes off-centre
-    .force('x', d3.forceX<NoteNode>(width / 2).strength(0.022))
-    .force('y', d3.forceY<NoteNode>(height / 2).strength(0.022))
+    .force('x', forceX<NoteNode>(width / 2).strength(0.022))
+    .force('y', forceY<NoteNode>(height / 2).strength(0.022))
     .force(
       'collide',
-      d3.forceCollide<NoteNode>().radius((d) => d.size + 24),
+      forceCollide<NoteNode>().radius((d) => d.size + 24),
     )
 
 export const constellationRenderer: StyleRenderer = { init, tick, buildSimulation }

@@ -1,4 +1,6 @@
-import * as d3 from 'd3'
+import { select } from 'd3-selection'
+import 'd3-transition'
+import { zoomIdentity } from 'd3-zoom'
 
 import { attachZoom, buildAdjacency, linkOpacity, makeControls } from './common'
 import { defaultRenderer } from './styles/default'
@@ -73,7 +75,7 @@ export async function initNoteGraphD3(
     target: nodeMap.get(l.target as string) ?? (l.target as NoteNode),
   }))
 
-  const svg = d3.select(svgElement)
+  const svg = select(svgElement)
 
   svg.selectAll('*').remove()
 
@@ -125,7 +127,7 @@ export async function initNoteGraphD3(
   const fitScale = Math.min(width / bboxW, height / bboxH, 1.5)
   const fitTx = width / 2 - ((x0 + x1) / 2) * fitScale
   const fitTy = height / 2 - ((y0 + y1) / 2) * fitScale
-  const fitTransform = d3.zoomIdentity.translate(fitTx, fitTy).scale(fitScale)
+  const fitTransform = zoomIdentity.translate(fitTx, fitTy).scale(fitScale)
 
   // Render pre-ticked positions immediately
   renderer.tick(sel, nodes, links)
@@ -146,7 +148,7 @@ export async function initNoteGraphD3(
     .on('mouseenter', function (event: MouseEvent, d: NoteNode) {
       hoveredNode = d
 
-      d3.select(this)
+      select(this)
         .select('.node-circle')
         .transition()
         .duration(160)
@@ -182,7 +184,7 @@ export async function initNoteGraphD3(
     .on('mouseleave', function (_event, d: NoteNode) {
       hoveredNode = null
 
-      d3.select(this).select('.node-circle').transition().duration(160).attr('r', d.size).attr('stroke-width', 1.5)
+      select(this).select('.node-circle').transition().duration(160).attr('r', d.size).attr('stroke-width', 1.5)
 
       sel.linkSel
         .transition()

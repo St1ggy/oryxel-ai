@@ -1,8 +1,9 @@
-import * as d3 from 'd3'
+import { type Simulation, forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY } from 'd3-force'
 
 import { buildShadowFilter, lightenHex, linkDistanceFactor, linkOpacity, linkThickness, truncateLabel } from '../common'
 
 import type { NoteLink, NoteNode, RenderedSelections, StyleContext, StyleRenderer } from '../types'
+import type { Selection } from 'd3-selection'
 
 // ── Cluster style — family-grouped layout with halos and mixed link styles ────
 
@@ -160,7 +161,7 @@ const init = (context: StyleContext): RenderedSelections => {
 }
 
 const tick = (sel: RenderedSelections): void => {
-  function updateLines(lineSel: d3.Selection<SVGLineElement, NoteLink, SVGGElement, unknown>): void {
+  function updateLines(lineSel: Selection<SVGLineElement, NoteLink, SVGGElement, unknown>): void {
     lineSel
       .attr('x1', (lk) => (lk.source as NoteNode).x ?? 0)
       .attr('y1', (lk) => (lk.source as NoteNode).y ?? 0)
@@ -170,9 +171,9 @@ const tick = (sel: RenderedSelections): void => {
 
   const { intraSel, crossSel } = sel.extras ?? {}
 
-  if (intraSel) updateLines(intraSel as d3.Selection<SVGLineElement, NoteLink, SVGGElement, unknown>)
+  if (intraSel) updateLines(intraSel as Selection<SVGLineElement, NoteLink, SVGGElement, unknown>)
 
-  if (crossSel) updateLines(crossSel as d3.Selection<SVGLineElement, NoteLink, SVGGElement, unknown>)
+  if (crossSel) updateLines(crossSel as Selection<SVGLineElement, NoteLink, SVGGElement, unknown>)
 
   sel.nodeGroupSel.attr('transform', (d) => `translate(${d.x ?? 0},${d.y ?? 0})`)
 }
@@ -182,17 +183,15 @@ const buildSimulation = (
   links: NoteLink[],
   width: number,
   height: number,
-): d3.Simulation<NoteNode, NoteLink> => {
+): Simulation<NoteNode, NoteLink> => {
   const familyCenters = buildFamilyCenters(nodes, width, height)
 
   return (
-    d3
-      .forceSimulation<NoteNode>(nodes)
+    forceSimulation<NoteNode>(nodes)
       .velocityDecay(0.3)
       .force(
         'link',
-        d3
-          .forceLink<NoteNode, NoteLink>(links)
+        forceLink<NoteNode, NoteLink>(links)
           .id((d) => d.id)
           .distance((lk) => {
             const s = lk.source as NoteNode
@@ -205,14 +204,14 @@ const buildSimulation = (
       )
       .force(
         'charge',
-        d3.forceManyBody<NoteNode>().strength((d) => -(500 + d.size * 7)),
+        forceManyBody<NoteNode>().strength((d) => -(500 + d.size * 7)),
       )
       // Stronger pull toward family center so clusters stay compact and distinct
-      .force('x', d3.forceX<NoteNode>((d) => familyCenters.get(d.family)?.x ?? width / 2).strength(0.28))
-      .force('y', d3.forceY<NoteNode>((d) => familyCenters.get(d.family)?.y ?? height / 2).strength(0.28))
+      .force('x', forceX<NoteNode>((d) => familyCenters.get(d.family)?.x ?? width / 2).strength(0.28))
+      .force('y', forceY<NoteNode>((d) => familyCenters.get(d.family)?.y ?? height / 2).strength(0.28))
       .force(
         'collide',
-        d3.forceCollide<NoteNode>().radius((d) => d.size + 22),
+        forceCollide<NoteNode>().radius((d) => d.size + 22),
       )
   )
 }

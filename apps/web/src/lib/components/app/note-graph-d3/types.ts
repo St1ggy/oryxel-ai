@@ -1,5 +1,6 @@
 import type { NoteLink, NoteNode } from '$lib/utils/note-graph'
-import type * as d3 from 'd3'
+import type { Simulation } from 'd3-force'
+import type { Selection } from 'd3-selection'
 
 export type GraphStyle = 'default' | 'constellation' | 'bubble' | 'ink' | 'cluster' | 'timeline'
 
@@ -13,8 +14,8 @@ export type GraphControls = {
 }
 
 export type StyleContext = {
-  g: d3.Selection<SVGGElement, unknown, null, undefined>
-  defs: d3.Selection<SVGDefsElement, unknown, null, undefined>
+  g: Selection<SVGGElement, unknown, null, undefined>
+  defs: Selection<SVGDefsElement, unknown, null, undefined>
   nodes: NoteNode[]
   links: NoteLink[]
   width: number
@@ -24,23 +25,18 @@ export type StyleContext = {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnySelection = d3.Selection<any, any, any, any>
+type AnySelection = Selection<any, any, any, any>
 
 export type RenderedSelections = {
-  linkSel: d3.Selection<SVGElement, NoteLink, SVGGElement, unknown>
-  nodeGroupSel: d3.Selection<SVGGElement, NoteNode, SVGGElement, unknown>
+  linkSel: Selection<SVGElement, NoteLink, SVGGElement, unknown>
+  nodeGroupSel: Selection<SVGGElement, NoteNode, SVGGElement, unknown>
   extras?: Record<string, AnySelection>
 }
 
 export type StyleRenderer = {
   init(context: StyleContext): RenderedSelections
   tick(sel: RenderedSelections, nodes: NoteNode[], links: NoteLink[]): void
-  buildSimulation(
-    nodes: NoteNode[],
-    links: NoteLink[],
-    width: number,
-    height: number,
-  ): d3.Simulation<NoteNode, NoteLink>
+  buildSimulation(nodes: NoteNode[], links: NoteLink[], width: number, height: number): Simulation<NoteNode, NoteLink>
 }
 
 export { type NoteLink, type NoteNode } from '$lib/utils/note-graph'

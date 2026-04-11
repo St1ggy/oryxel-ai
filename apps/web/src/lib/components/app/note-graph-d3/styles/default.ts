@@ -1,4 +1,4 @@
-import * as d3 from 'd3'
+import { type Simulation, forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY } from 'd3-force'
 
 import {
   buildLinkGradients,
@@ -131,14 +131,12 @@ const buildSimulation = (
   links: NoteLink[],
   width: number,
   height: number,
-): d3.Simulation<NoteNode, NoteLink> =>
-  d3
-    .forceSimulation<NoteNode>(nodes)
+): Simulation<NoteNode, NoteLink> =>
+  forceSimulation<NoteNode>(nodes)
     .velocityDecay(0.28)
     .force(
       'link',
-      d3
-        .forceLink<NoteNode, NoteLink>(links)
+      forceLink<NoteNode, NoteLink>(links)
         .id((d) => d.id)
         .distance(
           (lk) =>
@@ -147,13 +145,13 @@ const buildSimulation = (
     )
     .force(
       'charge',
-      d3.forceManyBody<NoteNode>().strength((d) => -(600 + d.size * 8)),
+      forceManyBody<NoteNode>().strength((d) => -(600 + d.size * 8)),
     )
-    .force('x', d3.forceX<NoteNode>(width / 2).strength(0.04))
-    .force('y', d3.forceY<NoteNode>(height / 2).strength(0.04))
+    .force('x', forceX<NoteNode>(width / 2).strength(0.04))
+    .force('y', forceY<NoteNode>(height / 2).strength(0.04))
     .force(
       'collide',
-      d3.forceCollide<NoteNode>().radius((d) => d.size + 28),
+      forceCollide<NoteNode>().radius((d) => d.size + 28),
     )
 
 export const defaultRenderer: StyleRenderer = { init, tick, buildSimulation }
