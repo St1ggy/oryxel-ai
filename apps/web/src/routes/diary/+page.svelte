@@ -18,6 +18,11 @@
   import Modal from '$lib/components/ui/modal.svelte'
   import PhantomUiShell from '$lib/components/ui/phantom-ui-shell.svelte'
   import * as m from '$lib/paraglide/messages.js'
+  import {
+    CHAT_PANEL_WIDTH_DEFAULT_PCT,
+    chatPanelWidthPctAtom,
+    clampChatPanelWidthPct,
+  } from '$lib/prefs/client-stores'
   import { showPatchAppliedToast } from '$lib/toast/patch-applied'
   import { cn } from '$lib/utils/cn'
 
@@ -34,6 +39,10 @@
   const { data }: { data: PageData } = $props()
 
   let chatOpen = $state(true)
+  /** Desktop chat column width (% of shell row); persisted in `localStorage` via `chatPanelWidthPctAtom`. */
+  let chatWidthPct = $state(CHAT_PANEL_WIDTH_DEFAULT_PCT)
+  let resizingChat = $state(false)
+  let desktopSplitElement = $state<HTMLDivElement | null>(null)
   let chatDraft = $state('')
   let primaryView = $state<DiaryPrimaryView>(untrack(() => data.initialView ?? 'fragrances'))
   let fragranceTab = $state<FragranceListTabValue>(untrack(() => data.initialFragranceTab ?? 'owned'))
@@ -67,6 +76,58 @@
       primaryView = 'fragrances'
     }
   })
+
+  $effect(() => {
+    if (!browser) {
+      return
+    }
+
+    chatWidthPct = chatPanelWidthPctAtom.get()
+
+    return chatPanelWidthPctAtom.subscribe((value) => {
+      chatWidthPct = value
+    })
+  })
+
+  function onChatWidthPointerDown(event: PointerEvent) {
+    event.preventDefault()
+
+    if (!browser || !desktopSplitElement) {
+      return
+    }
+
+    resizingChat = true
+
+    const handle = event.currentTarget as HTMLElement
+
+    handle.setPointerCapture(event.pointerId)
+
+    const onMove = (event: PointerEvent) => {
+      const r = desktopSplitElement!.getBoundingClientRect()
+      const pct = ((event.clientX - r.left) / r.width) * 100
+
+      chatWidthPct = clampChatPanelWidthPct(pct)
+    }
+
+    const onUp = (event: PointerEvent) => {
+      resizingChat = false
+
+      try {
+        handle.releasePointerCapture(event.pointerId)
+      } catch {
+        /* already released */
+      }
+
+      globalThis.removeEventListener('pointermove', onMove)
+      globalThis.removeEventListener('pointerup', onUp)
+      globalThis.removeEventListener('pointercancel', onUp)
+      chatPanelWidthPctAtom.set(chatWidthPct)
+    }
+
+    globalThis.addEventListener('pointermove', onMove)
+    globalThis.addEventListener('pointerup', onUp)
+    globalThis.addEventListener('pointercancel', onUp)
+  }
 
   function prepareTourChatPanel() {
     chatOpen = true
@@ -741,13 +802,15 @@
 </script>
 
 <div class="flex min-h-0 w-full flex-1 flex-col">
-  <div class="hidden min-h-0 flex-1 md:flex">
+  <div class="hidden min-h-0 flex-1 md:flex" bind:this={desktopSplitElement}>
     <section
       class={cn(
-        'flex min-w-0 shrink-0 flex-col overflow-hidden border-r bg-[color-mix(in_srgb,var(--oryx-bg-surface)_88%,var(--oryx-bg-page))]',
-        'transition-[flex-basis,opacity,border-color] duration-(--oryx-motion-normal) ease-(--oryx-ease-out)',
-        chatOpen ? 'basis-[35%] border-border opacity-100' : 'pointer-events-none basis-0 border-transparent opacity-0',
+        'relative flex min-w-0 shrink-0 flex-col overflow-hidden border-r bg-[color-mix(in_srgb,var(--oryx-bg-surface)_88%,var(--oryx-bg-page))]',
+        !resizingChat &&
+          'transition-[flex-basis,opacity,border-color] duration-(--oryx-motion-normal) ease-(--oryx-ease-out)',
+        chatOpen ? 'border-border opacity-100' : 'pointer-events-none border-transparent opacity-0',
       )}
+      style:flex-basis={chatOpen ? `${chatWidthPct}%` : '0'}
     >
       <AppChatPanel
         loading={shellLoading}
@@ -760,6 +823,15 @@
         {providerOptions}
         suggestions={profileData.suggestions}
       />
+      {#if chatOpen}
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label={m.oryxel_chat_resize_handle()}
+          class="absolute top-0 right-0 z-20 h-full w-3 max-w-[14px] -translate-x-1/2 cursor-col-resize touch-none select-none bg-border/0 hover:bg-border/25 active:bg-border/40"
+          onpointerdown={onChatWidthPointerDown}
+        ></div>
+      {/if}
     </section>
     <section class="flex min-h-0 min-w-0 flex-1 flex-col bg-background">
       <div
