@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { Toaster } from 'svelte-sonner'
+
   import favicon from '$lib/assets/favicon.svg'
   import SecondaryHeader from '$lib/components/app/secondary-header.svelte'
   import ThemeRoot from '$lib/components/app/theme-root.svelte'
@@ -81,4 +83,5 @@
       {@render children()}
     </main>
   </div>
+  <Toaster position="bottom-right" closeButton={true} offset="1.5rem" mobileOffset={{ bottom: '5rem' }} />
 </ThemeRoot>

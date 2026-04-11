@@ -13,12 +13,12 @@
   import DiaryProfileTab from '$lib/components/app/diary-profile-tab.svelte'
   import DiaryTour from '$lib/components/app/diary-tour.svelte'
   import FragranceDetailModal from '$lib/components/app/fragrance-detail-modal.svelte'
-  import PatchAppliedToast from '$lib/components/app/patch-applied-toast.svelte'
   import PatchDetailsModal from '$lib/components/app/patch-details-modal.svelte'
   import Button from '$lib/components/ui/button.svelte'
   import Modal from '$lib/components/ui/modal.svelte'
   import PhantomUiShell from '$lib/components/ui/phantom-ui-shell.svelte'
   import * as m from '$lib/paraglide/messages.js'
+  import { showPatchAppliedToast } from '$lib/toast/patch-applied'
   import { cn } from '$lib/utils/cn'
 
   import type { DiaryPrimaryView, FragranceListTabValue } from '$lib/diary/diary-tab-items'
@@ -247,7 +247,6 @@
   let thinking = $state(false)
   let refreshingRecommendations = $state(false)
 
-  let patchAppliedToast = $state<{ summary: string; payload: Record<string, unknown> } | null>(null)
   let patchDetailsOpen = $state(false)
   let patchDetailsPayload = $state<Record<string, unknown> | null>(null)
   let patchDetailsSubtitle = $state<string | null>(null)
@@ -256,10 +255,6 @@
     patchDetailsPayload = payload
     patchDetailsSubtitle = subtitle
     patchDetailsOpen = true
-  }
-
-  function dismissPatchToast() {
-    patchAppliedToast = null
   }
 
   function notifyPatchAppliedFromJobResult(result: Record<string, unknown>) {
@@ -272,7 +267,11 @@
         ? (applied as Record<string, unknown>)
         : { summary, reply: result['reply'] }
 
-    patchAppliedToast = { summary, payload }
+    showPatchAppliedToast({
+      summary,
+      payload,
+      onViewDetails: (payload, subtitle) => openPatchDetailsModal(payload, subtitle),
+    })
   }
 
   // Aborted when the component is destroyed (navigation away) — stops all in-flight fetches.
@@ -863,7 +862,11 @@
         inline
         onOpenPatchDetails={(payload, summary) => openPatchDetailsModal(payload, summary)}
         onPatchApplied={(summary, payload) => {
-          patchAppliedToast = { summary, payload }
+          showPatchAppliedToast({
+            summary,
+            payload,
+            onViewDetails: (p, s) => openPatchDetailsModal(p, s),
+          })
         }}
       />
     </section>
@@ -1006,16 +1009,15 @@
     {patchProgress}
     onOpenPatchDetails={(payload, summary) => openPatchDetailsModal(payload, summary)}
     onPatchApplied={(summary, payload) => {
-      patchAppliedToast = { summary, payload }
+      showPatchAppliedToast({
+        summary,
+        payload,
+        onViewDetails: (p, s) => openPatchDetailsModal(p, s),
+      })
     }}
   />
 </div>
 
-<PatchAppliedToast
-  toast={patchAppliedToast}
-  onDismiss={dismissPatchToast}
-  onViewDetails={(payload, summary) => openPatchDetailsModal(payload, summary)}
-/>
 <PatchDetailsModal bind:open={patchDetailsOpen} payload={patchDetailsPayload} subtitle={patchDetailsSubtitle} />
 
 <DiaryTour
