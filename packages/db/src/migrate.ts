@@ -51,6 +51,24 @@ async function run() {
       }
     }
 
+    if (!appliedSet.has('0002_careful_marvel_zombies')) {
+      const { rows } = await client.query<{ exists: boolean }>(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables
+          WHERE table_schema = 'public' AND table_name = 'note_family'
+        ) AS exists
+      `)
+
+      if (rows[0]?.exists) {
+        await client.query('INSERT INTO "__drizzle_migrations" (hash, created_at) VALUES ($1, $2)', [
+          '0002_careful_marvel_zombies',
+          Date.now(),
+        ])
+        appliedSet.add('0002_careful_marvel_zombies')
+        console.log('mark  0002_careful_marvel_zombies.sql (note_family already exists via db:push)')
+      }
+    }
+
     const files = readdirSync(migrationsDirectory)
       .filter((f) => f.endsWith('.sql'))
       .toSorted((a, b) => a.localeCompare(b))

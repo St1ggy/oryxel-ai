@@ -58,6 +58,10 @@ export const userAiPreferences = pgTable('user_ai_preferences', {
   minRecommendations: integer('min_recommendations').notNull().default(5),
   maxRecommendations: integer('max_recommendations').notNull().default(20),
   graphStyle: text('graph_style').notNull().default('default'),
+  /** default | append (after built-in block) | replace (full system text; user message still appended). */
+  systemPromptMode: text('system_prompt_mode').notNull().default('default'),
+  systemPromptAppend: text('system_prompt_append'),
+  systemPromptReplace: text('system_prompt_replace'),
 })
 
 export const userAiProviderKey = pgTable(
