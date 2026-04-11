@@ -36,7 +36,7 @@
 >
   {#if assistantHtml !== null}
     <div class="[&_a]:text-accent [&_code]:rounded [&_code]:bg-muted/80 [&_code]:px-1 [&_code]:py-px [&_pre]:overflow-x-auto">
-      <!-- eslint-disable svelte/no-at-html-tags -- sanitized via DOMPurify -->
+      <!-- eslint-disable svelte/no-at-html-tags -- sanitized via sanitize-html -->
       {@html assistantHtml}
     </div>
   {:else}
