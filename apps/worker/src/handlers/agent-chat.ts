@@ -189,6 +189,9 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
           tone: userAiPreferences.tone,
           depth: userAiPreferences.depth,
           rememberContext: userAiPreferences.rememberContext,
+          systemPromptMode: userAiPreferences.systemPromptMode,
+          systemPromptAppend: userAiPreferences.systemPromptAppend,
+          systemPromptReplace: userAiPreferences.systemPromptReplace,
         })
         .from(userAiPreferences)
         .where(eq(userAiPreferences.userId, userId))
@@ -216,6 +219,9 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
       maxPyramidNotes: aiPrefs?.maxPyramidNotes,
       tone: aiPrefs?.tone ?? undefined,
       depth: aiPrefs?.depth ?? undefined,
+      systemPromptMode: (aiPrefs?.systemPromptMode as 'default' | 'append' | 'replace' | undefined) ?? undefined,
+      systemPromptAppend: aiPrefs?.systemPromptAppend ?? undefined,
+      systemPromptReplace: aiPrefs?.systemPromptReplace ?? undefined,
       allowAgentMemoryOps: false,
       recommendationsOnly: recommendationsOnly || undefined,
     })

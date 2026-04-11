@@ -18,53 +18,14 @@ const bodySchema = z.object({
   depth: z.string().max(200).optional(),
   rememberContext: z.boolean().optional(),
   graphStyle: z.enum(['default', 'constellation', 'bubble', 'ink', 'cluster', 'timeline']).optional(),
+  systemPromptMode: z.enum(['default', 'append', 'replace']).optional(),
+  systemPromptAppend: z.string().max(16_000).optional().nullable(),
+  systemPromptReplace: z.string().max(32_000).optional().nullable(),
 })
 
-export const GET: RequestHandler = async ({ locals }) => {
-  if (!locals.user) {
-    throw error(401, 'AUTH_REQUIRED')
-  }
+type PatchBody = z.infer<typeof bodySchema>
 
-  const defaultProvider = await getUserDefaultProvider(locals.user.id)
-  const [prefs] = await db
-    .select({
-      minPyramidNotes: userAiPreferences.minPyramidNotes,
-      maxPyramidNotes: userAiPreferences.maxPyramidNotes,
-      minRecommendations: userAiPreferences.minRecommendations,
-      maxRecommendations: userAiPreferences.maxRecommendations,
-      tone: userAiPreferences.tone,
-      depth: userAiPreferences.depth,
-      rememberContext: userAiPreferences.rememberContext,
-      graphStyle: userAiPreferences.graphStyle,
-    })
-    .from(userAiPreferences)
-    .where(eq(userAiPreferences.userId, locals.user.id))
-    .limit(1)
-
-  return json({
-    defaultProvider,
-    minPyramidNotes: prefs?.minPyramidNotes ?? 1,
-    maxPyramidNotes: prefs?.maxPyramidNotes ?? 5,
-    minRecommendations: prefs?.minRecommendations ?? 5,
-    maxRecommendations: prefs?.maxRecommendations ?? 20,
-    tone: prefs?.tone ?? null,
-    depth: prefs?.depth ?? null,
-    rememberContext: prefs?.rememberContext ?? true,
-    graphStyle: prefs?.graphStyle ?? 'default',
-  })
-}
-
-export const PATCH: RequestHandler = async ({ request, locals }) => {
-  if (!locals.user) {
-    throw error(401, 'AUTH_REQUIRED')
-  }
-
-  const body = bodySchema.parse(await request.json())
-
-  if (body.defaultProvider) {
-    await setUserDefaultProvider(locals.user.id, body.defaultProvider)
-  }
-
+function buildDisplayUpdates(body: PatchBody): Record<string, unknown> {
   const displayUpdates: Record<string, unknown> = {}
 
   if (body.minPyramidNotes !== undefined) displayUpdates['minPyramidNotes'] = body.minPyramidNotes
@@ -82,6 +43,72 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
   if (body.rememberContext !== undefined) displayUpdates['rememberContext'] = body.rememberContext
 
   if (body.graphStyle !== undefined) displayUpdates['graphStyle'] = body.graphStyle
+
+  if (body.systemPromptMode !== undefined) displayUpdates['systemPromptMode'] = body.systemPromptMode
+
+  if (body.systemPromptAppend !== undefined) {
+    displayUpdates['systemPromptAppend'] = body.systemPromptAppend === '' ? null : body.systemPromptAppend
+  }
+
+  if (body.systemPromptReplace !== undefined) {
+    displayUpdates['systemPromptReplace'] = body.systemPromptReplace === '' ? null : body.systemPromptReplace
+  }
+
+  return displayUpdates
+}
+
+export const GET: RequestHandler = async ({ locals }) => {
+  if (!locals.user) {
+    throw error(401, 'AUTH_REQUIRED')
+  }
+
+  const defaultProvider = await getUserDefaultProvider(locals.user.id)
+  const [prefs] = await db
+    .select({
+      minPyramidNotes: userAiPreferences.minPyramidNotes,
+      maxPyramidNotes: userAiPreferences.maxPyramidNotes,
+      minRecommendations: userAiPreferences.minRecommendations,
+      maxRecommendations: userAiPreferences.maxRecommendations,
+      tone: userAiPreferences.tone,
+      depth: userAiPreferences.depth,
+      rememberContext: userAiPreferences.rememberContext,
+      graphStyle: userAiPreferences.graphStyle,
+      systemPromptMode: userAiPreferences.systemPromptMode,
+      systemPromptAppend: userAiPreferences.systemPromptAppend,
+      systemPromptReplace: userAiPreferences.systemPromptReplace,
+    })
+    .from(userAiPreferences)
+    .where(eq(userAiPreferences.userId, locals.user.id))
+    .limit(1)
+
+  return json({
+    defaultProvider,
+    minPyramidNotes: prefs?.minPyramidNotes ?? 1,
+    maxPyramidNotes: prefs?.maxPyramidNotes ?? 5,
+    minRecommendations: prefs?.minRecommendations ?? 5,
+    maxRecommendations: prefs?.maxRecommendations ?? 20,
+    tone: prefs?.tone ?? null,
+    depth: prefs?.depth ?? null,
+    rememberContext: prefs?.rememberContext ?? true,
+    graphStyle: prefs?.graphStyle ?? 'default',
+    systemPromptMode: (prefs?.systemPromptMode as 'default' | 'append' | 'replace' | null) ?? 'default',
+    systemPromptAppend: prefs?.systemPromptAppend ?? null,
+    systemPromptReplace: prefs?.systemPromptReplace ?? null,
+  })
+}
+
+export const PATCH: RequestHandler = async ({ request, locals }) => {
+  if (!locals.user) {
+    throw error(401, 'AUTH_REQUIRED')
+  }
+
+  const body = bodySchema.parse(await request.json())
+
+  if (body.defaultProvider) {
+    await setUserDefaultProvider(locals.user.id, body.defaultProvider)
+  }
+
+  const displayUpdates = buildDisplayUpdates(body)
 
   if (Object.keys(displayUpdates).length > 0) {
     await db

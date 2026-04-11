@@ -1,4 +1,5 @@
 import { error, json } from '@sveltejs/kit'
+import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { applyPatchToDatabase, listAgentMemoryEntriesForUser } from '$lib/server/ai/apply'
@@ -12,6 +13,8 @@ import {
   loadRecentChatMessages,
   updatePatchStatus,
 } from '$lib/server/ai/storage'
+import { db } from '$lib/server/db'
+import { userAiPreferences } from '$lib/server/db/schema'
 import { loadDiaryForUser } from '$lib/server/diary/load'
 import { loadProfileForUser } from '$lib/server/profile/load'
 import { generateMissingTranslations } from '$lib/server/translation/generate'
@@ -247,12 +250,28 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     scenario,
   })
 
-  const [profile, diary, defaultProvider, recentMessages, agentMemoryEntries] = await Promise.all([
+  const [profile, diary, defaultProvider, recentMessages, agentMemoryEntries, aiPrefs] = await Promise.all([
     loadProfileForUser(locals.user.id, locals.user.name || 'User'),
     loadDiaryForUser(locals.user.id, locale),
     getUserDefaultProvider(locals.user.id),
     loadRecentChatMessages(locals.user.id, 6),
     listAgentMemoryEntriesForUser(locals.user.id),
+    db
+      .select({
+        minRecommendations: userAiPreferences.minRecommendations,
+        maxRecommendations: userAiPreferences.maxRecommendations,
+        minPyramidNotes: userAiPreferences.minPyramidNotes,
+        maxPyramidNotes: userAiPreferences.maxPyramidNotes,
+        tone: userAiPreferences.tone,
+        depth: userAiPreferences.depth,
+        systemPromptMode: userAiPreferences.systemPromptMode,
+        systemPromptAppend: userAiPreferences.systemPromptAppend,
+        systemPromptReplace: userAiPreferences.systemPromptReplace,
+      })
+      .from(userAiPreferences)
+      .where(eq(userAiPreferences.userId, locals.user.id))
+      .limit(1)
+      .then((rows) => rows[0]),
   ])
 
   const context = {
@@ -319,6 +338,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     scenario,
     context,
     preferredProvider: body.provider ?? defaultProvider ?? undefined,
+    minRecommendations: aiPrefs?.minRecommendations,
+    maxRecommendations: aiPrefs?.maxRecommendations,
+    minPyramidNotes: aiPrefs?.minPyramidNotes,
+    maxPyramidNotes: aiPrefs?.maxPyramidNotes,
+    tone: aiPrefs?.tone ?? undefined,
+    depth: aiPrefs?.depth ?? undefined,
+    systemPromptMode: (aiPrefs?.systemPromptMode as 'default' | 'append' | 'replace' | undefined) ?? undefined,
+    systemPromptAppend: aiPrefs?.systemPromptAppend ?? undefined,
+    systemPromptReplace: aiPrefs?.systemPromptReplace ?? undefined,
   })
 
   const patch = router.result.patch
