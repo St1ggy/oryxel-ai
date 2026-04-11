@@ -5,12 +5,11 @@
   import SwitchField from '$lib/components/ui/switch-field.svelte'
   import ThemePreviewCard from '$lib/components/ui/theme-preview-card.svelte'
   import * as m from '$lib/paraglide/messages.js'
+  import { privacyPrefsAtom } from '$lib/prefs/client-stores'
   import { ORYXEL_THEMES, type OryxelThemeId } from '$lib/theme/constants'
   import { getThemeContext } from '$lib/theme/context'
 
   import { browser } from '$app/environment'
-
-  const PRIVACY_KEY = 'oryxel:privacy'
 
   const themeContext = getThemeContext()
 
@@ -32,24 +31,20 @@
     if (!browser) return
 
     queueMicrotask(() => {
-      localStorage.setItem(PRIVACY_KEY, JSON.stringify({ analytics }))
+      privacyPrefsAtom.set({ analytics })
     })
   }
 
   onMount(() => {
     if (!browser) return
 
-    const privacyRaw = localStorage.getItem(PRIVACY_KEY)
+    const prefs = privacyPrefsAtom.get()
 
-    if (privacyRaw) {
-      try {
-        const parsed = JSON.parse(privacyRaw) as { analytics?: boolean; rememberAi?: unknown }
+    if (prefs && typeof prefs.analytics === 'boolean') analytics = prefs.analytics
 
-        if (typeof parsed.analytics === 'boolean') analytics = parsed.analytics
-      } catch {
-        /* ignore */
-      }
-    }
+    return privacyPrefsAtom.subscribe((next) => {
+      if (next && typeof next.analytics === 'boolean') analytics = next.analytics
+    })
   })
 </script>
 
