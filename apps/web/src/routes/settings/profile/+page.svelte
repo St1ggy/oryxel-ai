@@ -13,6 +13,7 @@
 
   let displayName = $state('')
   let bio = $state('')
+  let preferences = $state('')
   let gender = $state<string>('__none__')
 
   const genderOptions = $derived([
@@ -30,11 +31,13 @@
           gender: string | null
           displayName: string | null
           bio: string | null
+          preferences: string | null
         }
 
         gender = data.gender ?? '__none__'
         displayName = data.displayName ?? ''
         bio = data.bio ?? ''
+        preferences = data.preferences ?? ''
       }
     } catch {
       /* ignore */
@@ -45,7 +48,12 @@
     await fetch('/api/profile', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ gender: gender === '__none__' ? null : gender, displayName, bio }),
+      body: JSON.stringify({
+        gender: gender === '__none__' ? null : gender,
+        displayName,
+        bio,
+        preferences,
+      }),
     })
   }
 </script>
@@ -61,6 +69,11 @@
     <div>
       <Label for="bio">{m.oryxel_bio()}</Label>
       <Textarea id="bio" class="mt-1" bind:value={bio} />
+    </div>
+    <div>
+      <Label for="preferences">{m.oryxel_profile_preferences()}</Label>
+      <p class="mt-1 text-sm text-foreground-muted">{m.oryxel_profile_preferences_hint()}</p>
+      <Textarea id="preferences" class="mt-2" bind:value={preferences} rows={5} />
     </div>
     <div>
       <Label for="gender">{m.oryxel_profile_gender()}</Label>
