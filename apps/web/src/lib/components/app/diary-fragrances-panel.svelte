@@ -18,6 +18,7 @@
     onRatingChange: (id: number, fragranceId: number, rating: number) => void
     onOpenDetail?: (row: DiaryRow, context: 'diary' | 'to_try') => void
     onRefreshRecommendations?: () => void | Promise<void>
+    onDismissRecommendation?: (row: DiaryRow) => void | Promise<void>
     refreshingRecommendations?: boolean
     canRefreshRecommendations?: boolean
     layout: 'desktop' | 'mobile'
@@ -30,6 +31,7 @@
     onRatingChange,
     onOpenDetail,
     onRefreshRecommendations,
+    onDismissRecommendation,
     refreshingRecommendations = false,
     canRefreshRecommendations = true,
     layout,
@@ -154,6 +156,13 @@
             <ToTryTable
               rows={recommendationRows}
               onOpenDetail={(row) => onOpenDetail?.(row, 'to_try')}
+              onDismiss={onDismissRecommendation
+                ? (row) => {
+                    const result = onDismissRecommendation(row)
+
+                    if (result instanceof Promise) void result.catch(() => null)
+                  }
+                : undefined}
               emptyTitle={m.oryxel_rec_empty_title()}
               emptyHint={m.oryxel_rec_empty_hint()}
             />

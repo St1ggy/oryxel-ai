@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Inbox } from '@lucide/svelte'
+  import { Inbox, X } from '@lucide/svelte'
 
 
   import AgentCommentIcon from '$lib/components/app/agent-comment-icon.svelte'
@@ -17,11 +17,12 @@
   type Props = {
     rows: DiaryRow[]
     onOpenDetail?: (row: DiaryRow) => void
+    onDismiss?: (row: DiaryRow) => void
     emptyTitle?: string
     emptyHint?: string
   }
 
-  const { rows, onOpenDetail, emptyTitle, emptyHint }: Props = $props()
+  const { rows, onOpenDetail, onDismiss, emptyTitle, emptyHint }: Props = $props()
 
   let sorting = $state<SortingState>([])
 
@@ -132,6 +133,20 @@
                       <GenderIcon value={diaryRow.gender} />
                       {#if diaryRow.agentComment}
                         <AgentCommentIcon comment={diaryRow.agentComment} />
+                      {/if}
+                      {#if onDismiss && diaryRow.isRecommendation}
+                        <button
+                          type="button"
+                          class="oryx-transition flex size-6 items-center justify-center rounded-full text-foreground-muted hover:bg-destructive/10 hover:text-destructive"
+                          aria-label={m.oryxel_rec_dismiss()}
+                          title={m.oryxel_rec_dismiss()}
+                          onclick={(event) => {
+                            event.stopPropagation()
+                            onDismiss(diaryRow)
+                          }}
+                        >
+                          <X class="size-3.5" aria-hidden="true" />
+                        </button>
                       {/if}
                     </div>
                   </div>
