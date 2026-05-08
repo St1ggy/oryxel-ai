@@ -164,7 +164,8 @@ export const structuredPreferencePatchSchema = z.object({
   recommendations: z
     .array(
       z.object({
-        id: z.string(),
+        // Some providers occasionally emit a numeric id despite the prompt; coerce so the patch is not rejected.
+        id: z.union([z.string(), z.number()]).transform(String),
         brand: z.string().max(120),
         name: z.string().max(120),
         notesSummary: z.string().max(400).optional(),
