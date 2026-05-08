@@ -1,6 +1,7 @@
 <script lang="ts">
   import { PanelLeftOpen, PanelRightOpen } from '@lucide/svelte'
   import { untrack } from 'svelte'
+  import { toast } from 'svelte-sonner'
 
   import AiStatusFloat from '$lib/components/app/ai-status-float.svelte'
   import AppChatPanel from '$lib/components/app/app-chat-panel.svelte'
@@ -617,6 +618,24 @@
     }
   }
 
+  async function onDismissRecommendation(row: DiaryRow): Promise<void> {
+    try {
+      const response = await fetch('/api/agent/recommendations/dismiss', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ fragranceId: row.fragranceId }),
+      })
+
+      if (!response.ok) throw new Error('dismiss failed')
+
+      toast.success(m.oryxel_rec_dismissed_toast())
+      await invalidateAll()
+    } catch (error) {
+      console.error('[diary] dismiss recommendation failed:', error)
+      toast.error(m.oryxel_rec_dismiss_failed())
+    }
+  }
+
   async function onRefreshRecommendations() {
     if (!hasChatAccess || thinking || refreshingRecommendations) return
 
@@ -864,6 +883,7 @@
               {onRatingChange}
               onOpenDetail={openDetail}
               {onRefreshRecommendations}
+              {onDismissRecommendation}
               {refreshingRecommendations}
               canRefreshRecommendations={hasChatAccess && !thinking}
               layout="desktop"
@@ -967,6 +987,7 @@
             {onRatingChange}
             onOpenDetail={openDetail}
             {onRefreshRecommendations}
+            {onDismissRecommendation}
             {refreshingRecommendations}
             canRefreshRecommendations={hasChatAccess && !thinking}
             layout="mobile"

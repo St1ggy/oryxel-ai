@@ -1,4 +1,4 @@
-import { db, fragrance, userAgentMemory, userFragrance, userProfile } from '@oryxel/db'
+import { aiRecommendationDismissed, db, fragrance, userAgentMemory, userFragrance, userProfile } from '@oryxel/db'
 import { and, count, eq } from 'drizzle-orm'
 
 import { findOrCreateBrand, findOrCreateFragrance } from '../diary/find-or-create'
@@ -379,6 +379,12 @@ export async function applyRecommendations(userId: string, patch: StructuredPref
 
   if (recommendations == null) return
 
+  const dismissedRows = await db
+    .select({ fragranceId: aiRecommendationDismissed.fragranceId })
+    .from(aiRecommendationDismissed)
+    .where(eq(aiRecommendationDismissed.userId, userId))
+  const dismissed = new Set(dismissedRows.map((row) => row.fragranceId))
+
   await db.transaction(async (tx) => {
     await tx
       .delete(userFragrance)
@@ -397,6 +403,8 @@ export async function applyRecommendations(userId: string, patch: StructuredPref
         pyramidMid: lc(rec.pyramidMid) ?? null,
         pyramidBase: lc(rec.pyramidBase) ?? null,
       })
+
+      if (dismissed.has(fragranceId)) continue
 
       await tx
         .insert(userFragrance)

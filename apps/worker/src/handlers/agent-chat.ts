@@ -12,9 +12,11 @@ import {
   getUserDefaultProvider,
   isCriticalPatch,
   loadDiaryForUser,
+  loadDismissedForUser,
   loadProfileForUser,
   loadRecentChatMessages,
   pushJobProgress,
+  pushPartialResult,
   recordActivity,
   sanitizePatchToRecommendationsOnly,
   updatePatchStatus,
@@ -107,11 +109,13 @@ async function applyNonCriticalPatchFlow(
 
 type LoadedProfile = Awaited<ReturnType<typeof loadProfileForUser>>
 type LoadedDiary = Awaited<ReturnType<typeof loadDiaryForUser>>
+type LoadedDismissed = Awaited<ReturnType<typeof loadDismissedForUser>>
 type RecentChatSlice = Awaited<ReturnType<typeof loadRecentChatMessages>>
 
 function buildPreferenceAnalysisContext(
   profile: LoadedProfile,
   diary: LoadedDiary,
+  dismissed: LoadedDismissed,
   budget: string | undefined,
   rememberContext: boolean | undefined,
   recentMessages: RecentChatSlice,
@@ -150,6 +154,7 @@ function buildPreferenceAnalysisContext(
       neutral: diary.neutral.map((entry) => toContextEntry(entry)),
       disliked: diary.disliked.map((entry) => toContextEntry(entry)),
       owned: diary.owned.map((entry) => toContextEntryWithRating(entry)),
+      dismissed,
     },
     budget,
     recentMessages: (rememberContext ?? true) ? recentMessages : undefined,
@@ -175,9 +180,10 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
       .then((r) => r[0])
     const userName = userRow?.name ?? 'User'
 
-    const [profile, diary, defaultProvider, recentMessages, aiPrefs] = await Promise.all([
+    const [profile, diary, dismissed, defaultProvider, recentMessages, aiPrefs] = await Promise.all([
       loadProfileForUser(userId, userName),
       loadDiaryForUser(userId, locale),
+      loadDismissedForUser(userId),
       getUserDefaultProvider(userId),
       loadRecentChatMessages(userId, 6),
       db
@@ -199,32 +205,46 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
         .then((rows) => rows[0]),
     ])
 
-    const context = buildPreferenceAnalysisContext(profile, diary, budget, aiPrefs?.rememberContext, recentMessages)
+    const context = buildPreferenceAnalysisContext(
+      profile,
+      diary,
+      dismissed,
+      budget,
+      aiPrefs?.rememberContext,
+      recentMessages,
+    )
 
     const preferredProvider =
       explicitProvider === undefined
         ? (defaultProvider ?? undefined)
         : (explicitProvider as Parameters<typeof analyzePreferences>[0]['preferredProvider'])
 
-    const router = await analyzePreferences({
-      userId,
-      message,
-      locale,
-      scenario: scenario as Parameters<typeof analyzePreferences>[0]['scenario'],
-      context,
-      preferredProvider,
-      minRecommendations: aiPrefs?.minRecommendations,
-      maxRecommendations: aiPrefs?.maxRecommendations,
-      minPyramidNotes: aiPrefs?.minPyramidNotes,
-      maxPyramidNotes: aiPrefs?.maxPyramidNotes,
-      tone: aiPrefs?.tone ?? undefined,
-      depth: aiPrefs?.depth ?? undefined,
-      systemPromptMode: (aiPrefs?.systemPromptMode as 'default' | 'append' | 'replace' | undefined) ?? undefined,
-      systemPromptAppend: aiPrefs?.systemPromptAppend ?? undefined,
-      systemPromptReplace: aiPrefs?.systemPromptReplace ?? undefined,
-      allowAgentMemoryOps: false,
-      recommendationsOnly: recommendationsOnly || undefined,
-    })
+    const router = await analyzePreferences(
+      {
+        userId,
+        message,
+        locale,
+        scenario: scenario as Parameters<typeof analyzePreferences>[0]['scenario'],
+        context,
+        preferredProvider,
+        minRecommendations: aiPrefs?.minRecommendations,
+        maxRecommendations: aiPrefs?.maxRecommendations,
+        minPyramidNotes: aiPrefs?.minPyramidNotes,
+        maxPyramidNotes: aiPrefs?.maxPyramidNotes,
+        tone: aiPrefs?.tone ?? undefined,
+        depth: aiPrefs?.depth ?? undefined,
+        systemPromptMode: (aiPrefs?.systemPromptMode as 'default' | 'append' | 'replace' | undefined) ?? undefined,
+        systemPromptAppend: aiPrefs?.systemPromptAppend ?? undefined,
+        systemPromptReplace: aiPrefs?.systemPromptReplace ?? undefined,
+        allowAgentMemoryOps: false,
+        recommendationsOnly: recommendationsOnly || undefined,
+      },
+      {
+        onPartial: (partial) => {
+          void pushPartialResult(jobId, partial)
+        },
+      },
+    )
 
     let patch: StructuredPreferencePatch = { ...router.result.patch }
 

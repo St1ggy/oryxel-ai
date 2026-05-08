@@ -9,7 +9,7 @@ import { perplexityProvider } from './providers/perplexity'
 import { qwenProvider } from './providers/qwen'
 import { analyzePreferencesRequestSchema } from './schemas'
 
-import type { AiProvider, AiProviderName, AiRouterResult, AnalyzePreferencesRequest } from './contracts'
+import type { AiCallOptions, AiProvider, AiProviderName, AiRouterResult, AnalyzePreferencesRequest } from './contracts'
 
 const providers: Record<AiProviderName, AiProvider> = {
   openai: openaiProvider,
@@ -38,11 +38,12 @@ async function tryProviderAttempt(input: {
   apiKey: string
   timeoutMs: number
   startedAt: number
+  options?: AiCallOptions
 }) {
   const provider = providers[input.providerName]
 
   const result = await callWithTimeout(
-    (signal) => provider.analyze(input.request, signal, input.apiKey),
+    (signal) => provider.analyze(input.request, signal, input.apiKey, input.options),
     input.timeoutMs,
   )
 
@@ -79,7 +80,7 @@ function getOrderedProviders(policyOrder: AiProviderName[], preferredProvider?: 
 }
 
 // eslint-disable-next-line sonarjs/cognitive-complexity
-export async function analyzePreferences(rawInput: unknown): Promise<AiRouterResult> {
+export async function analyzePreferences(rawInput: unknown, options?: AiCallOptions): Promise<AiRouterResult> {
   const request = analyzePreferencesRequestSchema.parse(rawInput) as AnalyzePreferencesRequest
   const policy = getAiRouterPolicy()
   const attempts: AiRouterResult['attempts'] = []
@@ -131,6 +132,7 @@ export async function analyzePreferences(rawInput: unknown): Promise<AiRouterRes
             apiKey: candidate.key,
             timeoutMs: policy.timeoutMs,
             startedAt,
+            options,
           })
 
           attempts.push({

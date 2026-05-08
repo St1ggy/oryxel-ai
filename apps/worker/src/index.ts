@@ -6,7 +6,9 @@ import Redis from 'ioredis'
 import { handleAgentChat } from './handlers/agent-chat'
 import { handleProfileSync } from './handlers/profile-sync'
 
-const POLL_INTERVAL_MS = 2000
+/** Background poll cadence (ms). Lower than before so the worker picks up new jobs quickly without a publisher. */
+const POLL_INTERVAL_MS = 1000
+const NEW_JOBS_CHANNEL = 'jobs:new'
 
 const redisUrl = process.env.REDIS_URL?.trim()
 
@@ -21,9 +23,25 @@ if (redisUrl) {
     await redis.publish(`job:${jobId}`, JSON.stringify({ jobId }))
   })
 
-  console.log('[worker] Redis pub/sub enabled for job streams')
+  const subscriber = new Redis(redisUrl, { maxRetriesPerRequest: 3 })
+
+  subscriber.on('error', (error) => {
+    console.error('[worker] subscriber redis error:', error instanceof Error ? error.message : error)
+  })
+
+  try {
+    await subscriber.subscribe(NEW_JOBS_CHANNEL)
+  } catch (error) {
+    console.error('[worker] subscribe failed:', error instanceof Error ? error.message : error)
+  }
+
+  subscriber.on('message', (channel) => {
+    if (channel === NEW_JOBS_CHANNEL) void poll()
+  })
+
+  console.log('[worker] Redis pub/sub enabled for job streams + new-job wake-ups')
 } else {
-  console.warn('[worker] REDIS_URL not set — job stream publishes disabled')
+  console.warn('[worker] REDIS_URL not set — job stream publishes disabled, falling back to interval poll only')
 }
 
 async function claimNextJob() {
@@ -83,19 +101,28 @@ async function processJob(job: {
   }
 }
 
-async function poll(): Promise<void> {
-  try {
-    const job = await claimNextJob()
+let polling = false
 
-    if (job) {
+async function poll(): Promise<void> {
+  if (polling) return
+
+  polling = true
+
+  try {
+    let job = await claimNextJob()
+
+    while (job) {
       await processJob(job)
+      job = await claimNextJob()
     }
   } catch (error) {
     console.error('[worker] poll error:', error instanceof Error ? error.message : error)
+  } finally {
+    polling = false
   }
 }
 
-console.log('[worker] starting, polling every', POLL_INTERVAL_MS, 'ms')
+console.log('[worker] starting, polling every', POLL_INTERVAL_MS, 'ms (fallback)')
 
 setInterval(() => void poll(), POLL_INTERVAL_MS)
 
