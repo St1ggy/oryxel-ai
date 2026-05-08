@@ -108,6 +108,21 @@ export const userFragrance = pgTable(
   (table) => [uniqueIndex('user_fragrance_user_fragrance_idx').on(table.userId, table.fragranceId)],
 )
 
+/** Per-user list of fragrances the user has explicitly dismissed from AI recommendations. */
+export const aiRecommendationDismissed = pgTable(
+  'ai_recommendation_dismissed',
+  {
+    id: serial('id').primaryKey(),
+    userId: text('user_id').notNull(),
+    fragranceId: integer('fragrance_id')
+      .references(() => fragrance.id)
+      .notNull(),
+    reason: text('reason'),
+    dismissedAt: timestamp('dismissed_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex('ai_rec_dismissed_user_frag').on(table.userId, table.fragranceId)],
+)
+
 export const userChatMessage = pgTable('user_chat_message', {
   id: serial('id').primaryKey(),
   userId: text('user_id').notNull(),
