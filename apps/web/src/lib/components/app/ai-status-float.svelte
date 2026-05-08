@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ChevronUp } from '@lucide/svelte'
+  import { ChevronDown, ChevronUp } from '@lucide/svelte'
   import { fly, slide } from 'svelte/transition'
 
   import PhantomUiShell from '$lib/components/ui/phantom-ui-shell.svelte'
@@ -25,6 +25,22 @@
     step: number
     total: number
   }
+  type ProgressMeta = {
+    provider?: string
+    model?: string
+    tokensIn?: number
+    tokensOut?: number
+    attempt?: number
+    durationMs?: number
+    scenario?: string
+    note?: string
+  }
+  type ProgressEvent = {
+    step: number
+    total: number
+    phase: string
+    meta?: ProgressMeta
+  }
 
   type Props = {
     /** Pending patches / progress not loaded yet */
@@ -33,6 +49,8 @@
     patches?: PendingPatch[]
     syncProgress?: SyncProgress | null
     patchProgress?: PatchProgress | null
+    /** Full ordered phase event log for the current job (for the expandable timeline). */
+    progressEvents?: ProgressEvent[]
     // When true, renders as a plain block at the bottom of its parent (desktop use).
     // When false (default), renders as a fixed overlay above the mobile nav.
     inline?: boolean
@@ -47,6 +65,7 @@
     patches = [],
     syncProgress = null,
     patchProgress = null,
+    progressEvents = [],
     inline = false,
     onOpenPatchDetails,
     onPatchApplied,
@@ -60,23 +79,91 @@
 
   // Mobile-only: collapsed by default; auto-expands when patches arrive
   let collapsed = $state(true)
+  // Phase timeline: hidden by default in both layouts, user can expand
+  let timelineOpen = $state(false)
 
   $effect(() => {
     if (pendingPatches.length > 0) collapsed = false
   })
 
-  function phaseLabel(phase: SyncPhase): string {
-    if (phase === 'owned') return m.oryxel_sync_phase_owned()
+  function phaseLabel(phase: string): string {
+    switch (phase) {
+      case 'owned': {
+        return m.oryxel_sync_phase_owned()
+      }
 
-    if (phase === 'liked') return m.oryxel_sync_phase_liked()
+      case 'liked': {
+        return m.oryxel_sync_phase_liked()
+      }
 
-    if (phase === 'disliked') return m.oryxel_sync_phase_disliked()
+      case 'disliked': {
+        return m.oryxel_sync_phase_disliked()
+      }
 
-    if (phase === 'profile') return m.oryxel_sync_phase_profile()
+      case 'profile': {
+        return m.oryxel_sync_phase_profile()
+      }
 
-    if (phase === 'to_try') return m.oryxel_sync_phase_to_try()
+      case 'to_try': {
+        return m.oryxel_sync_phase_to_try()
+      }
 
-    return m.oryxel_sync_phase_recommendations()
+      case 'recommendations': {
+        return m.oryxel_sync_phase_recommendations()
+      }
+
+      case 'neutral': {
+        return m.oryxel_sync_phase_neutral?.() ?? 'Neutral'
+      }
+
+      case 'validate': {
+        return m.oryxel_phase_validate?.() ?? 'Validate'
+      }
+
+      case 'load_context': {
+        return m.oryxel_phase_load_context?.() ?? 'Load context'
+      }
+
+      case 'build_prompt': {
+        return m.oryxel_phase_build_prompt?.() ?? 'Build prompt'
+      }
+
+      case 'model_call': {
+        return m.oryxel_phase_model_call?.() ?? 'Model call'
+      }
+
+      case 'parse': {
+        return m.oryxel_phase_parse?.() ?? 'Parse'
+      }
+
+      case 'apply_profile': {
+        return m.oryxel_phase_apply_profile?.() ?? 'Apply profile'
+      }
+
+      case 'apply_ops': {
+        return m.oryxel_phase_apply_ops?.() ?? 'Apply ops'
+      }
+
+      case 'apply_recs': {
+        return m.oryxel_phase_apply_recs?.() ?? 'Apply recommendations'
+      }
+
+      case 'translate': {
+        return m.oryxel_phase_translate?.() ?? 'Translate'
+      }
+
+      case 'analyzing': {
+        return m.oryxel_phase_analyzing?.() ?? 'Analyzing'
+      }
+
+      case 'applying': {
+        return m.oryxel_patch_applying()
+      }
+
+      default: {
+        return phase
+      }
+    }
   }
 
   function getStatusLabel(): string {
@@ -90,6 +177,59 @@
   }
 
   const statusLabel = $derived(getStatusLabel())
+
+  /** Collapse the event log into one row per phase (latest event wins). */
+  type PhaseSummary = {
+    phase: string
+    step: number
+    total: number
+    meta?: ProgressMeta
+    done: boolean
+  }
+
+  function summarizePhases(events: ProgressEvent[]): PhaseSummary[] {
+    if (events.length === 0) return []
+
+    // Plain Map: this is a non-reactive helper consuming a snapshot of progressEvents.
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity
+    const byPhase = new Map<string, PhaseSummary>()
+    const order: string[] = []
+
+    for (const event of events) {
+      if (!byPhase.has(event.phase)) order.push(event.phase)
+
+      const existing = byPhase.get(event.phase)
+      const note = event.meta?.note ?? ''
+      const done = note.includes('done') || existing?.done === true
+
+      byPhase.set(event.phase, {
+        phase: event.phase,
+        step: event.step,
+        total: event.total,
+        meta: { ...existing?.meta, ...event.meta },
+        done,
+      })
+    }
+
+    return order.map((phase) => byPhase.get(phase)!)
+  }
+
+  function activePhaseId(events: ProgressEvent[]): string | null {
+    return events.at(-1)?.phase ?? null
+  }
+
+  const phaseTimeline = $derived(summarizePhases(progressEvents))
+  const currentPhase = $derived(activePhaseId(progressEvents))
+  const showTimeline = $derived(progressEvents.length > 0)
+  const latestMeta = $derived(progressEvents.at(-1)?.meta)
+
+  function formatDuration(ms: number | undefined): string {
+    if (!ms || ms < 0) return ''
+
+    if (ms < 1000) return `${ms}ms`
+
+    return `${(ms / 1000).toFixed(1)}s`
+  }
 
   let busyId = $state<number | null>(null)
 
@@ -126,6 +266,63 @@
     }
   }
 </script>
+
+{#snippet timelineBlock()}
+  {#if showTimeline}
+    <div class="border-t border-border bg-surface">
+      <button
+        type="button"
+        class="oryx-transition flex w-full items-center justify-between px-4 py-2 text-xs text-foreground-muted hover:text-foreground"
+        onclick={() => (timelineOpen = !timelineOpen)}
+        aria-expanded={timelineOpen}
+      >
+        <span>{m.oryxel_phase_details?.() ?? 'Details'}</span>
+        {#if timelineOpen}
+          <ChevronUp class="size-3.5" />
+        {:else}
+          <ChevronDown class="size-3.5" />
+        {/if}
+      </button>
+      {#if timelineOpen}
+        <ul class="space-y-1 px-4 pb-3 text-xs" transition:slide={{ duration: 160 }}>
+          {#each phaseTimeline as item (item.phase)}
+            {@const isActive = item.phase === currentPhase && !item.done}
+            <li class="flex items-center gap-2">
+              <span class="inline-flex size-4 shrink-0 items-center justify-center text-[10px]">
+                {#if item.done}
+                  <span class="text-accent">✓</span>
+                {:else if isActive}
+                  <span class="size-2 animate-pulse rounded-full bg-accent"></span>
+                {:else}
+                  <span class="text-foreground-muted">○</span>
+                {/if}
+              </span>
+              <span class="flex-1 truncate {isActive ? 'text-foreground' : 'text-foreground-muted'}">
+                {phaseLabel(item.phase)}
+                {#if item.meta?.note && !item.meta.note.includes('done')}
+                  <span class="text-foreground-muted/70"> · {item.meta.note}</span>
+                {/if}
+              </span>
+              {#if item.meta?.durationMs}
+                <span class="shrink-0 tabular-nums text-foreground-muted/80">{formatDuration(item.meta.durationMs)}</span>
+              {/if}
+            </li>
+          {/each}
+        </ul>
+        {#if latestMeta && (latestMeta.provider || latestMeta.model || latestMeta.tokensOut)}
+          <div class="border-t border-border/50 px-4 py-2 text-[10px] text-foreground-muted/80">
+            <span class="font-mono">
+              {#if latestMeta.provider}{latestMeta.provider}{/if}
+              {#if latestMeta.model} · {latestMeta.model}{/if}
+              {#if latestMeta.tokensOut} · {latestMeta.tokensOut}t{/if}
+              {#if latestMeta.attempt && latestMeta.attempt > 1} · attempt {latestMeta.attempt}{/if}
+            </span>
+          </div>
+        {/if}
+      {/if}
+    </div>
+  {/if}
+{/snippet}
 
 {#if visible}
   {#if inline}
@@ -215,6 +412,9 @@
             {/if}
           </div>
         {/if}
+
+        <!-- eslint-disable-next-line sonarjs/no-use-of-empty-return-value -->
+        {@render timelineBlock()}
       {/if}
     </div>
   {:else}
@@ -298,6 +498,9 @@
                 </div>
               </div>
             {/if}
+
+            <!-- eslint-disable-next-line sonarjs/no-use-of-empty-return-value -->
+        {@render timelineBlock()}
           </div>
         {/if}
 
