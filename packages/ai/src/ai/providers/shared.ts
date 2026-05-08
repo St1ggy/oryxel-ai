@@ -299,7 +299,7 @@ function buildScenarioBlock(request: AnalyzePreferencesRequest): string[] {
       `profile.archetype: 2–4 words, ${language}, from pyramids/notes — tag not prose (e.g. "фруктово-цитрусовый гурман","цитрусовый эстет","пряный oriental lover","woody minimalist").`,
       `profile.favoriteNote: single most prominent note in ${language} across liked+owned.`,
       'profile.radar: 4–7 English lc axis keys (oud,floral,citrus,woody), 0–100.',
-      `profile.radarLabels: axis→label in ${language}, e.g. {"woody":"Древесный","citrus":"Цитрусовый"}.`,
+      `profile.radarLabels: axis→label in ${language}; SHORT label, ≤20 chars; no commas, no dashes/em-dashes, no parentheses, no commentary or descriptions — just the axis name (good: "Древесные","Цитрусы","Citrus","シトラス"; bad: "Древесный — тёплый, с дымным акцентом").`,
       `profile.rationale: brief, ${language}.`,
       `profile.noteRelationships: 5–20 entries from all lists — patterns in liked/owned vs disliked. Each: note (English lc), sentiment love|like|neutral|dislike|redflag, label (${language}), agentComment (1 sentence, ${language}). If lockedByUser=true: keep sentiment+label; only agentComment may change.`,
       `suggestions: 3 first-person lines, ${language}, ≤60 chars — tappable chips.`,
