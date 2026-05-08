@@ -13,12 +13,13 @@ import {
 import { db, userAiPreferences } from '@oryxel/db'
 import { eq } from 'drizzle-orm'
 
-import type { AnalyzePreferencesRequest } from '@oryxel/ai'
+import type { AnalyzePreferencesRequest, DiaryRow } from '@oryxel/ai'
 
 const BATCH_SIZE = 10
 
 type DiaryEntry = { id: number; brand: string; fragrance: string }
 type SyncPhase = 'owned' | 'liked' | 'neutral' | 'disliked' | 'profile' | 'recommendations' | 'to_try'
+type FillPhase = Exclude<SyncPhase, 'profile' | 'recommendations'>
 
 type StepContext = {
   userId: string
@@ -32,10 +33,19 @@ type StepContext = {
   tone: string | undefined
   depth: string | undefined
   profileContext: NonNullable<AnalyzePreferencesRequest['context']>['profile']
+  // Full lists (id+brand+fragrance only) used as analysis context for profile/recommendations.
+  ownedEntries: DiaryEntry[]
   likedEntries: DiaryEntry[]
   neutralEntries: DiaryEntry[]
   dislikedEntries: DiaryEntry[]
-  ownedEntries: DiaryEntry[]
+  toTryEntries: DiaryEntry[]
+  // Subsets of the lists above whose rows still have at least one missing metadata field.
+  // Only these go into fillListBatches — already-enriched rows are skipped to save AI calls.
+  ownedPending: DiaryEntry[]
+  likedPending: DiaryEntry[]
+  neutralPending: DiaryEntry[]
+  dislikedPending: DiaryEntry[]
+  toTryPending: DiaryEntry[]
 }
 
 const FILL_BATCH_MSG =
@@ -51,11 +61,30 @@ function chunk<T>(array: T[], size: number): T[][] {
   return result
 }
 
+/** Row needs an AI fill pass if any of the visible-in-UI metadata fields is empty. */
+function needsEnrichment(row: DiaryRow): boolean {
+  return (
+    row.notes.length === 0 ||
+    !row.pyramidTop ||
+    !row.pyramidMid ||
+    !row.pyramidBase ||
+    !row.agentComment ||
+    !row.season ||
+    !row.timeOfDay ||
+    !row.gender
+  )
+}
+
+function toEntry({ id, brand, fragrance }: DiaryRow): DiaryEntry {
+  return { id, brand, fragrance }
+}
+
+// eslint-disable-next-line sonarjs/cognitive-complexity -- chain of progress emits + try/catch hits the threshold; readability > splitting
 async function fillListBatches(
   jobId: number,
   context: StepContext,
   entries: DiaryEntry[],
-  phase: Exclude<SyncPhase, 'profile' | 'recommendations' | 'to_try'>,
+  phase: FillPhase,
   startStep: number,
   total: number,
 ): Promise<void> {
@@ -85,7 +114,7 @@ async function fillListBatches(
         context: {
           profile: context.profileContext,
           diary: {
-            to_try: [],
+            to_try: phase === 'to_try' ? batch : [],
             liked: phase === 'liked' ? batch : [],
             neutral: phase === 'neutral' ? batch : [],
             disliked: phase === 'disliked' ? batch : [],
@@ -187,76 +216,41 @@ async function runRecommendationsStep(context: StepContext): Promise<void> {
   }
 }
 
-async function runToTryFillStep(context: StepContext): Promise<void> {
-  try {
-    const updatedDiary = await loadDiaryForUser(context.userId, context.locale)
-    const toTryEntries = updatedDiary.to_try.map(({ id, brand, fragrance }) => ({ id, brand, fragrance }))
-    const toTryBatches = chunk(toTryEntries, BATCH_SIZE)
+type FillPhaseConfig = { phase: FillPhase; entries: DiaryEntry[] }
 
-    for (const [batchIndex, batch] of toTryBatches.entries()) {
-      try {
-        const batchRouter = await analyzePreferences({
-          userId: context.userId,
-          message: FILL_BATCH_MSG,
-          locale: context.locale,
-          scenario: 'command',
-          preferredProvider: context.provider,
-          minPyramidNotes: context.minPyramidNotes,
-          maxPyramidNotes: context.maxPyramidNotes,
-          tone: context.tone,
-          depth: context.depth,
-          context: {
-            profile: context.profileContext,
-            diary: {
-              to_try: batch,
-              liked: [],
-              neutral: [],
-              disliked: [],
-              owned: [],
-            },
-          },
-        })
+async function runFillPhases(
+  jobId: number,
+  context: StepContext,
+  phases: FillPhaseConfig[],
+  total: number,
+  startStep: number,
+): Promise<number> {
+  let step = startStep
 
-        await applyPatchToDatabase(context.userId, batchRouter.result.patch)
-      } catch (batchError) {
-        console.error(
-          `[profile-sync] to_try batch ${batchIndex + 1}/${toTryBatches.length} failed:`,
-          batchError instanceof Error ? batchError.message : batchError,
-        )
-      }
-    }
-  } catch (error_) {
-    console.error('[profile-sync] to_try fill failed:', error_ instanceof Error ? error_.message : error_)
+  for (const { phase, entries } of phases) {
+    if (entries.length === 0) continue
+
+    await fillListBatches(jobId, context, entries, phase, step, total)
+    step += chunk(entries, BATCH_SIZE).length
   }
+
+  return step
 }
 
 async function runSync(jobId: number, context: StepContext, total: number, hasPreferences: boolean): Promise<void> {
-  let step = 1
-
-  const ownedBatches = chunk(context.ownedEntries, BATCH_SIZE).length
-  const likedBatches = chunk(context.likedEntries, BATCH_SIZE).length
-  const neutralBatches = chunk(context.neutralEntries, BATCH_SIZE).length
-  const dislikedBatches = chunk(context.dislikedEntries, BATCH_SIZE).length
-
-  if (context.ownedEntries.length > 0) {
-    await fillListBatches(jobId, context, context.ownedEntries, 'owned', step, total)
-    step += ownedBatches
-  }
-
-  if (context.likedEntries.length > 0) {
-    await fillListBatches(jobId, context, context.likedEntries, 'liked', step, total)
-    step += likedBatches
-  }
-
-  if (context.neutralEntries.length > 0) {
-    await fillListBatches(jobId, context, context.neutralEntries, 'neutral', step, total)
-    step += neutralBatches
-  }
-
-  if (context.dislikedEntries.length > 0) {
-    await fillListBatches(jobId, context, context.dislikedEntries, 'disliked', step, total)
-    step += dislikedBatches
-  }
+  let step = await runFillPhases(
+    jobId,
+    context,
+    [
+      { phase: 'owned', entries: context.ownedPending },
+      { phase: 'liked', entries: context.likedPending },
+      { phase: 'neutral', entries: context.neutralPending },
+      { phase: 'disliked', entries: context.dislikedPending },
+      { phase: 'to_try', entries: context.toTryPending },
+    ],
+    total,
+    1,
+  )
 
   const profileStartedAt = Date.now()
 
@@ -280,18 +274,6 @@ async function runSync(jobId: number, context: StepContext, total: number, hasPr
       total,
       phase: 'recommendations',
       meta: { provider: context.provider, durationMs: Date.now() - recStartedAt, note: 'done' },
-    })
-    step++
-
-    const toTryStartedAt = Date.now()
-
-    await pushJobProgress(jobId, { step, total, phase: 'to_try', meta: { provider: context.provider } })
-    await runToTryFillStep(context)
-    await pushJobProgress(jobId, {
-      step,
-      total,
-      phase: 'to_try',
-      meta: { provider: context.provider, durationMs: Date.now() - toTryStartedAt, note: 'done' },
     })
   }
 
@@ -345,19 +327,34 @@ export async function handleProfileSync(
       return
     }
 
-    const ownedEntries = diary.owned.map(({ id, brand, fragrance }) => ({ id, brand, fragrance }))
-    const likedEntries = diary.liked.map(({ id, brand, fragrance }) => ({ id, brand, fragrance }))
-    const neutralEntries = diary.neutral.map(({ id, brand, fragrance }) => ({ id, brand, fragrance }))
-    const dislikedEntries = diary.disliked.map(({ id, brand, fragrance }) => ({ id, brand, fragrance }))
+    const ownedEntries = diary.owned.map((row) => toEntry(row))
+    const likedEntries = diary.liked.map((row) => toEntry(row))
+    const neutralEntries = diary.neutral.map((row) => toEntry(row))
+    const dislikedEntries = diary.disliked.map((row) => toEntry(row))
+    const toTryEntries = diary.to_try.map((row) => toEntry(row))
 
-    const ownedBatches = chunk(ownedEntries, BATCH_SIZE).length
-    const likedBatches = chunk(likedEntries, BATCH_SIZE).length
-    const neutralBatches = chunk(neutralEntries, BATCH_SIZE).length
-    const dislikedBatches = chunk(dislikedEntries, BATCH_SIZE).length
+    const ownedPending = diary.owned.filter((row) => needsEnrichment(row)).map((row) => toEntry(row))
+    const likedPending = diary.liked.filter((row) => needsEnrichment(row)).map((row) => toEntry(row))
+    const neutralPending = diary.neutral.filter((row) => needsEnrichment(row)).map((row) => toEntry(row))
+    const dislikedPending = diary.disliked.filter((row) => needsEnrichment(row)).map((row) => toEntry(row))
+    const toTryPending = diary.to_try.filter((row) => needsEnrichment(row)).map((row) => toEntry(row))
+
+    const ownedBatches = chunk(ownedPending, BATCH_SIZE).length
+    const likedBatches = chunk(likedPending, BATCH_SIZE).length
+    const neutralBatches = chunk(neutralPending, BATCH_SIZE).length
+    const dislikedBatches = chunk(dislikedPending, BATCH_SIZE).length
+    const toTryBatches = chunk(toTryPending, BATCH_SIZE).length
 
     const hasPreferences =
       ownedEntries.length + likedEntries.length + neutralEntries.length + dislikedEntries.length > 0
-    const total = ownedBatches + likedBatches + neutralBatches + dislikedBatches + 1 + (hasPreferences ? 2 : 0)
+    const total =
+      ownedBatches +
+      likedBatches +
+      neutralBatches +
+      dislikedBatches +
+      toTryBatches +
+      1 /* profile */ +
+      (hasPreferences ? 1 : 0) /* recommendations */
 
     const syncContext: StepContext = {
       userId,
@@ -381,10 +378,16 @@ export async function handleProfileSync(
         gender: (profile.gender as 'male' | 'female' | null | undefined) ?? undefined,
         noteRelationships: profile.noteRelationships.length > 0 ? profile.noteRelationships : undefined,
       },
+      ownedEntries,
       likedEntries,
       neutralEntries,
       dislikedEntries,
-      ownedEntries,
+      toTryEntries,
+      ownedPending,
+      likedPending,
+      neutralPending,
+      dislikedPending,
+      toTryPending,
     }
 
     await runSync(jobId, syncContext, total, hasPreferences)
