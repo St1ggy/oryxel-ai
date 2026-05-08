@@ -229,7 +229,25 @@ export const backgroundJob = pgTable('background_job', {
   status: text('status').notNull().default('pending'),
   /** Job parameters stored at creation time so the worker can execute without the HTTP request context */
   params: jsonb('params').$type<Record<string, unknown>>(),
-  progress: jsonb('progress').$type<{ step: number; total: number; phase: string }[]>().default([]),
+  progress: jsonb('progress')
+    .$type<
+      {
+        step: number
+        total: number
+        phase: string
+        meta?: {
+          provider?: string
+          model?: string
+          tokensIn?: number
+          tokensOut?: number
+          attempt?: number
+          durationMs?: number
+          scenario?: string
+          note?: string
+        }
+      }[]
+    >()
+    .default([]),
   result: jsonb('result').$type<Record<string, unknown>>(),
   errorMessage: text('error_message'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
