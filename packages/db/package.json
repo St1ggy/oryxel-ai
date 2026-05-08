@@ -17,13 +17,13 @@
     "db:studio": "bun --env-file=../../.env.development drizzle-kit studio"
   },
   "dependencies": {
-    "@neondatabase/serverless": "^1.0.2",
+    "@neondatabase/serverless": "^1.1.0",
     "drizzle-orm": "^0.45.2",
     "ws": "^8.20.0"
   },
   "devDependencies": {
     "@types/ws": "^8.18.1",
     "drizzle-kit": "^0.31.10",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.3"
   }
 }
