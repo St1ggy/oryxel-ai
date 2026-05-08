@@ -34,6 +34,12 @@ const diaryEntryContextSchema = z.object({
   rating: z.number().int().min(0).max(5).nullable().optional(),
 })
 
+const dismissedEntryContextSchema = z.object({
+  id: z.number().int(),
+  brand: z.string().max(120),
+  fragrance: z.string().max(120),
+})
+
 const diaryContextSchema = z.object({
   // eslint-disable-next-line camelcase
   to_try: z.array(diaryEntryContextSchema).optional(),
@@ -41,6 +47,8 @@ const diaryContextSchema = z.object({
   neutral: z.array(diaryEntryContextSchema).optional(),
   disliked: z.array(diaryEntryContextSchema).optional(),
   owned: z.array(diaryEntryContextSchema).optional(),
+  /** Fragrances explicitly dismissed by user — never recommend again. */
+  dismissed: z.array(dismissedEntryContextSchema).optional(),
 })
 
 const recentMessageSchema = z.object({
@@ -83,8 +91,8 @@ export const analyzePreferencesRequestSchema = z.object({
   recommendationsOnly: z.boolean().optional(),
   /** Optional system prompt override (stored per user; applied when building the user message payload). */
   systemPromptMode: z.enum(['default', 'append', 'replace']).optional(),
-  systemPromptAppend: z.string().max(16000).optional().nullable(),
-  systemPromptReplace: z.string().max(32000).optional().nullable(),
+  systemPromptAppend: z.string().max(16_000).optional().nullable(),
+  systemPromptReplace: z.string().max(32_000).optional().nullable(),
 })
 
 export const tableOperationSchema = z.object({

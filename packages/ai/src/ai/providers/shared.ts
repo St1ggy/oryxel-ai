@@ -130,14 +130,18 @@ type DiaryContextEntry = {
   rating?: number | null
 }
 
-function formatDiaryList(entries: DiaryContextEntry[]): string {
+const SCENARIOS_NEEDING_FULL_PYRAMID = new Set(['pyramid', 'analog', 'comparison'])
+
+function formatDiaryList(entries: DiaryContextEntry[], scenario: string): string {
   if (entries.length === 0) return '[]'
+
+  const includePyramidAndNotes = SCENARIOS_NEEDING_FULL_PYRAMID.has(scenario)
 
   return entries
     .map((entry) => {
-      const notes = entry.notes ? `,notes:"${entry.notes}"` : ''
+      const notes = includePyramidAndNotes && entry.notes ? `,notes:"${entry.notes}"` : ''
       const pyramid =
-        entry.pyramidTop || entry.pyramidMid || entry.pyramidBase
+        includePyramidAndNotes && (entry.pyramidTop || entry.pyramidMid || entry.pyramidBase)
           ? `,top:"${entry.pyramidTop ?? ''}",mid:"${entry.pyramidMid ?? ''}",base:"${entry.pyramidBase ?? ''}"`
           : ''
       const rating = entry.rating ? `,rating:${entry.rating}` : ''
@@ -145,6 +149,48 @@ function formatDiaryList(entries: DiaryContextEntry[]): string {
       return `{id:${entry.id},brand:"${entry.brand}",frag:"${entry.fragrance}"${notes}${pyramid}${rating}}`
     })
     .join(', ')
+}
+
+const SCENARIOS_NEEDING_NOTE_RELATIONSHIPS = new Set(['recommendation', 'profile_sync'])
+const RECENT_MESSAGE_LIMIT = 3
+const RECENT_MESSAGE_CHAR_LIMIT = 280
+const MAX_EXCLUDE_IDS = 200
+
+function clampRecent(content: string): string {
+  return content.length > RECENT_MESSAGE_CHAR_LIMIT ? `${content.slice(0, RECENT_MESSAGE_CHAR_LIMIT)}…` : content
+}
+
+type DiaryContext = NonNullable<NonNullable<AnalyzePreferencesRequest['context']>['diary']>
+
+function collectExcludeIds(diary: DiaryContext): number[] {
+  const seen = new Set<number>()
+  const lists: readonly ({ id: number }[] | undefined)[] = [
+    diary.owned,
+    diary.to_try,
+    diary.liked,
+    diary.neutral,
+    diary.disliked,
+    diary.dismissed,
+  ]
+
+  for (const list of lists) {
+    if (!list) continue
+
+    for (const entry of list) seen.add(entry.id)
+  }
+
+  return [...seen]
+}
+
+function buildExcludeLine(diary: DiaryContext): string | null {
+  const ids = collectExcludeIds(diary)
+
+  if (ids.length === 0) return null
+
+  const truncated = ids.slice(0, MAX_EXCLUDE_IDS)
+  const suffix = ids.length > MAX_EXCLUDE_IDS ? `,…(+${ids.length - MAX_EXCLUDE_IDS})` : ''
+
+  return `- exclude (already in diary or dismissed; never recommend these fragranceIds): ${truncated.join(',')}${suffix}`
 }
 
 /* eslint-disable sonarjs/cognitive-complexity */
@@ -155,15 +201,17 @@ function buildContextBlock(request: AnalyzePreferencesRequest): string[] {
     return ['Context: not provided.']
   }
 
+  const scenario = request.scenario
+  const includeRelationships = SCENARIOS_NEEDING_NOTE_RELATIONSHIPS.has(scenario)
   const profile = context.profile ?? {}
   const lines = [
     'Context:',
-    `- profile: ${JSON.stringify({ ...profile, preferences: undefined, noteRelationships: undefined })}`,
+    `- profile: ${JSON.stringify({ ...profile, noteRelationships: undefined, preferences: undefined })}`,
     profile.gender !== undefined && profile.gender !== null
       ? `- gender: ${profile.gender} (pronouns: gendered langs e.g. Russian)`
       : '- gender: not specified',
     profile.preferences ? `- preferences (verbatim, for recs): ${profile.preferences}` : '',
-    profile.noteRelationships && profile.noteRelationships.length > 0
+    includeRelationships && profile.noteRelationships && profile.noteRelationships.length > 0
       ? `- noteRelationships (recs + profile): ${JSON.stringify(profile.noteRelationships)}`
       : '',
     `- budget: ${context.budget ?? 'not provided'}`,
@@ -172,21 +220,32 @@ function buildContextBlock(request: AnalyzePreferencesRequest): string[] {
   const diary = context.diary
 
   if (diary) {
+    const fullPyramid = SCENARIOS_NEEDING_FULL_PYRAMID.has(scenario)
+    const header = fullPyramid
+      ? 'Diary — rowId for move/rate/status/remove: exact id below; never invent; missing row → op=add. Fields notes/top/mid/base = current:'
+      : 'Diary — rowId for move/rate/status/remove: exact id below; never invent; missing row → op=add. Compact list (id+brand+frag only):'
+
     lines.push(
-      'Diary — rowId for move/rate/status/remove: exact id below; never invent; missing row → op=add. Fields notes/top/mid/base = current:',
-      `- owned: ${formatDiaryList((diary.owned ?? []) as DiaryContextEntry[])}`,
-      `- to_try: ${formatDiaryList((diary.to_try ?? []) as DiaryContextEntry[])}`,
-      `- liked: ${formatDiaryList((diary.liked ?? []) as DiaryContextEntry[])}`,
-      `- neutral: ${formatDiaryList((diary.neutral ?? []) as DiaryContextEntry[])}`,
-      `- disliked: ${formatDiaryList((diary.disliked ?? []) as DiaryContextEntry[])}`,
+      header,
+      `- owned: ${formatDiaryList((diary.owned ?? []) as DiaryContextEntry[], scenario)}`,
+      `- to_try: ${formatDiaryList((diary.to_try ?? []) as DiaryContextEntry[], scenario)}`,
+      `- liked: ${formatDiaryList((diary.liked ?? []) as DiaryContextEntry[], scenario)}`,
+      `- neutral: ${formatDiaryList((diary.neutral ?? []) as DiaryContextEntry[], scenario)}`,
+      `- disliked: ${formatDiaryList((diary.disliked ?? []) as DiaryContextEntry[], scenario)}`,
     )
+
+    const exclude = buildExcludeLine(diary)
+
+    if (exclude) lines.push(exclude)
   }
 
   if (context.recentMessages && context.recentMessages.length > 0) {
+    const recent = context.recentMessages.slice(-RECENT_MESSAGE_LIMIT)
+
     lines.push('Recent messages:')
 
-    for (const message of context.recentMessages) {
-      lines.push(`- ${message.role === 'user' ? 'User' : 'Assistant'}: ${message.content}`)
+    for (const message of recent) {
+      lines.push(`- ${message.role === 'user' ? 'User' : 'Assistant'}: ${clampRecent(message.content)}`)
     }
   }
 
@@ -216,7 +275,7 @@ function buildScenarioBlock(request: AnalyzePreferencesRequest): string[] {
       `pyramid: top/mid/base. Existing diary row → op=status, rowId, pyramid (English lc). Not listed → op=add, isTried=false,isLiked=false,isDisliked=false,isOwned=false, brand+name, pyramid (English lc). Fill all three tiers when known.`,
       `${minP}–${maxP} comma-separated notes per non-empty tier (USER DISPLAY LIMITS). Reply (${language}), natural/conversational.`,
     ].join(' '),
-    recommendation: `recommendation: suggest from diary + prefs. HARD: recommendations.length ${minR}–${maxR} (else INVALID). (1) gender male→male/unisex; female→female/unisex; else all. (2) bio + preferences → personality/aesthetic. (3) noteRelationships → prefer love/like; avoid redflag/dislike. Each: id (unique), brand, name, notesSummary (English lc), pyramid if known, tag (${language}, why for THIS user), gender, timeOfDay CSV, season CSV. Replaces list. suggestions: 3 first-person chips, ${language}, ≤60 chars. Reply (${language}): picks + fit to user style.`,
+    recommendation: `recommendation: suggest from diary + prefs. HARD: recommendations.length ${minR}–${maxR} (else INVALID). HARD: never propose any fragranceId from the exclude list (already in diary or dismissed). (1) gender male→male/unisex; female→female/unisex; else all. (2) bio + preferences → personality/aesthetic. (3) noteRelationships → prefer love/like; avoid redflag/dislike. Each: id (unique), brand, name, notesSummary (English lc), pyramid if known, tag (${language}, why for THIS user), gender, timeOfDay CSV, season CSV. Replaces list. suggestions: 3 first-person chips, ${language}, ≤60 chars. Reply (${language}): picks + fit to user style.`,
     comparison: `comparison: compare ≥2 named frags — notes, character, fit. Rate/move if user shows preference. Reply (${language}).`,
     command: [
       'command: direct instruction or bulk import — execute exactly.',

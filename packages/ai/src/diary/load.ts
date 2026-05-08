@@ -1,5 +1,5 @@
-import { brand, db as database, fragrance, userFragrance } from '@oryxel/db'
-import { asc, eq } from 'drizzle-orm'
+import { aiRecommendationDismissed, brand, db as database, fragrance, userFragrance } from '@oryxel/db'
+import { asc, desc, eq } from 'drizzle-orm'
 
 import { extractEnglishKey, lookupTranslations, resolveCommaSeparated } from '../translation/service'
 
@@ -144,5 +144,32 @@ export async function loadDiaryForUser(userId: string, locale = 'en'): Promise<D
     console.error('[diary/load] Failed to load diary from database:', error)
 
     return { to_try: [], liked: [], neutral: [], disliked: [], owned: [] }
+  }
+}
+
+export type DismissedFragrance = { id: number; brand: string; fragrance: string }
+
+const DISMISSED_LIMIT = 200
+
+export async function loadDismissedForUser(userId: string): Promise<DismissedFragrance[]> {
+  try {
+    const rows = await database
+      .select({
+        id: aiRecommendationDismissed.fragranceId,
+        brand: brand.name,
+        fragrance: fragrance.name,
+      })
+      .from(aiRecommendationDismissed)
+      .innerJoin(fragrance, eq(fragrance.id, aiRecommendationDismissed.fragranceId))
+      .innerJoin(brand, eq(brand.id, fragrance.brandId))
+      .where(eq(aiRecommendationDismissed.userId, userId))
+      .orderBy(desc(aiRecommendationDismissed.dismissedAt))
+      .limit(DISMISSED_LIMIT)
+
+    return rows
+  } catch (error) {
+    console.error('[diary/load] Failed to load dismissed list:', error)
+
+    return []
   }
 }

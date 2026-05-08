@@ -1,7 +1,9 @@
 import { backgroundJob, db } from '@oryxel/db'
 import { and, desc, eq, inArray, sql } from 'drizzle-orm'
 
-import { emitJobUpdated } from './job-notify'
+import { emitJobCreated, emitJobUpdated } from './job-notify'
+
+import type { StructuredPreferencePatch } from './contracts'
 
 export type JobType = 'profile_sync' | 'agent_chat'
 export type JobStatus = 'pending' | 'processing' | 'done' | 'failed' | 'cancelled'
@@ -22,6 +24,8 @@ export async function createJob(userId: string, type: JobType, params?: Record<s
     .values({ userId, type, status: 'pending', params })
     .returning({ id: backgroundJob.id })
 
+  emitJobCreated(row.id)
+
   return row.id
 }
 
@@ -32,6 +36,16 @@ export async function pushJobProgress(jobId: number, event: JobProgress): Promis
       progress: sql`COALESCE(${backgroundJob.progress}, '[]'::jsonb) || ${JSON.stringify([event])}::jsonb`,
     })
     .where(eq(backgroundJob.id, jobId))
+
+  emitJobUpdated(jobId)
+}
+
+/** Stream-time partial result from an in-flight provider call. UI may render preview. */
+export async function pushPartialResult(jobId: number, partial: Partial<StructuredPreferencePatch>): Promise<void> {
+  await db
+    .update(backgroundJob)
+    .set({ result: { partial: true, ...partial } as unknown as Record<string, unknown> })
+    .where(and(eq(backgroundJob.id, jobId), eq(backgroundJob.status, 'processing')))
 
   emitJobUpdated(jobId)
 }

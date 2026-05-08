@@ -21,9 +21,19 @@ export type AiProviderResult = {
   latencyMs: number
 }
 
+export type AiCallOptions = {
+  /** Called repeatedly with partial parsed JSON during streaming. Providers without streaming may ignore. */
+  onPartial?: (partial: Partial<StructuredPreferencePatch>) => void
+}
+
 export type AiProvider = {
   name: AiProviderName
-  analyze: (request: AnalyzePreferencesRequest, signal: AbortSignal, apiKey: string) => Promise<AiProviderResult>
+  analyze: (
+    request: AnalyzePreferencesRequest,
+    signal: AbortSignal,
+    apiKey: string,
+    options?: AiCallOptions,
+  ) => Promise<AiProviderResult>
 }
 
 export type AiRouterPolicy = {
