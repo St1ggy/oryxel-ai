@@ -54,6 +54,8 @@
   "oryxel_rec_empty_title": "Aún no hay recomendaciones de IA",
   "oryxel_rec_empty_hint": "Usa el botón de arriba para generar una lista nueva según tus gustos.",
   "oryxel_wishlist_title": "Lista de deseos",
+  "oryxel_wishlist_empty_title": "Tu lista de deseos está vacía",
+  "oryxel_wishlist_empty_hint": "Dile a la IA en el chat — por ejemplo, «quiero probar Chrome Azzaro», — y aparecerá aquí.",
   "oryxel_radar_title": "Perfil olfativo",
   "oryxel_settings_title": "Ajustes",
   "oryxel_settings_nav_profile": "Perfil",
