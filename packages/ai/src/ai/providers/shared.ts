@@ -1,3 +1,5 @@
+import { z } from 'zod'
+
 import { structuredPreferencePatchSchema } from '../schemas'
 
 import type { AnalyzePreferencesRequest, StructuredPreferencePatch } from '../contracts'
@@ -85,39 +87,33 @@ function buildBaseInstructions(request: AnalyzePreferencesRequest): string[] {
     "You are a helpful fragrance assistant for Oryxel — chat naturally, analyze preferences, manage the user's diary.",
     toneInstruction,
     depthInstruction,
-    `reply & summary: ${language}. notesSummary, pyramidTop|Mid|Base: English lowercase (e.g. "bergamot, lavender, musk"). archetype, favoriteNote: ${language}. agentComment, recommendations[].tag: ${language} (shown as-is).`,
-    'Output: one JSON object only — no markdown, fences, or extra text.',
-    'Required keys: reply (string), confidence (0–1), summary (string), tableOps (array; may be []).',
-    allowAgentMemoryOps
-      ? 'Optional keys: profile, recommendations, suggestions, agentMemoryOps.'
-      : 'Optional keys: profile, recommendations, suggestions — omit agentMemoryOps (memory not editable here).',
+    'Output: one JSON object only — no markdown, fences, or extra text. The shape is defined by the JSON Schema below.',
+    `Languages — reply & summary: ${language}; notesSummary, pyramidTop/Mid/Base: English lowercase (e.g. "bergamot, lavender, musk"); archetype, favoriteNote, agentComment, recommendations[].tag: ${language} (shown as-is).`,
     'reply: conversational answer. summary: 1–2 sentences on what changed.',
-    'tableOps op: add | move | rate | status | remove.',
-    'Flags: isOwned, isTried, isLiked (default false), isDisliked (default false).',
-    'Flag mapping: not tried yet → isTried=false,isLiked=false,isDisliked=false,isOwned=false; liked → isTried=true,isLiked=true,isDisliked=false; disliked → isTried=true,isLiked=false,isDisliked=true; neutral (tried, no strong opinion) → isTried=true,isLiked=false,isDisliked=false,isOwned=false; collection → isOwned=true (may combine with liked/disliked).',
-    `UI list names in reply — to_try="${tableNames.to_try}" (isTried=false,isOwned=false); liked="${tableNames.liked}" (isTried=true,isLiked=true); neutral="${tableNames.neutral}" (isTried=true,isLiked=false,isDisliked=false,isOwned=false); disliked="${tableNames.disliked}" (isTried=true,isDisliked=true); owned="${tableNames.owned}" (isOwned=true).`,
-    'op=add: brandName, fragranceName; set flags; no fragranceId for new rows.',
-    'op=add: notesSummary — up to 5 key notes, English, comma-separated.',
-    `op=add|op=status: pyramidTop|Mid|Base — English comma-separated; fill all three if known; ${request.minPyramidNotes ?? 1}–${request.maxPyramidNotes ?? 5} notes per tier.`,
-    `op=add|op=status: agentComment — one punchy line in ${language}, ≤80 chars, scent essence (e.g. "Warm amber with smoky oud"); no full sentences, no "because", no user reference.`,
-    `op=add|op=status: userComment optional — user's words only if they stated an opinion; ≤200 chars.`,
-    'op=add|op=status: season — CSV from spring,summer,autumn,winter (e.g. summer aquatics; autumn,winter heavy orientals; spring,summer florals).',
-    'op=add|op=status: timeOfDay — CSV from day,evening,night (e.g. evening,night heavy; day light).',
-    `op=add|op=status: gender — female | male | unisex from character/notes (not marketing only); unisex when truly fitting.`,
+    allowAgentMemoryOps ? null : 'Memory is not editable here — omit agentMemoryOps even though the schema allows it.',
+    'Flag mapping: not tried yet → isTried=false,isLiked=false,isDisliked=false,isOwned=false; liked → isTried=true,isLiked=true,isDisliked=false; disliked → isTried=true,isLiked=false,isDisliked=true; neutral (tried, no opinion) → isTried=true,isLiked=false,isDisliked=false,isOwned=false; collection → isOwned=true (may combine with liked/disliked).',
+    `UI list names in reply — to_try="${tableNames.to_try}"; liked="${tableNames.liked}"; neutral="${tableNames.neutral}"; disliked="${tableNames.disliked}"; owned="${tableNames.owned}".`,
+    'op=add: brandName + fragranceName + flags; no fragranceId for new rows.',
+    'op=rate|status|move|remove: rowId = exact id from the diary context below — never invent. If the row is missing, use op=add instead.',
     'op=move: rowId + new flag values.',
-    'op=rate|status|move|remove: rowId = exact id from diary context below — never invent. If row missing → op=add.',
+    'notesSummary: up to 5 key notes, English, comma-separated.',
+    `pyramidTop|Mid|Base: English comma-separated, ${request.minPyramidNotes ?? 1}–${request.maxPyramidNotes ?? 5} notes per non-empty tier; fill all three when known.`,
+    `agentComment: one punchy line in ${language}, ≤80 chars, scent essence (e.g. "Warm amber with smoky oud"); no full sentences, no "because", no user reference.`,
+    `userComment: only quote what the user actually said about the scent; omit if they did not.`,
+    'season: CSV from spring,summer,autumn,winter. timeOfDay: CSV from day,evening,night.',
+    `gender: female | male | unisex inferred from character/notes (not marketing only); unisex when truly fitting.`,
     'Bulk import (many rows): omit suggestions.',
     ...(allowAgentMemoryOps
       ? [
-          'agentMemoryOps (optional): only if user asks to remember/forget/fix memory; ≤10 items. Shapes: {op:"add",content} (≤500 chars); {op:"update",id,content} (id from Long-term memory in context); {op:"remove",id}. No invented ids. Else [].',
+          'agentMemoryOps: only when the user asks to remember/forget/fix memory. Use add for new facts, update with id (from "Long-term memory" in context) to revise, remove with id to delete. Never invent ids.',
         ]
       : []),
     ...(recommendationsOnly
       ? [
-          'MODE: recommendations refresh only — full new recommendations[]; tableOps []; omit profile, suggestions, agentMemoryOps.',
+          'MODE: recommendations refresh only — return a full new recommendations[]; tableOps []; omit profile, suggestions, agentMemoryOps.',
         ]
       : []),
-  ]
+  ].filter(Boolean) as string[]
 }
 
 type DiaryContextEntry = {
@@ -320,10 +316,33 @@ export function estimatePromptTokensApprox(text: string): number {
   return Math.ceil(text.length / 4)
 }
 
+let cachedOutputSchemaJson: string | undefined
+
+/** JSON Schema for the patch the model must emit. Cached — schema is static across requests. */
+function getOutputSchemaJson(): string {
+  if (cachedOutputSchemaJson) return cachedOutputSchemaJson
+
+  const schema = z.toJSONSchema(structuredPreferencePatchSchema, { unrepresentable: 'any' })
+
+  cachedOutputSchemaJson = JSON.stringify(schema)
+
+  return cachedOutputSchemaJson
+}
+
+function buildOutputSchemaSection(): string[] {
+  return [
+    'Output schema (JSON Schema 2020-12). The response MUST validate against this schema — field names, types, enums, lengths, ranges:',
+    '```json',
+    getOutputSchemaJson(),
+    '```',
+  ]
+}
+
 /** Instruction blocks only (no trailing `User message:` line). */
 export function buildPromptInstructionBlock(request: AnalyzePreferencesRequest): string {
   return [
     ...buildBaseInstructions(request),
+    ...buildOutputSchemaSection(),
     ...buildUserDisplayHardLimits(request),
     ...buildContextBlock(request),
     ...buildScenarioBlock(request),
@@ -336,6 +355,7 @@ export type PromptSection = { key: string; label: string; content: string }
 export function buildPromptSections(request: AnalyzePreferencesRequest): PromptSection[] {
   const sections: PromptSection[] = [
     { key: 'base', label: 'Base instructions', content: buildBaseInstructions(request).join('\n') },
+    { key: 'schema', label: 'Output schema', content: buildOutputSchemaSection().join('\n') },
     { key: 'limits', label: 'User display limits', content: buildUserDisplayHardLimits(request).join('\n') },
     { key: 'context', label: 'Context', content: buildContextBlock(request).join('\n') },
     { key: 'scenario', label: 'Scenario', content: buildScenarioBlock(request).join('\n') },
