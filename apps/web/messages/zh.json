@@ -54,6 +54,8 @@
   "oryxel_rec_empty_title": "暂无 AI 推荐",
   "oryxel_rec_empty_hint": "点击上方按钮，根据你的喜好生成新的推荐列表。",
   "oryxel_wishlist_title": "心愿单",
+  "oryxel_wishlist_empty_title": "心愿单为空",
+  "oryxel_wishlist_empty_hint": "在聊天中告诉 AI，例如「想试试 Chrome Azzaro」，它就会出现在这里。",
   "oryxel_radar_title": "嗅觉画像",
   "oryxel_settings_title": "设置",
   "oryxel_settings_nav_profile": "个人资料",

@@ -54,6 +54,8 @@
   "oryxel_rec_empty_title": "まだAIおすすめがありません",
   "oryxel_rec_empty_hint": "上のボタンで、好みに合わせた新しいリストを生成できます。",
   "oryxel_wishlist_title": "ウィッシュリスト",
+  "oryxel_wishlist_empty_title": "ウィッシュリストは空です",
+  "oryxel_wishlist_empty_hint": "チャットでAIに「Chrome Azzaroを試したい」のように伝えると、ここに表示されます。",
   "oryxel_radar_title": "嗅覚プロフィール",
   "oryxel_settings_title": "設定",
   "oryxel_settings_nav_profile": "プロフィール",

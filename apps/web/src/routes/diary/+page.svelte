@@ -43,6 +43,8 @@
   /** Desktop chat column width (% of shell row); persisted in `localStorage` via `chatPanelWidthPctAtom`. */
   let chatWidthPct = $state(CHAT_PANEL_WIDTH_DEFAULT_PCT)
   let resizingChat = $state(false)
+  let resizeHandleHovered = $state(false)
+  const chatBorderActive = $derived(chatOpen && (resizingChat || resizeHandleHovered))
   let desktopSplitElement = $state<HTMLDivElement | null>(null)
   let chatDraft = $state('')
   let primaryView = $state<DiaryPrimaryView>(untrack(() => data.initialView ?? 'fragrances'))
@@ -853,7 +855,8 @@
         'relative flex min-w-0 shrink-0 flex-col overflow-hidden border-r bg-[color-mix(in_srgb,var(--oryx-bg-surface)_88%,var(--oryx-bg-page))]',
         !resizingChat &&
           'transition-[flex-basis,opacity,border-color] duration-(--oryx-motion-normal) ease-(--oryx-ease-out)',
-        chatOpen ? 'border-border opacity-100' : 'pointer-events-none border-transparent opacity-0',
+        chatOpen ? 'opacity-100' : 'pointer-events-none border-transparent opacity-0',
+        chatOpen && (chatBorderActive ? 'border-border-strong' : 'border-border'),
       )}
       style:flex-basis={chatOpen ? `${chatWidthPct}%` : '0'}
     >
@@ -873,8 +876,10 @@
           role="separator"
           aria-orientation="vertical"
           aria-label={m.oryxel_chat_resize_handle()}
-          class="absolute top-0 right-0 z-20 h-full w-3 max-w-[14px] -translate-x-1/2 cursor-col-resize touch-none select-none bg-border/0 hover:bg-border/25 active:bg-border/40"
+          class="absolute top-0 right-0 z-20 h-full w-2 translate-x-1/2 cursor-col-resize touch-none select-none bg-transparent"
           onpointerdown={onChatWidthPointerDown}
+          onpointerenter={() => (resizeHandleHovered = true)}
+          onpointerleave={() => (resizeHandleHovered = false)}
         ></div>
       {/if}
     </section>

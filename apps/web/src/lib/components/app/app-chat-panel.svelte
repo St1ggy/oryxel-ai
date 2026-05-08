@@ -1,8 +1,11 @@
 <script lang="ts">
-  import { Send } from '@lucide/svelte'
+  import { Check, Send, Settings2 } from '@lucide/svelte'
   import { createVirtualizer } from '@tanstack/svelte-virtual'
+  import { DropdownMenu } from 'bits-ui'
+  /* eslint-disable import-x/no-duplicates -- svelte/store and svelte/transition resolve to the same .d.ts but are distinct runtime modules */
   import { get } from 'svelte/store'
   import { fade, fly } from 'svelte/transition'
+  /* eslint-enable import-x/no-duplicates */
 
   import AiModelHeader from '$lib/components/app/ai-model-header.svelte'
   import ChatBubble from '$lib/components/app/chat-bubble.svelte'
@@ -10,7 +13,6 @@
   import Button from '$lib/components/ui/button.svelte'
   import Chip from '$lib/components/ui/chip.svelte'
   import PhantomUiShell from '$lib/components/ui/phantom-ui-shell.svelte'
-  import Select from '$lib/components/ui/select.svelte'
   import * as m from '$lib/paraglide/messages.js'
   import { cn } from '$lib/utils/cn'
 
@@ -71,13 +73,10 @@
     }
   }
 
-  const providerSelectOptions = $derived(
-    providerOptions.map((provider) => ({
-      value: provider.value,
-      label: provider.label,
-      meta: provider.source === 'platform' ? m.oryxel_provider_source_platform() : m.oryxel_provider_source_own(),
-      tone: provider.source === 'platform' ? ('free' as const) : ('neutral' as const),
-    })),
+  const activeProvider = $derived(
+    selectedProvider
+      ? providerOptions.find((option) => option.value === selectedProvider)
+      : providerOptions[0],
   )
 
   const canSend = $derived(draft.trim().length > 0)
@@ -116,7 +115,7 @@
     updateChipsFade()
   })
 
-  const MAX_TEXTAREA_HEIGHT = 144 // ~5 lines
+  const MAX_TEXTAREA_HEIGHT = 220 // ~8 lines
 
   function resizeDraft() {
     if (!draftElement) return
@@ -183,13 +182,12 @@
           <div class="h-8 w-28 shrink-0 rounded-full bg-muted/45"></div>
           <div class="h-8 w-20 shrink-0 rounded-full bg-muted/40"></div>
         </div>
-        <div class="flex h-[52px] items-center gap-2 rounded-[20px] border border-border bg-surface px-3">
-          <div class="h-4 min-w-0 flex-1 rounded-md bg-muted/50"></div>
-          <div class="size-11 shrink-0 rounded-2xl bg-muted/55"></div>
-        </div>
-        <div class="flex items-center gap-2 px-1 pt-0.5">
-          <div class="h-3 w-16 shrink-0 rounded bg-muted/45"></div>
-          <div class="h-7 min-w-0 flex-1 rounded-md bg-muted/50"></div>
+        <div class="flex h-[80px] items-end gap-2 rounded-[20px] border border-border bg-surface px-2 py-2">
+          <div class="h-12 min-w-0 flex-1 rounded-md bg-muted/50"></div>
+          <div class="flex shrink-0 items-end gap-1.5 pb-0.5">
+            <div class="size-9 shrink-0 rounded-full bg-muted/45"></div>
+            <div class="size-11 shrink-0 rounded-2xl bg-muted/55"></div>
+          </div>
         </div>
       </div>
     </PhantomUiShell>
@@ -263,48 +261,86 @@
         </div>
         <div
           class={cn(
-            'flex items-end gap-2 rounded-[20px] border border-border bg-surface px-2 pt-px pb-2 shadow-sm transition-[box-shadow,border-color]',
+            'flex items-end gap-2 rounded-[20px] border border-border bg-surface px-2 pt-2 pb-2 shadow-sm transition-[box-shadow,border-color]',
             'focus-within:border-border-strong focus-within:shadow-[0_0_0_2px_color-mix(in_srgb,var(--oryx-ring)_22%,transparent)]',
           )}
         >
           <textarea
             bind:this={draftElement}
             bind:value={draft}
-            rows={1}
+            rows={2}
             placeholder={m.oryxel_chat_placeholder()}
-            class="oryx-chat-draft min-h-[44px] flex-1 resize-none overflow-y-auto border-0 bg-transparent py-3 text-[15px] text-foreground outline-none placeholder:text-foreground-muted"
+            class="oryx-chat-draft min-h-[64px] flex-1 resize-none overflow-y-auto border-0 bg-transparent px-2 py-2 text-[15px] leading-snug text-foreground outline-none placeholder:text-foreground-muted"
             style="max-height: {MAX_TEXTAREA_HEIGHT}px"
             onkeydown={onDraftKeydown}
             oninput={resizeDraft}
             data-tour="chat-input"
           ></textarea>
-          <button
-            type="button"
-            class={cn(
-              'oryx-transition shrink-0 rounded-2xl p-3 shadow-sm',
-              canSend ? 'oryx-btn-primary' : 'cursor-not-allowed bg-muted text-foreground-muted opacity-50',
-            )}
-            disabled={!canSend}
-            onclick={send}
-            aria-label={m.oryxel_chat_send()}
-          >
-            <Send class="size-5" />
-          </button>
-        </div>
-        {#if providerOptions.length > 0}
-          <div class="flex items-center gap-2 px-1 pt-0.5">
-            <label for="chat-provider-select" class="shrink-0 text-xs text-foreground-muted">
-              {m.oryxel_settings_providers()}:
-            </label>
-            <Select
-              id="chat-provider-select"
-              class="h-7 min-w-0 flex-1 text-xs"
-              options={providerSelectOptions}
-              bind:value={selectedProvider}
-              triggerAriaLabel={m.oryxel_settings_providers()}
-            />
+          <div class="flex shrink-0 items-end gap-1.5 pb-0.5">
+            {#if providerOptions.length > 0}
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger>
+                  <button
+                    type="button"
+                    class="oryx-transition flex size-9 items-center justify-center rounded-full text-foreground-muted hover:bg-muted/60 hover:text-foreground"
+                    aria-label={m.oryxel_settings_providers()}
+                    title={activeProvider?.label ?? m.oryxel_settings_providers()}
+                  >
+                    <Settings2 class="size-4" aria-hidden="true" />
+                  </button>
+                </DropdownMenu.Trigger>
+                <DropdownMenu.Portal>
+                  <DropdownMenu.Content
+                    class="oryx-dropdown-content z-50 min-w-[14rem] rounded-lg border border-border bg-surface p-1 shadow-[var(--oryx-shadow-md)]"
+                    sideOffset={8}
+                    align="end"
+                  >
+                    <div class="px-3 pt-2 pb-1 text-[10px] font-semibold tracking-wide text-foreground-muted/70 uppercase">
+                      {m.oryxel_settings_providers()}
+                    </div>
+                    {#each providerOptions as option (option.value)}
+                      {@const meta =
+                        option.source === 'platform'
+                          ? m.oryxel_provider_source_platform()
+                          : m.oryxel_provider_source_own()}
+                      <DropdownMenu.Item
+                        class={cn(
+                          'oryx-transition flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm outline-none select-none hover:bg-muted data-[highlighted]:bg-muted',
+                          option.value === selectedProvider
+                            ? 'text-foreground'
+                            : 'text-foreground-muted hover:text-foreground',
+                        )}
+                        onSelect={() => {
+                          selectedProvider = option.value
+                        }}
+                      >
+                        <span class="flex size-4 shrink-0 items-center justify-center text-accent">
+                          {#if option.value === selectedProvider}
+                            <Check class="size-3.5" aria-hidden="true" />
+                          {/if}
+                        </span>
+                        <span class="flex-1 truncate">{option.label}</span>
+                        <span class="shrink-0 text-[10px] text-foreground-muted/80">{meta}</span>
+                      </DropdownMenu.Item>
+                    {/each}
+                  </DropdownMenu.Content>
+                </DropdownMenu.Portal>
+              </DropdownMenu.Root>
+            {/if}
+            <button
+              type="button"
+              class={cn(
+                'oryx-transition rounded-2xl p-3 shadow-sm',
+                canSend ? 'oryx-btn-primary' : 'cursor-not-allowed bg-muted text-foreground-muted opacity-50',
+              )}
+              disabled={!canSend}
+              onclick={send}
+              aria-label={m.oryxel_chat_send()}
+            >
+              <Send class="size-5" />
+            </button>
           </div>
-        {/if}
+        </div>
       </div>
     {:else}
       <div class="flex min-h-0 flex-1 items-center justify-center px-5 py-6">

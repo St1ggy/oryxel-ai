@@ -143,7 +143,7 @@ export const structuredPreferencePatchSchema = z.object({
       archetype: z.string().max(120).optional(),
       favoriteNote: z.string().max(120).optional(),
       radar: radarSchema.optional(),
-      radarLabels: z.record(z.string().min(1).max(40), z.string().max(60)).optional(),
+      radarLabels: z.record(z.string().min(1).max(40), z.string().max(24)).optional(),
       preferences: z.string().max(2000).optional(),
       rationale: z.string().min(1).max(800).optional(),
       noteRelationships: z

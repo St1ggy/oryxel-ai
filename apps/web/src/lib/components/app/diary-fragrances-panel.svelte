@@ -167,17 +167,15 @@
               emptyHint={m.oryxel_rec_empty_hint()}
             />
           </div>
-          {#if wishlistRows.length > 0}
-            <div>
-              <h3 class="oryx-heading mb-3 text-base font-semibold text-foreground">{m.oryxel_wishlist_title()}</h3>
-              <ToTryTable
-                rows={wishlistRows}
-                onOpenDetail={(row) => onOpenDetail?.(row, 'to_try')}
-                emptyTitle={m.oryxel_empty_to_try_title()}
-                emptyHint={m.oryxel_empty_to_try_hint()}
-              />
-            </div>
-          {/if}
+          <div>
+            <h3 class="oryx-heading mb-3 text-base font-semibold text-foreground">{m.oryxel_wishlist_title()}</h3>
+            <ToTryTable
+              rows={wishlistRows}
+              onOpenDetail={(row) => onOpenDetail?.(row, 'to_try')}
+              emptyTitle={m.oryxel_wishlist_empty_title()}
+              emptyHint={m.oryxel_wishlist_empty_hint()}
+            />
+          </div>
         </div>
       {/if}
     {:else if fragranceTab === 'liked'}

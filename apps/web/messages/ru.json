@@ -54,6 +54,8 @@
   "oryxel_rec_empty_title": "Пока нет ИИ-рекомендаций",
   "oryxel_rec_empty_hint": "Нажми кнопку выше, чтобы сгенерировать новый список под твои предпочтения.",
   "oryxel_wishlist_title": "Список желаний",
+  "oryxel_wishlist_empty_title": "Список желаний пуст",
+  "oryxel_wishlist_empty_hint": "Скажите ИИ в чате — например, «хочу попробовать Chrome Azzaro», — и аромат появится здесь.",
   "oryxel_radar_title": "Ольфакторный профиль",
   "oryxel_settings_title": "Настройки",
   "oryxel_settings_nav_profile": "Профиль",

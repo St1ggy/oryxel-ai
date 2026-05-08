@@ -54,6 +54,8 @@
   "oryxel_rec_empty_title": "No AI recommendations yet",
   "oryxel_rec_empty_hint": "Use the button above to generate a new list based on your tastes.",
   "oryxel_wishlist_title": "Wishlist",
+  "oryxel_wishlist_empty_title": "Your wishlist is empty",
+  "oryxel_wishlist_empty_hint": "Tell the AI in chat — for example, “I want to try Chrome Azzaro” — and it will appear here.",
   "oryxel_radar_title": "Olfactory balance",
   "oryxel_settings_title": "Settings",
   "oryxel_settings_nav_profile": "Profile",

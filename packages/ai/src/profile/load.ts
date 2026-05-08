@@ -32,18 +32,33 @@ function resolveStringOrMap(value: unknown, locale: string): string | null {
   return null
 }
 
+/** Strip commentary that older AI responses appended after a comma / dash / parenthesis, then clip. */
+function compactRadarLabel(raw: string, fallback: string): string {
+  const head = raw
+    .split(/[,—–\-(]/u)[0]
+    .trim()
+    .slice(0, 24)
+
+  return head.length > 0 ? head : fallback
+}
+
 function buildRadarAxes(radar: unknown, radarLabels: unknown, locale: string): RadarAxis[] {
   if (!radar || typeof radar !== 'object') return []
 
   const values = radar as RadarAxes
   const labelsMap = (radarLabels ?? {}) as Record<string, unknown>
 
-  return Object.entries(values).map(([key, value]) => ({
-    key,
-    value: typeof value === 'number' ? value : 0,
-    // radarLabels is now flat {axisKey: label}, but handle old nested format too
-    label: resolveStringOrMap(labelsMap[key], locale) ?? key,
-  }))
+  return Object.entries(values).map(([key, value]) => {
+    const raw = resolveStringOrMap(labelsMap[key], locale) ?? key
+
+    return {
+      key,
+      value: typeof value === 'number' ? value : 0,
+      // radarLabels is now flat {axisKey: label}, but handle old nested format too;
+      // also defensively trim verbose legacy labels emitted by older AI versions.
+      label: compactRadarLabel(raw, key),
+    }
+  })
 }
 
 export async function loadProfileForUser(userId: string, fallbackName = 'User', locale = 'en') {
