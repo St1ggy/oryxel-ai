@@ -40,21 +40,50 @@ async function applyPatchWithProgress(
 
   try {
     if (profileStep) {
-      await pushJobProgress(jobId, { step: ++step, total, phase: 'applying' })
+      const startedAt = Date.now()
+
+      await pushJobProgress(jobId, { step: ++step, total, phase: 'apply_profile' })
       await applyProfileAndSuggestions(userId, patch)
+      await pushJobProgress(jobId, {
+        step,
+        total,
+        phase: 'apply_profile',
+        meta: { durationMs: Date.now() - startedAt, note: 'done' },
+      })
     }
 
     // Apply tableOps FIRST so that user interactions with recommendations
     // (e.g. op=move marking a rec as disliked) are committed before
     // applyRecommendations deletes isRecommendation=true,isTried=false rows.
     for (const op of patch.tableOps) {
-      await pushJobProgress(jobId, { step: ++step, total, phase: 'applying' })
+      const startedAt = Date.now()
+
+      await pushJobProgress(jobId, {
+        step: ++step,
+        total,
+        phase: 'apply_ops',
+        meta: { note: op.op },
+      })
       await applySingleTableOp(userId, op)
+      await pushJobProgress(jobId, {
+        step,
+        total,
+        phase: 'apply_ops',
+        meta: { durationMs: Date.now() - startedAt, note: `${op.op}:done` },
+      })
     }
 
     if (recStep) {
-      await pushJobProgress(jobId, { step: ++step, total, phase: 'applying' })
+      const startedAt = Date.now()
+
+      await pushJobProgress(jobId, { step: ++step, total, phase: 'apply_recs' })
       await applyRecommendations(userId, patch)
+      await pushJobProgress(jobId, {
+        step,
+        total,
+        phase: 'apply_recs',
+        meta: { durationMs: Date.now() - startedAt, note: 'done' },
+      })
     }
 
     return true
@@ -63,18 +92,20 @@ async function applyPatchWithProgress(
   }
 }
 
+const PRE_APPLY_STEP_COUNT = 5
+
 async function applyNonCriticalPatchFlow(
   jobId: number,
   userId: string,
   patch: StructuredPreferencePatch,
   pendingPatchId: number,
-  applyTotal: number,
+  totalSteps: number,
   locale: string,
   routerAttempts: unknown,
   explicitProvider: string | undefined,
   defaultProvider: string | null | undefined,
 ): Promise<boolean> {
-  const ok = await applyPatchWithProgress(jobId, userId, patch, 0, applyTotal)
+  const ok = await applyPatchWithProgress(jobId, userId, patch, PRE_APPLY_STEP_COUNT, totalSteps)
 
   if (!ok) {
     await updatePatchStatus({
@@ -170,7 +201,7 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
   const recommendationsOnly = params['recommendationsOnly'] === true
 
   try {
-    await pushJobProgress(jobId, { step: 0, total: 1, phase: 'analyzing' })
+    await pushJobProgress(jobId, { step: 1, total: PRE_APPLY_STEP_COUNT, phase: 'validate', meta: { scenario } })
 
     const userRow = await db
       .select({ name: user.name })
@@ -180,6 +211,7 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
       .then((r) => r[0])
     const userName = userRow?.name ?? 'User'
 
+    const contextStartedAt = Date.now()
     const [profile, diary, dismissed, defaultProvider, recentMessages, aiPrefs] = await Promise.all([
       loadProfileForUser(userId, userName),
       loadDiaryForUser(userId, locale),
@@ -205,6 +237,13 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
         .then((rows) => rows[0]),
     ])
 
+    await pushJobProgress(jobId, {
+      step: 2,
+      total: PRE_APPLY_STEP_COUNT,
+      phase: 'load_context',
+      meta: { durationMs: Date.now() - contextStartedAt },
+    })
+
     const context = buildPreferenceAnalysisContext(
       profile,
       diary,
@@ -219,6 +258,20 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
         ? (defaultProvider ?? undefined)
         : (explicitProvider as Parameters<typeof analyzePreferences>[0]['preferredProvider'])
 
+    await pushJobProgress(jobId, {
+      step: 3,
+      total: PRE_APPLY_STEP_COUNT,
+      phase: 'build_prompt',
+      meta: { scenario },
+    })
+    await pushJobProgress(jobId, {
+      step: 4,
+      total: PRE_APPLY_STEP_COUNT,
+      phase: 'model_call',
+      meta: { provider: preferredProvider as Parameters<typeof pushJobProgress>[1]['meta']['provider'] },
+    })
+
+    const callStartedAt = Date.now()
     const router = await analyzePreferences(
       {
         userId,
@@ -243,8 +296,32 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
         onPartial: (partial) => {
           void pushPartialResult(jobId, partial)
         },
+        onTokenProgress: ({ tokensOut, durationMs }) => {
+          void pushJobProgress(jobId, {
+            step: 4,
+            total: PRE_APPLY_STEP_COUNT,
+            phase: 'model_call',
+            meta: {
+              provider: preferredProvider,
+              tokensOut,
+              durationMs,
+            },
+          })
+        },
       },
     )
+
+    await pushJobProgress(jobId, {
+      step: 5,
+      total: PRE_APPLY_STEP_COUNT,
+      phase: 'parse',
+      meta: {
+        provider: router.result.provider,
+        model: router.result.model,
+        durationMs: Date.now() - callStartedAt,
+        attempt: router.attempts.length,
+      },
+    })
 
     let patch: StructuredPreferencePatch = { ...router.result.patch }
 
@@ -275,6 +352,7 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
     const profileStep = patch.profile != null || patch.suggestions != null ? 1 : 0
     const recStep = patch.recommendations == null ? 0 : 1
     const applyTotal = profileStep + recStep + patch.tableOps.length
+    const totalSteps = PRE_APPLY_STEP_COUNT + applyTotal
 
     if (!critical) {
       const continued = await applyNonCriticalPatchFlow(
@@ -282,7 +360,7 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
         userId,
         patch,
         pendingPatch.id,
-        applyTotal,
+        totalSteps,
         locale,
         router.attempts,
         explicitProvider,
