@@ -17,6 +17,7 @@ export const toTryDiaryColumns = [
   diaryCol.accessor('brand', { id: 'brand' }),
   diaryCol.accessor('fragrance', { id: 'fragrance' }),
   diaryCol.display({ id: 'notes', enableSorting: false }),
+  diaryCol.display({ id: 'actions', enableSorting: false }),
 ] as ColumnDef<DiaryRow>[]
 
 export type RecommendationRow = {

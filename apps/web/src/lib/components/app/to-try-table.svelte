@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { Inbox, X } from '@lucide/svelte'
-
+  import { Inbox } from '@lucide/svelte'
 
   import AgentCommentIcon from '$lib/components/app/agent-comment-icon.svelte'
   import GenderIcon from '$lib/components/app/gender-icon.svelte'
@@ -8,6 +7,7 @@
   import SeasonIcon from '$lib/components/app/season-icon.svelte'
   import TimeOfDayIcon from '$lib/components/app/time-of-day-icon.svelte'
   import NoteTags from '$lib/components/ui/note-tags.svelte'
+  import RowActionsMenu from '$lib/components/ui/row-actions-menu.svelte'
   import * as m from '$lib/paraglide/messages.js'
   import { createDiaryDataTable, functionalUpdate, toTryDiaryColumns } from '$lib/table/diary-tanstack'
 
@@ -53,9 +53,23 @@
       }
 
       default: {
-        return columnId
+        return ''
       }
     }
+  }
+
+  function buildRowActions(diaryRow: DiaryRow): { label: string; onclick: () => void; danger?: boolean }[] {
+    const items: { label: string; onclick: () => void; danger?: boolean }[] = []
+
+    if (onDismiss && diaryRow.isRecommendation) {
+      items.push({
+        label: m.oryxel_rec_dismiss(),
+        onclick: () => onDismiss(diaryRow),
+        danger: true,
+      })
+    }
+
+    return items
   }
 </script>
 
@@ -87,7 +101,7 @@
           >
             {#each headerGroup.headers as header (header.id)}
               {@const columnId = header.column.id}
-              <th class="px-5 py-4">
+              <th class={columnId === 'actions' ? 'w-12 px-2 py-4' : 'px-5 py-4'}>
                 {#if header.column.getCanSort()}
                   <button
                     type="button"
@@ -109,6 +123,7 @@
       <tbody>
         {#each table.getRowModel().rows as row (row.id)}
           {@const diaryRow = row.original}
+          {@const rowActions = buildRowActions(diaryRow)}
           <tr
             class="oryx-transition cursor-pointer border-b border-border last:border-0 hover:bg-(--oryx-table-hover)"
             onclick={() => onOpenDetail?.(diaryRow)}
@@ -134,26 +149,25 @@
                       {#if diaryRow.agentComment}
                         <AgentCommentIcon comment={diaryRow.agentComment} />
                       {/if}
-                      {#if onDismiss && diaryRow.isRecommendation}
-                        <button
-                          type="button"
-                          class="oryx-transition flex size-6 items-center justify-center rounded-full text-foreground-muted hover:bg-destructive/10 hover:text-destructive"
-                          aria-label={m.oryxel_rec_dismiss()}
-                          title={m.oryxel_rec_dismiss()}
-                          onclick={(event) => {
-                            event.stopPropagation()
-                            onDismiss(diaryRow)
-                          }}
-                        >
-                          <X class="size-3.5" aria-hidden="true" />
-                        </button>
-                      {/if}
                     </div>
                   </div>
                 </td>
               {:else if cell.column.id === 'notes'}
                 <td class="px-5 py-4 align-middle">
                   <NoteTags notes={diaryRow.notes} />
+                </td>
+              {:else if cell.column.id === 'actions'}
+                <td class="w-12 px-2 py-4 text-right align-middle">
+                  {#if rowActions.length > 0}
+                    <div
+                      class="inline-flex"
+                      onclick={(event) => event.stopPropagation()}
+                      onkeydown={(event) => event.stopPropagation()}
+                      role="presentation"
+                    >
+                      <RowActionsMenu items={rowActions} />
+                    </div>
+                  {/if}
                 </td>
               {/if}
             {/each}
