@@ -3,7 +3,7 @@ import { readSseEvents } from './sse'
 
 import type { StructuredPreferencePatch } from '../contracts'
 
-const PARTIAL_EMIT_INTERVAL_MS = 200
+const PARTIAL_EMIT_INTERVAL_MS = 1000
 
 export type AnthropicStreamInput = {
   apiKey: string
