@@ -17,6 +17,7 @@ export const deepseekProvider: AiProvider = {
       signal,
       errorPrefix: 'DeepSeek',
       onPartial: options?.onPartial,
+      onTokenProgress: options?.onTokenProgress,
       body: {
         model,
         messages: [

@@ -10,6 +10,7 @@ export type AnthropicStreamInput = {
   body: Record<string, unknown>
   signal: AbortSignal
   onPartial?: (partial: Partial<StructuredPreferencePatch>) => void
+  onTokenProgress?: (info: { tokensOut: number; durationMs: number }) => void
 }
 
 export async function streamAnthropic(input: AnthropicStreamInput): Promise<string> {
@@ -32,6 +33,7 @@ export async function streamAnthropic(input: AnthropicStreamInput): Promise<stri
     throw new Error('Anthropic empty stream body')
   }
 
+  const startedAt = Date.now()
   let buffer = ''
   let lastEmit = 0
 
@@ -52,19 +54,25 @@ export async function streamAnthropic(input: AnthropicStreamInput): Promise<stri
 
     buffer += text
 
-    if (input.onPartial) {
-      const now = Date.now()
+    const now = Date.now()
 
-      if (now - lastEmit >= PARTIAL_EMIT_INTERVAL_MS) {
-        emitPartial(buffer, input.onPartial)
-        lastEmit = now
-      }
+    if (now - lastEmit >= PARTIAL_EMIT_INTERVAL_MS) {
+      if (input.onPartial) emitPartial(buffer, input.onPartial)
+
+      input.onTokenProgress?.({ tokensOut: estimateTokens(buffer), durationMs: now - startedAt })
+      lastEmit = now
     }
   }
 
   if (input.onPartial) emitPartial(buffer, input.onPartial)
 
+  input.onTokenProgress?.({ tokensOut: estimateTokens(buffer), durationMs: Date.now() - startedAt })
+
   return buffer
+}
+
+function estimateTokens(buffer: string): number {
+  return Math.ceil(buffer.length / 4)
 }
 
 function emitPartial(buffer: string, onPartial: (partial: Partial<StructuredPreferencePatch>) => void): void {

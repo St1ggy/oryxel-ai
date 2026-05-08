@@ -17,6 +17,7 @@ export const openaiProvider: AiProvider = {
       signal,
       errorPrefix: 'OpenAI',
       onPartial: options?.onPartial,
+      onTokenProgress: options?.onTokenProgress,
       body: {
         model,
         messages: [

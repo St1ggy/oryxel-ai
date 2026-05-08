@@ -15,6 +15,7 @@ export const anthropicProvider: AiProvider = {
       apiKey,
       signal,
       onPartial: options?.onPartial,
+      onTokenProgress: options?.onTokenProgress,
       body: {
         model,
 
