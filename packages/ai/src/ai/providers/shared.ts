@@ -62,6 +62,7 @@ function buildUserDisplayHardLimits(request: AnalyzePreferencesRequest): string[
     'USER DISPLAY LIMITS (violations → INVALID):',
     `- Pyramid (pyramidTop|Mid|Base): non-empty tier = comma-separated tokens after trim (drop empties); ${minP}–${maxP} notes per non-empty tier.`,
     `- recommendation scenario: recommendations.length must be ${minR}–${maxR} inclusive (not fewer, not more).`,
+    `- recommendation scenario: every entry MUST include pyramidTop AND pyramidMid AND pyramidBase, all non-empty, English lowercase, ${minP}–${maxP} notes per tier. If you do not know the real pyramid, infer it confidently from the brand+name+notesSummary; never leave a tier blank.`,
     `- analog scenario: at most ${analogMax} op=add per reply unless the user clearly asks for more; never more than ${maxR} new rows.`,
     `- Non-bulk op=add|op=status: populated tiers obey the pyramid bounds above.`,
   ]
@@ -275,7 +276,7 @@ function buildScenarioBlock(request: AnalyzePreferencesRequest): string[] {
       `pyramid: top/mid/base. Existing diary row → op=status, rowId, pyramid (English lc). Not listed → op=add, isTried=false,isLiked=false,isDisliked=false,isOwned=false, brand+name, pyramid (English lc). Fill all three tiers when known.`,
       `${minP}–${maxP} comma-separated notes per non-empty tier (USER DISPLAY LIMITS). Reply (${language}), natural/conversational.`,
     ].join(' '),
-    recommendation: `recommendation: suggest from diary + prefs. HARD: recommendations.length ${minR}–${maxR} (else INVALID). HARD: never propose any fragranceId from the exclude list (already in diary or dismissed). (1) gender male→male/unisex; female→female/unisex; else all. (2) bio + preferences → personality/aesthetic. (3) noteRelationships → prefer love/like; avoid redflag/dislike. Each: id (unique short STRING slug like "r1","r2","rec-amber" — NEVER a number, NEVER a fragranceId), brand, name, notesSummary (English lc), pyramid if known, tag (${language}, why for THIS user), gender, timeOfDay CSV, season CSV. Replaces list. suggestions: 3 first-person chips, ${language}, ≤60 chars. Reply (${language}): picks + fit to user style.`,
+    recommendation: `recommendation: suggest from diary + prefs. HARD: recommendations.length ${minR}–${maxR} (else INVALID). HARD: never propose any fragranceId from the exclude list (already in diary or dismissed). HARD: every entry must include pyramidTop, pyramidMid, pyramidBase — all non-empty, English lowercase, ${minP}–${maxP} notes per tier. (1) gender male→male/unisex; female→female/unisex; else all. (2) bio + preferences → personality/aesthetic. (3) noteRelationships → prefer love/like; avoid redflag/dislike. Each: id (unique short STRING slug like "r1","r2","rec-amber" — NEVER a number, NEVER a fragranceId), brand, name, notesSummary (English lc), pyramidTop+pyramidMid+pyramidBase (REQUIRED, English lc), tag (${language}, why for THIS user), gender, timeOfDay CSV, season CSV. Replaces list. suggestions: 3 first-person chips, ${language}, ≤60 chars. Reply (${language}): picks + fit to user style.`,
     comparison: `comparison: compare ≥2 named frags — notes, character, fit. Rate/move if user shows preference. Reply (${language}).`,
     command: [
       'command: direct instruction or bulk import — execute exactly.',
