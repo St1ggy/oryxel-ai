@@ -16,6 +16,7 @@ export const geminiProvider: AiProvider = {
       apiKey,
       signal,
       onPartial: options?.onPartial,
+      onTokenProgress: options?.onTokenProgress,
       body: {
         contents: [{ parts: [{ text: `${buildPrompt(request)}\n\nReturn JSON only.` }] }],
         generationConfig: { maxOutputTokens: 8192 },

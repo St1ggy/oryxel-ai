@@ -62,7 +62,14 @@ async function fillListBatches(
   const batches = chunk(entries, BATCH_SIZE)
 
   for (const [index, batch] of batches.entries()) {
-    await pushJobProgress(jobId, { step: startStep + index, total, phase })
+    const startedAt = Date.now()
+
+    await pushJobProgress(jobId, {
+      step: startStep + index,
+      total,
+      phase,
+      meta: { provider: context.provider, note: `batch ${index + 1}/${batches.length}` },
+    })
 
     try {
       const batchRouter = await analyzePreferences({
@@ -88,6 +95,18 @@ async function fillListBatches(
       })
 
       await applyPatchToDatabase(context.userId, batchRouter.result.patch)
+
+      await pushJobProgress(jobId, {
+        step: startStep + index,
+        total,
+        phase,
+        meta: {
+          provider: batchRouter.result.provider,
+          model: batchRouter.result.model,
+          durationMs: Date.now() - startedAt,
+          note: `batch ${index + 1}/${batches.length}:done`,
+        },
+      })
     } catch (batchError) {
       console.error(
         `[profile-sync] ${phase} batch ${index + 1}/${batches.length} failed:`,
@@ -239,17 +258,41 @@ async function runSync(jobId: number, context: StepContext, total: number, hasPr
     step += dislikedBatches
   }
 
-  await pushJobProgress(jobId, { step, total, phase: 'profile' })
+  const profileStartedAt = Date.now()
+
+  await pushJobProgress(jobId, { step, total, phase: 'profile', meta: { provider: context.provider } })
   await runProfileStep(context)
+  await pushJobProgress(jobId, {
+    step,
+    total,
+    phase: 'profile',
+    meta: { provider: context.provider, durationMs: Date.now() - profileStartedAt, note: 'done' },
+  })
   step++
 
   if (hasPreferences) {
-    await pushJobProgress(jobId, { step, total, phase: 'recommendations' })
+    const recStartedAt = Date.now()
+
+    await pushJobProgress(jobId, { step, total, phase: 'recommendations', meta: { provider: context.provider } })
     await runRecommendationsStep(context)
+    await pushJobProgress(jobId, {
+      step,
+      total,
+      phase: 'recommendations',
+      meta: { provider: context.provider, durationMs: Date.now() - recStartedAt, note: 'done' },
+    })
     step++
 
-    await pushJobProgress(jobId, { step, total, phase: 'to_try' })
+    const toTryStartedAt = Date.now()
+
+    await pushJobProgress(jobId, { step, total, phase: 'to_try', meta: { provider: context.provider } })
     await runToTryFillStep(context)
+    await pushJobProgress(jobId, {
+      step,
+      total,
+      phase: 'to_try',
+      meta: { provider: context.provider, durationMs: Date.now() - toTryStartedAt, note: 'done' },
+    })
   }
 
   await generateMissingTranslations(context.userId, context.locale)

@@ -3,11 +3,52 @@ import { and, desc, eq, inArray, sql } from 'drizzle-orm'
 
 import { emitJobCreated, emitJobUpdated } from './job-notify'
 
-import type { StructuredPreferencePatch } from './contracts'
+import type { AiProviderName, StructuredPreferencePatch } from './contracts'
 
 export type JobType = 'profile_sync' | 'agent_chat'
 export type JobStatus = 'pending' | 'processing' | 'done' | 'failed' | 'cancelled'
-export type JobProgress = { step: number; total: number; phase: string }
+
+/** Sync-pipeline phases (profile_sync handler). */
+export type SyncPhase = 'owned' | 'liked' | 'disliked' | 'neutral' | 'profile' | 'recommendations' | 'to_try'
+
+/** Detailed agent-chat / per-call phases. */
+export type AgentPhase =
+  | 'validate'
+  | 'load_context'
+  | 'build_prompt'
+  | 'model_call'
+  | 'parse'
+  | 'apply_profile'
+  | 'apply_ops'
+  | 'apply_recs'
+  | 'translate'
+  | 'done'
+
+/** Legacy coarse phases — kept so older clients/UI keep rendering. */
+export type LegacyPhase = 'analyzing' | 'applying'
+
+export type JobPhase = SyncPhase | AgentPhase | LegacyPhase
+
+export type JobProgressMeta = {
+  provider?: AiProviderName
+  model?: string
+  tokensIn?: number
+  tokensOut?: number
+  attempt?: number
+  durationMs?: number
+  scenario?: string
+  note?: string
+}
+
+export type JobProgress = {
+  step: number
+  total: number
+  phase: JobPhase | string
+  meta?: JobProgressMeta
+}
+
+/** Most recent N progress events kept on a job — older ones drop on append. */
+export const MAX_PROGRESS_EVENTS = 50
 
 export async function createJob(userId: string, type: JobType, params?: Record<string, unknown>): Promise<number> {
   // For non-chat types, cancel any pending jobs of the same type so the
@@ -30,10 +71,20 @@ export async function createJob(userId: string, type: JobType, params?: Record<s
 }
 
 export async function pushJobProgress(jobId: number, event: JobProgress): Promise<void> {
+  const appended = JSON.stringify([event])
+
   await db
     .update(backgroundJob)
     .set({
-      progress: sql`COALESCE(${backgroundJob.progress}, '[]'::jsonb) || ${JSON.stringify([event])}::jsonb`,
+      // Append the new event, then drop the oldest if the array would exceed the cap.
+      progress: sql`
+        CASE
+          WHEN jsonb_array_length(COALESCE(${backgroundJob.progress}, '[]'::jsonb) || ${appended}::jsonb)
+               > ${MAX_PROGRESS_EVENTS}
+          THEN (COALESCE(${backgroundJob.progress}, '[]'::jsonb) || ${appended}::jsonb) - 0
+          ELSE COALESCE(${backgroundJob.progress}, '[]'::jsonb) || ${appended}::jsonb
+        END
+      `,
     })
     .where(eq(backgroundJob.id, jobId))
 

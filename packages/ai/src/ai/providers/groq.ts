@@ -17,6 +17,7 @@ export const groqProvider: AiProvider = {
       signal,
       errorPrefix: 'Groq',
       onPartial: options?.onPartial,
+      onTokenProgress: options?.onTokenProgress,
       body: {
         model,
         messages: [

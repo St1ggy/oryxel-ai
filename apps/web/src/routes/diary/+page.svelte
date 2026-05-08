@@ -295,16 +295,36 @@
 
   type PatchProgress = { step: number; total: number } | null
 
+  type ProgressEventMeta = {
+    provider?: string
+    model?: string
+    tokensIn?: number
+    tokensOut?: number
+    attempt?: number
+    durationMs?: number
+    scenario?: string
+    note?: string
+  }
+  type ProgressEvent = { step: number; total: number; phase: string; meta?: ProgressEventMeta }
+
   type JobResult = {
     id: number
     status: string
-    progress: { step: number; total: number; phase: string }[]
+    progress: ProgressEvent[]
     result: Record<string, unknown> | null
     errorMessage: string | null
   }
 
+  /** Phases that should map to the patch-applying progress UI (legacy 'applying' + new apply_* family). */
+  const APPLY_PHASES = new Set(['applying', 'apply_profile', 'apply_ops', 'apply_recs'])
+
+  function isApplyPhase(phase: string | undefined): boolean {
+    return phase ? APPLY_PHASES.has(phase) : false
+  }
+
   let syncProgress = $state<SyncProgress>(null)
   let patchProgress = $state<PatchProgress>(null)
+  let progressEvents = $state<ProgressEvent[]>([])
   let syncConfirmOpen = $state(false)
   let thinking = $state(false)
   let refreshingRecommendations = $state(false)
@@ -362,6 +382,7 @@
         ? { step: latest.step, total: latest.total, phase: latest.phase as NonNullable<SyncProgress>['phase'] }
         : { step: 0, total: 1, phase: 'profile' }
       void waitForJob(syncJob.id, pageAbort.signal, (job) => {
+        progressEvents = job.progress
         const last = job.progress.at(-1)
 
         if (last) {
@@ -373,6 +394,7 @@
         }
       }).finally(() => {
         syncProgress = null
+        progressEvents = []
         void invalidateAll()
       })
     }
@@ -384,9 +406,10 @@
       void (async () => {
         try {
           const job = await waitForJob(chatJob.id, pageAbort.signal, (index) => {
+            progressEvents = index.progress
             const latest = index.progress.at(-1)
 
-            if (latest?.phase === 'applying') {
+            if (latest && isApplyPhase(latest.phase)) {
               thinking = false
               patchProgress = { step: latest.step, total: latest.total }
             }
@@ -600,6 +623,7 @@
       const { jobId } = (await response.json()) as { jobId: number }
 
       await waitForJob(jobId, pageAbort.signal, (job) => {
+        progressEvents = job.progress
         const latest = job.progress.at(-1)
 
         if (latest) {
@@ -663,9 +687,10 @@
       const { jobId } = (await response.json()) as { jobId: number }
 
       const job = await waitForJob(jobId, pageAbort.signal, (index) => {
+        progressEvents = index.progress
         const latest = index.progress.at(-1)
 
-        if (latest?.phase === 'applying') {
+        if (latest && isApplyPhase(latest.phase)) {
           patchProgress = { step: latest.step, total: latest.total }
         }
       })
@@ -711,9 +736,10 @@
       const { jobId } = (await response.json()) as { jobId: number }
 
       const job = await waitForJob(jobId, pageAbort.signal, (index) => {
+        progressEvents = index.progress
         const latest = index.progress.at(-1)
 
-        if (latest?.phase === 'applying') {
+        if (latest && isApplyPhase(latest.phase)) {
           thinking = false
           patchProgress = { step: latest.step, total: latest.total }
         }
@@ -951,6 +977,7 @@
         patches={pendingItems}
         {syncProgress}
         {patchProgress}
+        {progressEvents}
         inline
         onOpenPatchDetails={(payload, summary) => openPatchDetailsModal(payload, summary)}
         onPatchApplied={(summary, payload) => {
@@ -1100,6 +1127,7 @@
     patches={pendingItems}
     {syncProgress}
     {patchProgress}
+    {progressEvents}
     onOpenPatchDetails={(payload, summary) => openPatchDetailsModal(payload, summary)}
     onPatchApplied={(summary, payload) => {
       showPatchAppliedToast({
