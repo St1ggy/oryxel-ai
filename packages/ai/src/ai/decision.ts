@@ -1,6 +1,5 @@
-import type { ChatAgentMode } from '../types/chat-mode'
-
-import type { StructuredPreferencePatch } from './contracts'
+import type { StructuredPreferencePatch, TableOperation } from './contracts.js'
+import type { ChatAgentMode } from '../types/chat-mode.js'
 
 /** Strip everything except reply/summary/confidence/recommendations — used when the user only asked to refresh AI picks. */
 export function sanitizePatchToRecommendationsOnly(patch: StructuredPreferencePatch): StructuredPreferencePatch {
@@ -22,7 +21,7 @@ export function sanitizePatchToRecommendationsOnly(patch: StructuredPreferencePa
 // Rationale: the diary is easily corrected, so we only gate bulk destructive operations that
 // the user likely did not intend (e.g. "clear my disliked list" removing 10 items at once).
 export function isCriticalPatch(patch: StructuredPreferencePatch): boolean {
-  const removeCount = patch.tableOps.filter((op) => op.op === 'remove').length
+  const removeCount = patch.tableOps.filter((op: TableOperation) => op.op === 'remove').length
 
   return removeCount >= 3
 }
@@ -31,8 +30,11 @@ function countPatchMutations(patch: StructuredPreferencePatch): number {
   let count = patch.tableOps.length
 
   if (patch.profile != null) count += 1
+
   if (patch.suggestions != null && patch.suggestions.length > 0) count += 1
+
   if (patch.recommendations != null && patch.recommendations.length > 0) count += 1
+
   if (patch.agentMemoryOps != null && patch.agentMemoryOps.length > 0) count += patch.agentMemoryOps.length
 
   return count
@@ -43,25 +45,32 @@ export function sanitizePatchForChatMode(
   mode: ChatAgentMode,
 ): StructuredPreferencePatch {
   switch (mode) {
-    case 'ask':
+    case 'ask': {
       return {
         confidence: patch.confidence,
         summary: patch.summary,
         reply: patch.reply,
         tableOps: [],
       }
-    case 'add':
+    }
+
+    case 'add': {
       return {
         confidence: patch.confidence,
         summary: patch.summary,
         reply: patch.reply,
-        tableOps: patch.tableOps.filter((op) => op.op === 'add'),
+        tableOps: patch.tableOps.filter((op: TableOperation) => op.op === 'add'),
         recommendations: patch.recommendations ?? undefined,
       }
-    case 'recommend':
+    }
+
+    case 'recommend': {
       return sanitizePatchToRecommendationsOnly(patch)
-    case 'agent':
+    }
+
+    case 'agent': {
       return patch
+    }
   }
 }
 

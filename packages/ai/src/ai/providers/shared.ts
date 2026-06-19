@@ -1,8 +1,8 @@
 import { z } from 'zod'
 
-import { structuredPreferencePatchSchema } from '../schemas'
+import { structuredPreferencePatchSchema } from '../schemas.js'
 
-import type { AnalyzePreferencesRequest, StructuredPreferencePatch } from '../contracts'
+import type { AnalyzePreferencesRequest, StructuredPreferencePatch } from '../contracts.js'
 
 function languageForLocale(locale: string): string {
   if (locale.startsWith('es')) return 'Spanish'
@@ -72,21 +72,27 @@ function buildUserDisplayHardLimits(request: AnalyzePreferencesRequest): string[
 
 function buildChatModeBlock(mode: AnalyzePreferencesRequest['chatMode']): string[] {
   switch (mode) {
-    case 'ask':
+    case 'ask': {
       return [
         'MODE: questions only — answer conversationally in reply. tableOps must be []. Do not change profile, suggestions, recommendations, or agentMemoryOps.',
       ]
-    case 'add':
+    }
+
+    case 'add': {
       return [
         'MODE: additions only — use op=add in tableOps and/or recommendations[]. Never remove, move, rate, or change status. Do not change profile or suggestions.',
       ]
-    case 'recommend':
+    }
+
+    case 'recommend': {
       return [
         'MODE: recommendations refresh only — return a full new recommendations[]; tableOps []; omit profile, suggestions, agentMemoryOps.',
       ]
-    case 'agent':
-    default:
+    }
+
+    default: {
       return []
+    }
   }
 }
 

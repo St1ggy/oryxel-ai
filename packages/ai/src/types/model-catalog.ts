@@ -1,4 +1,4 @@
-import type { AiProviderName } from '../ai/contracts'
+import type { AiProviderName } from '../ai/contracts.js'
 
 export type ModelCatalogEntry = {
   id: string

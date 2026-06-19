@@ -1,9 +1,9 @@
-import { streamOpenAiCompatible } from '../streaming/openai-stream'
-import { resolveModel } from '../../types/model-catalog'
+import { resolveModel } from '../../types/model-catalog.js'
+import { streamOpenAiCompatible } from '../streaming/openai-stream.js'
 
-import { buildPrompt, parseStructuredPatch } from './shared'
+import { buildPrompt, parseStructuredPatch } from './shared.js'
 
-import type { AiProvider } from '../contracts'
+import type { AiProvider } from '../contracts.js'
 
 export const groqProvider: AiProvider = {
   name: 'groq',
