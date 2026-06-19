@@ -1,3 +1,4 @@
+import { chatAgentModeSchema } from '@oryxel/ai'
 import { error, json } from '@sveltejs/kit'
 import { z } from 'zod'
 
@@ -10,6 +11,8 @@ const bodySchema = z.object({
   message: z.string().min(1),
   locale: z.string().min(2).max(10).optional(),
   provider: z.enum(['openai', 'anthropic', 'gemini', 'qwen', 'perplexity', 'groq', 'deepseek']).optional(),
+  model: z.string().max(80).optional(),
+  chatMode: chatAgentModeSchema.optional(),
   scenario: z.enum(['analog', 'pyramid', 'recommendation', 'comparison', 'command']).optional(),
   /** When true, worker applies only recommendations[] (diary lists and profile unchanged). */
   recommendationsOnly: z.boolean().optional(),
@@ -207,6 +210,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   const locale = body.locale ?? 'en'
   const scenario =
     body.recommendationsOnly === true ? 'recommendation' : (body.scenario ?? inferScenarioFromMessage(body.message))
+  const chatMode = body.chatMode ?? (body.recommendationsOnly === true ? 'recommend' : 'agent')
   const userId = locals.user.id
 
   await createChatMessage({ userId, role: 'user', content: body.message, locale, scenario })
@@ -216,6 +220,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     locale,
     scenario,
     provider: body.provider ?? undefined,
+    model: body.model ?? undefined,
+    chatMode,
     budget: body.context?.budget ?? undefined,
     recommendationsOnly: body.recommendationsOnly === true,
   })

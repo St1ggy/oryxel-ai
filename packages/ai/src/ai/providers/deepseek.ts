@@ -1,16 +1,15 @@
 import { streamOpenAiCompatible } from '../streaming/openai-stream'
+import { resolveModel } from '../../types/model-catalog'
 
 import { buildPrompt, parseStructuredPatch } from './shared'
 
 import type { AiProvider } from '../contracts'
 
-const MODEL = 'deepseek-chat'
-
 export const deepseekProvider: AiProvider = {
   name: 'deepseek',
   async analyze(request, signal, apiKey, options) {
     const startedAt = Date.now()
-    const model = process.env.DEEPSEEK_MODEL ?? MODEL
+    const model = resolveModel('deepseek', request.model)
     const content = await streamOpenAiCompatible({
       url: 'https://api.deepseek.com/v1/chat/completions',
       apiKey,

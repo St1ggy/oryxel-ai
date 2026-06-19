@@ -1,16 +1,15 @@
 import { streamGemini } from '../streaming/gemini-stream'
+import { resolveModel } from '../../types/model-catalog'
 
 import { buildPrompt, parseStructuredPatch } from './shared'
 
 import type { AiProvider } from '../contracts'
 
-const MODEL = 'gemini-2.5-flash'
-
 export const geminiProvider: AiProvider = {
   name: 'gemini',
   async analyze(request, signal, apiKey, options) {
     const startedAt = Date.now()
-    const model = process.env.GEMINI_MODEL ?? MODEL
+    const model = resolveModel('gemini', request.model)
     const text = await streamGemini({
       model,
       apiKey,

@@ -5,11 +5,13 @@ import {
   applyRecommendations,
   applySingleTableOp,
   completeJob,
+  countStrippedPatchMutations,
   createChatMessage,
   createPendingPatch,
   failJob,
   generateMissingTranslations,
   getUserDefaultProvider,
+  inferSuggestedChatMode,
   isCriticalPatch,
   loadDiaryForUser,
   loadDismissedForUser,
@@ -18,6 +20,7 @@ import {
   pushJobProgress,
   pushPartialResult,
   recordActivity,
+  sanitizePatchForChatMode,
   sanitizePatchToRecommendationsOnly,
   updatePatchStatus,
   warnIfPatchViolatesDisplayLimits,
@@ -25,7 +28,7 @@ import {
 import { db, user, userAiPreferences } from '@oryxel/db'
 import { eq } from 'drizzle-orm'
 
-import type { StructuredPreferencePatch } from '@oryxel/ai'
+import type { ChatAgentMode, StructuredPreferencePatch } from '@oryxel/ai'
 
 async function applyPatchWithProgress(
   jobId: number,
@@ -192,16 +195,173 @@ function buildPreferenceAnalysisContext(
   }
 }
 
+function sanitizeAgentChatPatch(
+  patch: StructuredPreferencePatch,
+  recommendationsOnly: boolean,
+  chatMode: ChatAgentMode,
+): StructuredPreferencePatch {
+  if (recommendationsOnly || chatMode === 'recommend') {
+    return sanitizePatchToRecommendationsOnly(patch)
+  }
+
+  const sanitized = sanitizePatchForChatMode(patch, chatMode)
+
+  delete sanitized.agentMemoryOps
+
+  return sanitized
+}
+
+function assistantFallbackMessage(
+  patch: StructuredPreferencePatch,
+  critical: boolean,
+  chatMode: ChatAgentMode,
+): string {
+  if (critical) {
+    return `CRITICAL_PENDING:${patch.summary}`
+  }
+
+  if (chatMode === 'ask') {
+    return patch.summary
+  }
+
+  return `PATCH_APPLIED:${patch.summary}`
+}
+
+type AgentChatFinishInput = {
+  jobId: number
+  userId: string
+  message: string
+  locale: string
+  scenario: string
+  chatMode: ChatAgentMode
+  recommendationsOnly: boolean
+  router: Awaited<ReturnType<typeof analyzePreferences>>
+  explicitProvider: string | undefined
+  defaultProvider: string | null | undefined
+  aiPrefs:
+    | {
+        minPyramidNotes: number | null
+        maxPyramidNotes: number | null
+        minRecommendations: number | null
+        maxRecommendations: number | null
+      }
+    | undefined
+}
+
+async function finishAgentChatFromPatch(input: AgentChatFinishInput): Promise<void> {
+  const {
+    jobId,
+    userId,
+    message,
+    locale,
+    scenario,
+    chatMode,
+    recommendationsOnly,
+    router,
+    explicitProvider,
+    defaultProvider,
+    aiPrefs,
+  } = input
+
+  let patch: StructuredPreferencePatch = { ...router.result.patch }
+  const rawPatch = structuredClone(patch) as StructuredPreferencePatch
+
+  patch = sanitizeAgentChatPatch(patch, recommendationsOnly, chatMode)
+
+  const strippedOps = countStrippedPatchMutations(rawPatch, patch)
+  const suggestedMode = strippedOps > 0 ? inferSuggestedChatMode(message) : null
+  const modeMismatch =
+    strippedOps > 0 && suggestedMode && suggestedMode !== chatMode
+      ? { suggested: suggestedMode, strippedOps }
+      : undefined
+
+  warnIfPatchViolatesDisplayLimits(patch, {
+    scenario,
+    userId,
+    limits: {
+      minPyramidNotes: aiPrefs?.minPyramidNotes,
+      maxPyramidNotes: aiPrefs?.maxPyramidNotes,
+      minRecommendations: aiPrefs?.minRecommendations,
+      maxRecommendations: aiPrefs?.maxRecommendations,
+    },
+  })
+  const critical = isCriticalPatch(patch)
+  const pendingPatch = await createPendingPatch({
+    userId,
+    patch,
+    patchType: critical ? 'critical' : 'minor',
+    attempts: router.attempts as unknown as Record<string, unknown>[],
+  })
+
+  const profileStep = patch.profile != null || patch.suggestions != null ? 1 : 0
+  const recStep = patch.recommendations == null ? 0 : 1
+  const applyTotal = profileStep + recStep + patch.tableOps.length
+  const totalSteps = PRE_APPLY_STEP_COUNT + applyTotal
+
+  const skipApply = chatMode === 'ask' || critical
+
+  if (!skipApply) {
+    const continued = await applyNonCriticalPatchFlow(
+      jobId,
+      userId,
+      patch,
+      pendingPatch.id,
+      totalSteps,
+      locale,
+      router.attempts,
+      explicitProvider,
+      defaultProvider,
+    )
+
+    if (!continued) return
+  }
+
+  const assistantMessage = patch.reply ?? assistantFallbackMessage(patch, critical, chatMode)
+
+  await createChatMessage({
+    userId,
+    role: 'assistant',
+    content: assistantMessage,
+    locale,
+    scenario: scenario as 'analog' | 'pyramid' | 'recommendation' | 'comparison' | 'command',
+  })
+
+  const triggerSync =
+    !critical &&
+    chatMode !== 'ask' &&
+    !recommendationsOnly &&
+    chatMode !== 'recommend' &&
+    (patch.tableOps.length >= 2 || patch.recommendations != null || scenario === 'command')
+
+  await completeJob(jobId, {
+    requiresConfirmation: critical,
+    pendingPatchId: pendingPatch.id,
+    summary: patch.summary,
+    reply: patch.reply,
+    triggerSync,
+    modeMismatch,
+    appliedPatch: structuredClone(patch) as Record<string, unknown>,
+  })
+}
+
 export async function handleAgentChat(jobId: number, userId: string, params: Record<string, unknown>): Promise<void> {
   const message = params['message'] as string
   const locale = (params['locale'] as string | undefined) ?? 'en'
   const scenario = (params['scenario'] as string | undefined) ?? 'recommendation'
   const explicitProvider = params['provider'] as string | undefined
+  const explicitModel = params['model'] as string | undefined
   const budget = params['budget'] as string | undefined
   const recommendationsOnly = params['recommendationsOnly'] === true
+  const chatMode = ((params['chatMode'] as string | undefined) ??
+    (recommendationsOnly ? 'recommend' : 'agent')) as ChatAgentMode
 
   try {
-    await pushJobProgress(jobId, { step: 1, total: PRE_APPLY_STEP_COUNT, phase: 'validate', meta: { scenario } })
+    await pushJobProgress(jobId, {
+      step: 1,
+      total: PRE_APPLY_STEP_COUNT,
+      phase: 'validate',
+      meta: { scenario, chatMode },
+    })
 
     const userRow = await db
       .select({ name: user.name })
@@ -290,7 +450,9 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
         systemPromptAppend: aiPrefs?.systemPromptAppend ?? undefined,
         systemPromptReplace: aiPrefs?.systemPromptReplace ?? undefined,
         allowAgentMemoryOps: false,
-        recommendationsOnly: recommendationsOnly || undefined,
+        recommendationsOnly: recommendationsOnly || chatMode === 'recommend' || undefined,
+        chatMode,
+        model: explicitModel,
       },
       {
         onPartial: (partial) => {
@@ -323,76 +485,18 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
       },
     })
 
-    let patch: StructuredPreferencePatch = { ...router.result.patch }
-
-    if (recommendationsOnly) {
-      patch = sanitizePatchToRecommendationsOnly(patch)
-    } else {
-      delete patch.agentMemoryOps
-    }
-
-    warnIfPatchViolatesDisplayLimits(patch, {
-      scenario,
+    await finishAgentChatFromPatch({
+      jobId,
       userId,
-      limits: {
-        minPyramidNotes: aiPrefs?.minPyramidNotes,
-        maxPyramidNotes: aiPrefs?.maxPyramidNotes,
-        minRecommendations: aiPrefs?.minRecommendations,
-        maxRecommendations: aiPrefs?.maxRecommendations,
-      },
-    })
-    const critical = isCriticalPatch(patch)
-    const pendingPatch = await createPendingPatch({
-      userId,
-      patch,
-      patchType: critical ? 'critical' : 'minor',
-      attempts: router.attempts as unknown as Record<string, unknown>[],
-    })
-
-    const profileStep = patch.profile != null || patch.suggestions != null ? 1 : 0
-    const recStep = patch.recommendations == null ? 0 : 1
-    const applyTotal = profileStep + recStep + patch.tableOps.length
-    const totalSteps = PRE_APPLY_STEP_COUNT + applyTotal
-
-    if (!critical) {
-      const continued = await applyNonCriticalPatchFlow(
-        jobId,
-        userId,
-        patch,
-        pendingPatch.id,
-        totalSteps,
-        locale,
-        router.attempts,
-        explicitProvider,
-        defaultProvider,
-      )
-
-      if (!continued) return
-    }
-
-    const assistantMessage =
-      patch.reply ?? (critical ? `CRITICAL_PENDING:${patch.summary}` : `PATCH_APPLIED:${patch.summary}`)
-
-    await createChatMessage({
-      userId,
-      role: 'assistant',
-      content: assistantMessage,
+      message,
       locale,
-      scenario: scenario as 'analog' | 'pyramid' | 'recommendation' | 'comparison' | 'command',
-    })
-
-    const triggerSync =
-      !critical &&
-      !recommendationsOnly &&
-      (patch.tableOps.length >= 2 || patch.recommendations != null || scenario === 'command')
-
-    await completeJob(jobId, {
-      requiresConfirmation: critical,
-      pendingPatchId: pendingPatch.id,
-      summary: patch.summary,
-      reply: patch.reply,
-      triggerSync,
-      appliedPatch: structuredClone(patch) as Record<string, unknown>,
+      scenario,
+      chatMode,
+      recommendationsOnly,
+      router,
+      explicitProvider,
+      defaultProvider,
+      aiPrefs,
     })
   } catch (error_) {
     await failJob(jobId, error_ instanceof Error ? error_.message : 'Unknown error')

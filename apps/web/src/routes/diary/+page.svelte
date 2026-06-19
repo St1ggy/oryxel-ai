@@ -1,5 +1,6 @@
 <script lang="ts">
   import { PanelLeftOpen, PanelRightOpen } from '@lucide/svelte'
+  import { type ChatAgentMode } from '@oryxel/ai'
   import { untrack } from 'svelte'
   import { toast } from 'svelte-sonner'
 
@@ -441,18 +442,134 @@
   })
   const hasChatAccess = $derived(resolvedShell?.hasChatAccess ?? false)
   const providerOptions = $derived(resolvedShell?.chatProviders ?? [])
+  const modelCatalog = $derived(resolvedShell?.modelCatalog ?? {})
   const graphStyle = $derived(resolvedShell?.graphStyle ?? 'default')
   let selectedProvider = $state<string>('')
+  let chatMode = $state<ChatAgentMode>('agent')
+  let selectedModelId = $state('')
+  let chatPrefsHydrated = $state(false)
+
+  const modelOptions = $derived(
+    (modelCatalog[selectedProvider] ?? []) as { id: string; label: string }[],
+  )
+
+  const activeModelLabel = $derived(
+    modelOptions.find((model) => model.id === selectedModelId)?.label ??
+      (selectedModelId || m.oryxel_chat_model()),
+  )
+
+  function chatModeLabel(mode: ChatAgentMode): string {
+    switch (mode) {
+      case 'ask': {
+        return m.oryxel_chat_mode_ask()
+      }
+
+      case 'add': {
+        return m.oryxel_chat_mode_add()
+      }
+
+      case 'recommend': {
+        return m.oryxel_chat_mode_recommend()
+      }
+
+      default: {
+        return m.oryxel_chat_mode_agent()
+      }
+    }
+  }
+
+  async function persistChatPreferences(prefs: {
+    chatMode?: ChatAgentMode
+    provider?: string
+    modelId?: string
+  }) {
+    try {
+      await fetch('/api/agent/chat-preferences', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(prefs),
+      })
+    } catch {
+      // non-blocking
+    }
+  }
+
+  function onChatPreferencesChange(prefs: {
+    chatMode?: ChatAgentMode
+    provider?: string
+    modelId?: string
+  }) {
+    if (prefs.chatMode) {
+      chatMode = prefs.chatMode
+    }
+
+    if (prefs.provider && prefs.provider !== selectedProvider) {
+      selectedProvider = prefs.provider
+      const models = (modelCatalog[prefs.provider] ?? []) as { id: string; label: string }[]
+
+      selectedModelId = models[0]?.id ?? ''
+      void persistChatPreferences({
+        chatMode,
+        provider: prefs.provider,
+        modelId: selectedModelId || undefined,
+      })
+
+      return
+    }
+
+    if (prefs.modelId) {
+      selectedModelId = prefs.modelId
+    }
+
+    void persistChatPreferences({
+      chatMode: prefs.chatMode ?? chatMode,
+      provider: selectedProvider || undefined,
+      modelId: (prefs.modelId ?? selectedModelId) || undefined,
+    })
+  }
+
+  function notifyModeMismatch(result: Record<string, unknown>) {
+    const mismatch = result.modeMismatch as { suggested?: ChatAgentMode } | undefined
+
+    if (!mismatch?.suggested) return
+
+    toast.message(m.oryxel_chat_mode_mismatch_toast({ mode: chatModeLabel(mismatch.suggested) }))
+  }
 
   $effect(() => {
-    if (providerOptions.length === 0) {
+    const providers = providerOptions
+    const prefs = resolvedShell?.chatPreferences
+
+    if (providers.length === 0) {
       selectedProvider = ''
 
       return
     }
 
-    if (!providerOptions.some((provider) => provider.value === selectedProvider)) {
-      selectedProvider = providerOptions.find((provider) => provider.active)?.value ?? providerOptions[0]?.value ?? ''
+    if (!chatPrefsHydrated && prefs) {
+      chatMode = prefs.mode
+      selectedProvider =
+        prefs.provider && providers.some((provider) => provider.value === prefs.provider)
+          ? prefs.provider
+          : (providers.find((provider) => provider.active)?.value ?? providers[0]?.value ?? '')
+      const models = (modelCatalog[selectedProvider] ?? []) as { id: string; label: string }[]
+
+      selectedModelId =
+        prefs.modelId && models.some((model) => model.id === prefs.modelId)
+          ? prefs.modelId
+          : (models[0]?.id ?? '')
+      chatPrefsHydrated = true
+
+      return
+    }
+
+    if (!providers.some((provider) => provider.value === selectedProvider)) {
+      selectedProvider = providers.find((provider) => provider.active)?.value ?? providers[0]?.value ?? ''
+      const models = (modelCatalog[selectedProvider] ?? []) as { id: string; label: string }[]
+
+      if (!models.some((model) => model.id === selectedModelId)) {
+        selectedModelId = models[0]?.id ?? ''
+      }
     }
   })
 
@@ -657,6 +774,7 @@
       toast.success(m.oryxel_rec_dismissed_toast())
       await invalidateAll()
     } catch (error) {
+      // eslint-disable-next-line no-console -- client-side dismiss failure diagnostic
       console.error('[diary] dismiss recommendation failed:', error)
       toast.error(m.oryxel_rec_dismiss_failed())
     }
@@ -679,7 +797,9 @@
           locale: data.locale,
           scenario: 'recommendation',
           recommendationsOnly: true,
+          chatMode: 'recommend',
           provider: selectedProvider || undefined,
+          model: selectedModelId || undefined,
         }),
         signal: pageAbort.signal,
       })
@@ -711,6 +831,7 @@
 
       messages = [...messages, { id: crypto.randomUUID(), role: 'assistant', content: responseText }]
       notifyPatchAppliedFromJobResult(result)
+      notifyModeMismatch(result)
     } catch {
       messages = [...messages, { id: crypto.randomUUID(), role: 'assistant', content: m.oryxel_chat_error_generic() }]
     } finally {
@@ -730,7 +851,13 @@
       const response = await fetch('/api/agent/preferences/stream', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ message: text, locale: data.locale, provider: selectedProvider || undefined }),
+        body: JSON.stringify({
+          message: text,
+          locale: data.locale,
+          provider: selectedProvider || undefined,
+          model: selectedModelId || undefined,
+          chatMode,
+        }),
       })
 
       if (!response.ok) throw new Error('Agent request failed')
@@ -765,6 +892,7 @@
 
       messages = [...messages, { id: crypto.randomUUID(), role: 'assistant', content: responseText }]
       notifyPatchAppliedFromJobResult(result)
+      notifyModeMismatch(result)
     } catch {
       messages = [...messages, { id: crypto.randomUUID(), role: 'assistant', content: m.oryxel_chat_error_generic() }]
     } finally {
@@ -867,9 +995,14 @@
         {onSend}
         hasApiKey={hasChatAccess}
         bind:selectedProvider
+        bind:chatMode
+        bind:modelId={selectedModelId}
         bind:draft={chatDraft}
         {providerOptions}
+        {modelOptions}
+        modelLabel={activeModelLabel}
         suggestions={profileData.suggestions}
+        onChatPreferencesChange={onChatPreferencesChange}
       />
       {#if chatOpen}
         <div
@@ -1084,9 +1217,14 @@
             {onSend}
             hasApiKey={hasChatAccess}
             bind:selectedProvider
+            bind:chatMode
+            bind:modelId={selectedModelId}
             bind:draft={chatDraft}
             {providerOptions}
+            {modelOptions}
+            modelLabel={activeModelLabel}
             suggestions={profileData.suggestions}
+            onChatPreferencesChange={onChatPreferencesChange}
           />
         {:else}
           <DiaryGuideTab layout="mobile" />

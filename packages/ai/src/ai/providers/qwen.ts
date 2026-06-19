@@ -1,10 +1,15 @@
+import { resolveModel } from '../../types/model-catalog'
+
 import { buildPrompt, parseStructuredPatch } from './shared'
 
 import type { AiProvider, AnalyzePreferencesRequest } from '../contracts'
 
-const MODEL = 'qwen-plus'
-
-async function callQwen(request: AnalyzePreferencesRequest, signal: AbortSignal, apiKey: string) {
+async function callQwen(
+  request: AnalyzePreferencesRequest,
+  signal: AbortSignal,
+  apiKey: string,
+  model: string,
+) {
   const response = await fetch('https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -12,7 +17,7 @@ async function callQwen(request: AnalyzePreferencesRequest, signal: AbortSignal,
       authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: process.env.QWEN_MODEL ?? MODEL,
+      model,
       messages: [
         { role: 'system', content: 'Return valid JSON only.' },
         { role: 'user', content: buildPrompt(request) },
@@ -39,11 +44,12 @@ export const qwenProvider: AiProvider = {
   name: 'qwen',
   async analyze(request: AnalyzePreferencesRequest, signal: AbortSignal, apiKey: string) {
     const startedAt = Date.now()
-    const patch = await callQwen(request, signal, apiKey)
+    const model = resolveModel('qwen', request.model)
+    const patch = await callQwen(request, signal, apiKey, model)
 
     return {
       provider: 'qwen',
-      model: process.env.QWEN_MODEL ?? MODEL,
+      model,
       patch,
       latencyMs: Date.now() - startedAt,
     }

@@ -1,14 +1,17 @@
 <script lang="ts">
-  import { Check, Send, Settings2 } from '@lucide/svelte'
+  import { Send } from '@lucide/svelte'
+  import { type ChatAgentMode, type ModeSwitchSuggestion, nextChatMode, shouldSuggestModeSwitch } from '@oryxel/ai'
   import { createVirtualizer } from '@tanstack/svelte-virtual'
-  import { DropdownMenu } from 'bits-ui'
   /* eslint-disable import-x/no-duplicates -- svelte/store and svelte/transition resolve to the same .d.ts but are distinct runtime modules */
+  import { SvelteSet } from 'svelte/reactivity'
   import { get } from 'svelte/store'
   import { fade, fly } from 'svelte/transition'
   /* eslint-enable import-x/no-duplicates */
 
   import AiModelHeader from '$lib/components/app/ai-model-header.svelte'
   import ChatBubble from '$lib/components/app/chat-bubble.svelte'
+  import ChatComposerToolbar from '$lib/components/app/chat-composer-toolbar.svelte'
+  import ChatModeSwitchBanner from '$lib/components/app/chat-mode-switch-banner.svelte'
   import TypingIndicator from '$lib/components/app/typing-indicator.svelte'
   import Button from '$lib/components/ui/button.svelte'
   import Chip from '$lib/components/ui/chip.svelte'
@@ -20,8 +23,12 @@
 
   const CHAT_VIRTUAL_THRESHOLD = 48
 
+  type ModelOption = {
+    id: string
+    label: string
+  }
+
   type Props = {
-    /** Server meta (keys, history) not ready yet — shimmer shell, not “add key”. */
     loading?: boolean
     messages: ChatMessage[]
     draft?: string
@@ -29,10 +36,18 @@
     modelLabel?: string
     hasApiKey?: boolean
     addKeyHref?: string
+    chatMode?: ChatAgentMode
+    modelId?: string
     selectedProvider?: string
     providerOptions?: { value: string; label: string; source?: 'user' | 'platform' }[]
+    modelOptions?: ModelOption[]
     suggestions?: string[]
     onSend?: (text: string) => void
+    onChatPreferencesChange?: (prefs: {
+      chatMode?: ChatAgentMode
+      provider?: string
+      modelId?: string
+    }) => void
   }
 
   let {
@@ -43,11 +58,16 @@
     modelLabel = 'GPT-4.1',
     hasApiKey = true,
     addKeyHref = '/settings',
+    chatMode = $bindable('agent' as ChatAgentMode),
+    modelId = $bindable(''),
     selectedProvider = $bindable(''),
     providerOptions = [],
+    modelOptions = [],
     suggestions = [],
     onSend,
+    onChatPreferencesChange,
   }: Props = $props()
+
   const keyRequiredTitle = $derived(m.oryxel_chat_key_required_title())
   const keyRequiredDesc = $derived(m.oryxel_chat_key_required_desc())
   const addKeyCta = $derived(m.oryxel_chat_add_key_cta())
@@ -55,29 +75,123 @@
   const fallbackChips = $derived([m.oryxel_chip_analog(), m.oryxel_chip_summer(), m.oryxel_chip_evening()])
   const displayChips = $derived(suggestions.length > 0 ? suggestions : fallbackChips)
 
-  function send() {
-    const t = draft.trim()
+  const headerLabel = $derived(`${modeLabelFor(chatMode)} · ${modelLabel}`)
 
-    if (!t) {
+  const placeholder = $derived.by(() => {
+    switch (chatMode) {
+      case 'ask': {
+        return m.oryxel_chat_placeholder_ask()
+      }
+
+      case 'add': {
+        return m.oryxel_chat_placeholder_add()
+      }
+
+      case 'recommend': {
+        return m.oryxel_chat_placeholder_recommend()
+      }
+
+      default: {
+        return m.oryxel_chat_placeholder_agent()
+      }
+    }
+  })
+
+  let pendingSendText = $state<string | null>(null)
+  let modeSuggestion = $state<ModeSwitchSuggestion | null>(null)
+  let modeBannerKey = $state(0)
+  const sessionDismissed = new SvelteSet<string>()
+
+  function modeLabelFor(mode: ChatAgentMode): string {
+    switch (mode) {
+      case 'ask': {
+        return m.oryxel_chat_mode_ask()
+      }
+
+      case 'add': {
+        return m.oryxel_chat_mode_add()
+      }
+
+      case 'recommend': {
+        return m.oryxel_chat_mode_recommend()
+      }
+
+      default: {
+        return m.oryxel_chat_mode_agent()
+      }
+    }
+  }
+
+  function clearModeSuggestion() {
+    pendingSendText = null
+    modeSuggestion = null
+  }
+
+  function dispatchSend(text: string) {
+    onSend?.(text)
+    draft = ''
+    clearModeSuggestion()
+  }
+
+  function send() {
+    const text = draft.trim()
+
+    if (!text) {
       return
     }
 
-    onSend?.(t)
-    draft = ''
+    if (modeSuggestion && pendingSendText === text) {
+      modeBannerKey += 1
+
+      return
+    }
+
+    const suggestion = shouldSuggestModeSwitch(text, chatMode, sessionDismissed)
+
+    if (suggestion) {
+      pendingSendText = text
+      modeSuggestion = suggestion
+      modeBannerKey += 1
+
+      return
+    }
+
+    dispatchSend(text)
+  }
+
+  function onModeSwitchAccept() {
+    if (!modeSuggestion || !pendingSendText) return
+
+    chatMode = modeSuggestion.suggested
+    onChatPreferencesChange?.({ chatMode: modeSuggestion.suggested })
+    dispatchSend(pendingSendText)
+  }
+
+  function onModeSwitchDismiss() {
+    if (!pendingSendText) return
+
+    sessionDismissed.add(pendingSendText)
+    dispatchSend(pendingSendText)
+  }
+
+  function onModeSwitchTimeout() {
+    onModeSwitchAccept()
   }
 
   function onDraftKeydown(event: KeyboardEvent) {
+    if (event.key === 'Tab' && event.shiftKey) {
+      event.preventDefault()
+      chatMode = nextChatMode(chatMode)
+      onChatPreferencesChange?.({ chatMode })
+
+      return
+    }
+
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault()
       send()
     }
   }
-
-  const activeProvider = $derived(
-    selectedProvider
-      ? providerOptions.find((option) => option.value === selectedProvider)
-      : providerOptions[0],
-  )
 
   const canSend = $derived(draft.trim().length > 0)
 
@@ -115,7 +229,7 @@
     updateChipsFade()
   })
 
-  const MAX_TEXTAREA_HEIGHT = 220 // ~8 lines
+  const MAX_TEXTAREA_HEIGHT = 220
 
   function resizeDraft() {
     if (!draftElement) return
@@ -125,7 +239,6 @@
   }
 
   $effect(() => {
-    // Track draft changes: typing, chip click, or clear-on-send
     if (draft.length >= 0 && draftElement) resizeDraft()
   })
 
@@ -146,12 +259,23 @@
   }
 
   $effect(() => {
-    // Track messages and thinking to scroll after each update
     const _length = messages.length
     const _thinking = thinking
 
     if (_length >= 0 || !_thinking) scrollToBottom()
   })
+
+  function handleChatModeChange(mode: ChatAgentMode) {
+    onChatPreferencesChange?.({ chatMode: mode })
+  }
+
+  function handleModelChange(id: string) {
+    onChatPreferencesChange?.({ modelId: id })
+  }
+
+  function handleProviderChange(provider: string) {
+    onChatPreferencesChange?.({ provider })
+  }
 </script>
 
 <div
@@ -180,26 +304,23 @@
         <div class="flex gap-2">
           <div class="h-8 w-24 shrink-0 rounded-full bg-muted/50"></div>
           <div class="h-8 w-28 shrink-0 rounded-full bg-muted/45"></div>
-          <div class="h-8 w-20 shrink-0 rounded-full bg-muted/40"></div>
         </div>
         <div class="flex h-[80px] items-end gap-2 rounded-[20px] border border-border bg-surface px-2 py-2">
           <div class="h-12 min-w-0 flex-1 rounded-md bg-muted/50"></div>
-          <div class="flex shrink-0 items-end gap-1.5 pb-0.5">
-            <div class="size-9 shrink-0 rounded-full bg-muted/45"></div>
-            <div class="size-11 shrink-0 rounded-2xl bg-muted/55"></div>
-          </div>
+          <div class="size-11 shrink-0 rounded-2xl bg-muted/55"></div>
+        </div>
+        <div class="flex gap-2">
+          <div class="h-7 w-24 rounded-full bg-muted/45"></div>
+          <div class="h-7 w-28 rounded-full bg-muted/40"></div>
         </div>
       </div>
     </PhantomUiShell>
   {:else}
-    <AiModelHeader modelLabel={m.oryxel_chat_model()} />
+    <AiModelHeader modelLabel={headerLabel} />
     {#if hasApiKey}
       <div bind:this={scrollElement} class="min-h-0 flex-1 overflow-y-auto px-6 pt-5 pb-6">
         {#if useVirtualMessages}
-          <div
-            class="relative w-full"
-            style="height: {$messageVirtualizer.getTotalSize()}px;"
-          >
+          <div class="relative w-full" style="height: {$messageVirtualizer.getTotalSize()}px;">
             {#each $messageVirtualizer.getVirtualItems() as row (row.key)}
               {@const message = messages[row.index]}
               <div
@@ -259,6 +380,19 @@
             </div>
           {/each}
         </div>
+
+        {#if modeSuggestion}
+          {#key modeBannerKey}
+            <ChatModeSwitchBanner
+              reasonKey={modeSuggestion.reasonKey}
+              modeLabel={modeLabelFor(modeSuggestion.suggested)}
+              onAccept={onModeSwitchAccept}
+              onDismiss={onModeSwitchDismiss}
+              onTimeout={onModeSwitchTimeout}
+            />
+          {/key}
+        {/if}
+
         <div
           class={cn(
             'flex items-end gap-2 rounded-[20px] border border-border bg-surface px-2 pt-2 pb-2 shadow-sm transition-[box-shadow,border-color]',
@@ -269,7 +403,7 @@
             bind:this={draftElement}
             bind:value={draft}
             rows={2}
-            placeholder={m.oryxel_chat_placeholder()}
+            placeholder={placeholder}
             class="oryx-chat-draft min-h-[64px] flex-1 resize-none overflow-y-auto border-0 bg-transparent px-2 py-2 text-[15px] leading-snug text-foreground outline-none placeholder:text-foreground-muted"
             style="max-height: {MAX_TEXTAREA_HEIGHT}px"
             onkeydown={onDraftKeydown}
@@ -277,56 +411,6 @@
             data-tour="chat-input"
           ></textarea>
           <div class="flex shrink-0 items-end gap-1.5 pb-0.5">
-            {#if providerOptions.length > 0}
-              <DropdownMenu.Root>
-                <DropdownMenu.Trigger>
-                  <button
-                    type="button"
-                    class="oryx-transition flex size-9 items-center justify-center rounded-full text-foreground-muted hover:bg-muted/60 hover:text-foreground"
-                    aria-label={m.oryxel_settings_providers()}
-                    title={activeProvider?.label ?? m.oryxel_settings_providers()}
-                  >
-                    <Settings2 class="size-4" aria-hidden="true" />
-                  </button>
-                </DropdownMenu.Trigger>
-                <DropdownMenu.Portal>
-                  <DropdownMenu.Content
-                    class="oryx-dropdown-content z-50 min-w-[14rem] rounded-lg border border-border bg-surface p-1 shadow-[var(--oryx-shadow-md)]"
-                    sideOffset={8}
-                    align="end"
-                  >
-                    <div class="px-3 pt-2 pb-1 text-[10px] font-semibold tracking-wide text-foreground-muted/70 uppercase">
-                      {m.oryxel_settings_providers()}
-                    </div>
-                    {#each providerOptions as option (option.value)}
-                      {@const meta =
-                        option.source === 'platform'
-                          ? m.oryxel_provider_source_platform()
-                          : m.oryxel_provider_source_own()}
-                      <DropdownMenu.Item
-                        class={cn(
-                          'oryx-transition flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm outline-none select-none hover:bg-muted data-[highlighted]:bg-muted',
-                          option.value === selectedProvider
-                            ? 'text-foreground'
-                            : 'text-foreground-muted hover:text-foreground',
-                        )}
-                        onSelect={() => {
-                          selectedProvider = option.value
-                        }}
-                      >
-                        <span class="flex size-4 shrink-0 items-center justify-center text-accent">
-                          {#if option.value === selectedProvider}
-                            <Check class="size-3.5" aria-hidden="true" />
-                          {/if}
-                        </span>
-                        <span class="flex-1 truncate">{option.label}</span>
-                        <span class="shrink-0 text-[10px] text-foreground-muted/80">{meta}</span>
-                      </DropdownMenu.Item>
-                    {/each}
-                  </DropdownMenu.Content>
-                </DropdownMenu.Portal>
-              </DropdownMenu.Root>
-            {/if}
             <button
               type="button"
               class={cn(
@@ -341,6 +425,17 @@
             </button>
           </div>
         </div>
+
+        <ChatComposerToolbar
+          bind:chatMode
+          bind:modelId
+          bind:selectedProvider
+          {modelOptions}
+          {providerOptions}
+          onChatModeChange={handleChatModeChange}
+          onModelChange={handleModelChange}
+          onProviderChange={handleProviderChange}
+        />
       </div>
     {:else}
       <div class="flex min-h-0 flex-1 items-center justify-center px-5 py-6">

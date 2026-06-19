@@ -52,6 +52,10 @@ export const userAiPreferences = pgTable('user_ai_preferences', {
   rememberContext: boolean('remember_context').notNull().default(false),
   defaultProvider: text('default_provider'),
   defaultModelLabel: text('default_model_label'),
+  /** ask | agent | add | recommend — last selected chat interaction mode. */
+  defaultChatMode: text('default_chat_mode').notNull().default('agent'),
+  /** Model id for the active provider (e.g. gpt-5-mini). */
+  defaultModelId: text('default_model_id'),
   platformAccess: boolean('platform_access').notNull().default(false),
   minPyramidNotes: integer('min_pyramid_notes').notNull().default(1),
   maxPyramidNotes: integer('max_pyramid_notes').notNull().default(5),
