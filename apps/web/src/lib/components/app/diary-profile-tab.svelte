@@ -3,8 +3,8 @@
 
   import ActivityLog from '$lib/components/app/activity-log.svelte'
   import DiaryHeaderControls from '$lib/components/app/diary-header-controls.svelte'
+  import ProfileAvatar from '$lib/components/app/profile/profile-avatar.svelte'
   import RadarChart from '$lib/components/app/radar-chart.svelte'
-  import Avatar from '$lib/components/ui/avatar.svelte'
   import Button from '$lib/components/ui/button.svelte'
   import * as m from '$lib/paraglide/messages.js'
   import { cn } from '$lib/utils/cn'
@@ -39,12 +39,13 @@
   type Props = {
     variant: 'desktop' | 'mobile'
     profile?: ProfileData
+    username?: string | null
     onProfileSync?: () => void
     recentActivity?: ActivityEntry[]
     diaryCounts?: DiaryCounts
   }
 
-  const { variant, profile, onProfileSync, recentActivity = [], diaryCounts }: Props = $props()
+  const { variant, profile, username = null, onProfileSync, recentActivity = [], diaryCounts }: Props = $props()
   const safeProfile = $derived<ProfileData>(
     profile ?? {
       displayName: m.oryxel_profile_default_user(),
@@ -66,7 +67,7 @@
     <!-- Mobile header: stacked layout -->
     <div class="rounded-[20px] border border-border bg-surface px-5 py-5 shadow-sm" data-tour="profile-header">
       <div class="flex items-center gap-3">
-        <Avatar alt={m.oryxel_profile_default_user()} size="md" class="size-14 shrink-0" />
+        <ProfileAvatar displayName={safeProfile.displayName} {username} size="md" class="size-14 shrink-0" />
         <div class="min-w-0 flex-1">
           <h1 class="oryx-heading truncate text-xl font-semibold tracking-tight text-foreground">
             {safeProfile.displayName}
@@ -80,33 +81,42 @@
           <DiaryHeaderControls />
         </div>
       </div>
-      <div class="mt-4 flex gap-2">
-        {#if onProfileSync}
+      <div class="mt-4 flex flex-col gap-2">
+        <div class="flex gap-2">
+          {#if onProfileSync}
+            <Button
+              variant="secondary"
+              class="h-9 flex-1 rounded-full border-subtle bg-subtle text-sm font-semibold shadow-sm"
+              onclick={onProfileSync}
+            >
+              {m.oryxel_profile_sync()}
+            </Button>
+          {/if}
           <Button
             variant="secondary"
             class="h-9 flex-1 rounded-full border-subtle bg-subtle text-sm font-semibold shadow-sm"
-            onclick={onProfileSync}
+            href={resolve('/settings/profile')}
+            data-tour="profile-settings"
           >
-            {m.oryxel_profile_sync()}
+            {m.oryxel_nav_settings()}
           </Button>
+          <Button
+            variant="ghost"
+            class="size-9 shrink-0 rounded-full p-0 text-foreground-muted hover:text-destructive"
+            onclick={signOut}
+            title={m.oryxel_signout()}
+          >
+            <LogOut class="size-4" />
+            <span class="sr-only">{m.oryxel_signout()}</span>
+          </Button>
+        </div>
+        {#if username}
+          <Button variant="secondary" class="h-9 w-full rounded-full text-sm font-semibold" href={resolve(`/u/${username}`)}>
+            {m.oryxel_profile_view_public()}
+          </Button>
+        {:else}
+          <p class="text-xs text-foreground-muted">{m.oryxel_profile_username_required()}</p>
         {/if}
-        <Button
-          variant="secondary"
-          class="h-9 flex-1 rounded-full border-subtle bg-subtle text-sm font-semibold shadow-sm"
-          href={resolve('/settings/profile')}
-          data-tour="profile-settings"
-        >
-          {m.oryxel_nav_settings()}
-        </Button>
-        <Button
-          variant="ghost"
-          class="size-9 shrink-0 rounded-full p-0 text-foreground-muted hover:text-destructive"
-          onclick={signOut}
-          title={m.oryxel_signout()}
-        >
-          <LogOut class="size-4" />
-          <span class="sr-only">{m.oryxel_signout()}</span>
-        </Button>
       </div>
     </div>
   {:else}
@@ -116,7 +126,7 @@
       data-tour="profile-header"
     >
       <div class="flex items-center gap-6">
-        <Avatar alt={m.oryxel_profile_default_user()} size="lg" class="size-20" />
+        <ProfileAvatar displayName={safeProfile.displayName} {username} size="lg" class="size-20" />
         <div class="flex flex-col gap-1">
           <h1 class="oryx-heading text-2xl font-semibold tracking-tight text-foreground">{safeProfile.displayName}</h1>
           <p class="flex items-center gap-2 text-base font-medium text-foreground-muted">
@@ -125,33 +135,42 @@
           </p>
         </div>
       </div>
-      <div class="flex items-center gap-2">
-        {#if onProfileSync}
+      <div class="flex flex-col items-end gap-2">
+        <div class="flex items-center gap-2">
+          {#if onProfileSync}
+            <Button
+              variant="secondary"
+              class="h-[42px] rounded-full border-subtle bg-subtle px-5 text-sm font-semibold shadow-sm"
+              onclick={onProfileSync}
+            >
+              {m.oryxel_profile_sync()}
+            </Button>
+          {/if}
           <Button
             variant="secondary"
             class="h-[42px] rounded-full border-subtle bg-subtle px-5 text-sm font-semibold shadow-sm"
-            onclick={onProfileSync}
+            href={resolve('/settings/profile')}
+            data-tour="profile-settings"
           >
-            {m.oryxel_profile_sync()}
+            {m.oryxel_nav_settings()}
           </Button>
+          <Button
+            variant="ghost"
+            class="size-[42px] shrink-0 rounded-full p-0 text-foreground-muted hover:text-destructive"
+            onclick={signOut}
+            title={m.oryxel_signout()}
+          >
+            <LogOut class="size-4" />
+            <span class="sr-only">{m.oryxel_signout()}</span>
+          </Button>
+        </div>
+        {#if username}
+          <Button variant="secondary" class="h-[42px] rounded-full px-5 text-sm font-semibold" href={resolve(`/u/${username}`)}>
+            {m.oryxel_profile_view_public()}
+          </Button>
+        {:else}
+          <p class="max-w-xs text-right text-xs text-foreground-muted">{m.oryxel_profile_username_required()}</p>
         {/if}
-        <Button
-          variant="secondary"
-          class="h-[42px] rounded-full border-subtle bg-subtle px-5 text-sm font-semibold shadow-sm"
-          href={resolve('/settings/profile')}
-          data-tour="profile-settings"
-        >
-          {m.oryxel_nav_settings()}
-        </Button>
-        <Button
-          variant="ghost"
-          class="size-[42px] shrink-0 rounded-full p-0 text-foreground-muted hover:text-destructive"
-          onclick={signOut}
-          title={m.oryxel_signout()}
-        >
-          <LogOut class="size-4" />
-          <span class="sr-only">{m.oryxel_signout()}</span>
-        </Button>
       </div>
     </div>
   {/if}
