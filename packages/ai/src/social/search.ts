@@ -1,14 +1,18 @@
 import { brand, db, fragrance, userProfile } from '@oryxel/db'
-import { and, eq, ilike, or, sql } from 'drizzle-orm'
+import { and, eq, ilike, isNotNull, or } from 'drizzle-orm'
 
 import type { FragranceSearchHit, UserSearchHit } from './types.js'
+
+function escapeIlikePattern(input: string) {
+  return input.replace(/[%_\\]/g, '\\$&')
+}
 
 export async function searchFragrances(query: string, limit = 20) {
   const q = query.trim()
 
   if (q.length < 2) return []
 
-  const pattern = `%${q}%`
+  const pattern = `%${escapeIlikePattern(q)}%`
 
   const rows = await db
     .select({
@@ -35,7 +39,7 @@ export async function searchUsers(query: string, limit = 20) {
 
   if (q.length < 2) return []
 
-  const pattern = `%${q}%`
+  const pattern = `%${escapeIlikePattern(q)}%`
 
   const rows = await db
     .select({
@@ -48,7 +52,7 @@ export async function searchUsers(query: string, limit = 20) {
     .where(
       and(
         eq(userProfile.isDiscoverable, true),
-        sql`${userProfile.username} IS NOT NULL`,
+        isNotNull(userProfile.username),
         or(ilike(userProfile.username, pattern), ilike(userProfile.displayName, pattern)),
       ),
     )
