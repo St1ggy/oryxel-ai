@@ -1,4 +1,4 @@
-import type { AnalyzePreferencesRequest } from './contracts'
+import type { AnalyzePreferencesRequest } from './contracts.js'
 
 /** Fixed sample for settings UI — same structure as live prompts; not sent to providers. */
 export function createPromptPreviewSampleRequest(input: {
@@ -33,6 +33,7 @@ export function createPromptPreviewSampleRequest(input: {
         gender: 'female',
       },
       diary: {
+        // eslint-disable-next-line camelcase -- diary list key matches schema/API
         to_try: [],
         liked: [
           {

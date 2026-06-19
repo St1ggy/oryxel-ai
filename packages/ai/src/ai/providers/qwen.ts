@@ -1,15 +1,10 @@
-import { resolveModel } from '../../types/model-catalog'
+import { resolveModel } from '../../types/model-catalog.js'
 
-import { buildPrompt, parseStructuredPatch } from './shared'
+import { buildPrompt, parseStructuredPatch } from './shared.js'
 
-import type { AiProvider, AnalyzePreferencesRequest } from '../contracts'
+import type { AiProvider, AnalyzePreferencesRequest } from '../contracts.js'
 
-async function callQwen(
-  request: AnalyzePreferencesRequest,
-  signal: AbortSignal,
-  apiKey: string,
-  model: string,
-) {
+async function callQwen(request: AnalyzePreferencesRequest, signal: AbortSignal, apiKey: string, model: string) {
   const response = await fetch('https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions', {
     method: 'POST',
     headers: {

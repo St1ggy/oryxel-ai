@@ -1,4 +1,4 @@
-import type { ChatAgentMode, ModeSwitchReasonKey, ModeSwitchSuggestion } from '../types/chat-mode'
+import type { ChatAgentMode, ModeSwitchReasonKey, ModeSwitchSuggestion } from '../types/chat-mode.js'
 
 const AGENT_KEYWORDS = [
   'удали',
@@ -164,14 +164,21 @@ function countIntentSignals(
 
 function reasonForMode(mode: ChatAgentMode): ModeSwitchReasonKey {
   switch (mode) {
-    case 'ask':
+    case 'ask': {
       return 'ask_intent'
-    case 'add':
+    }
+
+    case 'add': {
       return 'add_intent'
-    case 'recommend':
+    }
+
+    case 'recommend': {
       return 'recommend_intent'
-    case 'agent':
+    }
+
+    case 'agent': {
       return 'agent_intent'
+    }
   }
 }
 
@@ -187,8 +194,11 @@ export function inferSuggestedChatMode(message: string): ChatAgentMode | null {
 
   if (active.length !== 1) {
     if (signals.agent) return 'agent'
+
     if (signals.recommend && !signals.agent) return 'recommend'
+
     if (signals.add && !signals.agent) return 'add'
+
     if (signals.ask) return 'ask'
 
     return null

@@ -1,9 +1,9 @@
-import { streamAnthropic } from '../streaming/anthropic-stream'
-import { resolveModel } from '../../types/model-catalog'
+import { resolveModel } from '../../types/model-catalog.js'
+import { streamAnthropic } from '../streaming/anthropic-stream.js'
 
-import { buildPrompt, parseStructuredPatch } from './shared'
+import { buildPrompt, parseStructuredPatch } from './shared.js'
 
-import type { AiProvider } from '../contracts'
+import type { AiProvider } from '../contracts.js'
 
 export const anthropicProvider: AiProvider = {
   name: 'anthropic',
