@@ -1,4 +1,5 @@
 import { type AiProviderName, getModelsForProvider } from '@oryxel/ai'
+import { getSocialProfileFields } from '@oryxel/ai/server'
 import { redirect } from '@sveltejs/kit'
 import { and, eq } from 'drizzle-orm'
 
@@ -57,6 +58,11 @@ export const load: PageServerLoad = async ({ locals, url, cookies }) => {
 
   const diary = afterPatches.then(() => loadDiaryForUser(userId, locale))
   const profile = afterPatches.then(() => loadProfileForUser(userId, displayName, locale))
+  const publicUsername = afterPatches.then(async () => {
+    const fields = await getSocialProfileFields(userId)
+
+    return fields?.username ?? null
+  })
   const recentActivity = afterPatches.then(() => loadRecentActivity(userId, 30))
 
   // Everything else streams after the same patch gate — load() returns immediately (no top-level await).
@@ -130,6 +136,7 @@ export const load: PageServerLoad = async ({ locals, url, cookies }) => {
   return {
     diary,
     profile,
+    publicUsername,
     recentActivity,
     deferredShell,
     locale,

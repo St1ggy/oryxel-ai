@@ -149,6 +149,7 @@
 
   let resolvedDiary = $state<DiaryData>(EMPTY_DIARY)
   let resolvedProfile = $state<Awaited<PageData['profile']> | null>(null)
+  let resolvedPublicUsername = $state<string | null>(null)
   let resolvedRecentActivity = $state<Awaited<PageData['recentActivity']>>([])
   let diaryLoading = $state(true)
 
@@ -169,6 +170,10 @@
 
     void Promise.resolve(data.profile).then((p) => {
       resolvedProfile = p
+    })
+
+    void Promise.resolve(data.publicUsername).then((name) => {
+      resolvedPublicUsername = name
     })
 
     void Promise.resolve(data.recentActivity).then((ra) => {
@@ -1054,6 +1059,7 @@
               <PhantomUiShell loading={true}>
                 <DiaryProfileTab
                   variant="desktop"
+                  username={resolvedPublicUsername}
                   profile={profileData}
                   onProfileSync={handleProfileSyncClick}
                   recentActivity={resolvedRecentActivity}
@@ -1069,6 +1075,7 @@
             {:else}
               <DiaryProfileTab
                 variant="desktop"
+                username={resolvedPublicUsername}
                 profile={profileData}
                 onProfileSync={handleProfileSyncClick}
                 recentActivity={resolvedRecentActivity}
@@ -1160,6 +1167,7 @@
             <PhantomUiShell loading={true}>
               <DiaryProfileTab
                 variant="mobile"
+                username={resolvedPublicUsername}
                 profile={profileData}
                 onProfileSync={handleProfileSyncClick}
                 recentActivity={resolvedRecentActivity}
@@ -1175,6 +1183,7 @@
           {:else}
             <DiaryProfileTab
               variant="mobile"
+              username={resolvedPublicUsername}
               profile={profileData}
               onProfileSync={handleProfileSyncClick}
               recentActivity={resolvedRecentActivity}
