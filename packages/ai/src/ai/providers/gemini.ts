@@ -1,9 +1,9 @@
-import { streamGemini } from '../streaming/gemini-stream'
-import { resolveModel } from '../../types/model-catalog'
+import { resolveModel } from '../../types/model-catalog.js'
+import { streamGemini } from '../streaming/gemini-stream.js'
 
-import { buildPrompt, parseStructuredPatch } from './shared'
+import { buildPrompt, parseStructuredPatch } from './shared.js'
 
-import type { AiProvider } from '../contracts'
+import type { AiProvider } from '../contracts.js'
 
 export const geminiProvider: AiProvider = {
   name: 'gemini',

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
-import { countStrippedPatchMutations, sanitizePatchForChatMode } from './decision'
-import { inferSuggestedChatMode, shouldSuggestModeSwitch } from './mode-inference'
+import { countStrippedPatchMutations, sanitizePatchForChatMode } from './decision.js'
+import { inferSuggestedChatMode, shouldSuggestModeSwitch } from './mode-inference.js'
 
-import type { StructuredPreferencePatch } from './contracts'
+import type { StructuredPreferencePatch } from './contracts.js'
 
 const basePatch = (): StructuredPreferencePatch => ({
   confidence: 0.9,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { getDefaultModel, getModelLabel, resolveModel } from '../types/model-catalog'
+import { getDefaultModel, getModelLabel, resolveModel } from './model-catalog.js'
 
 describe('model catalog', () => {
   it('returns default model per provider', () => {
