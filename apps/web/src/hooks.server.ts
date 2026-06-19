@@ -1,4 +1,4 @@
-import { setJobCreatedHandler } from '@oryxel/ai'
+import { setJobCreatedHandler } from '@oryxel/ai/server'
 import { sequence } from '@sveltejs/kit/hooks'
 import { svelteKitHandler } from 'better-auth/svelte-kit'
 import Redis from 'ioredis'

@@ -1,1 +1,1 @@
-export * from '@oryxel/db'
+export * from '@oryxel/db/schema'

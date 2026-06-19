@@ -4,9 +4,15 @@ import ws from 'ws'
 
 import * as schema from './schema'
 
+import type { NeonDatabase } from 'drizzle-orm/neon-serverless'
+
 neonConfig.webSocketConstructor = ws
 
-function resolveDatabaseUrl(rawUrl: string | undefined): string {
+let configuredDatabaseUrl: string | undefined
+let pool: Pool | undefined
+let dbInstance: NeonDatabase<typeof schema> | undefined
+
+export function resolveDatabaseUrl(rawUrl: string | undefined): string {
   if (!rawUrl) {
     throw new Error('DATABASE_URL is not set')
   }
@@ -20,8 +26,36 @@ function resolveDatabaseUrl(rawUrl: string | undefined): string {
   return rawUrl
 }
 
-const pool = new Pool({ connectionString: resolveDatabaseUrl(process.env.DATABASE_URL) })
+/** Web (SvelteKit) should call this early with `$env/dynamic/private`. Worker/scripts use `process.env`. */
+export function configureDatabase(databaseUrl: string | undefined): void {
+  if (databaseUrl) {
+    configuredDatabaseUrl = databaseUrl
+  }
+}
 
-export const db = drizzle(pool, { schema })
+function readDatabaseUrl(): string {
+  return resolveDatabaseUrl(configuredDatabaseUrl ?? process.env['DATABASE_URL'])
+}
+
+function getPool(): Pool {
+  pool ??= new Pool({ connectionString: readDatabaseUrl() })
+
+  return pool
+}
+
+function getDbInstance(): NeonDatabase<typeof schema> {
+  dbInstance ??= drizzle(getPool(), { schema })
+
+  return dbInstance
+}
+
+export const db = new Proxy({} as NeonDatabase<typeof schema>, {
+  get(_target, prop, receiver) {
+    const instance = getDbInstance()
+    const value = Reflect.get(instance, prop, receiver)
+
+    return typeof value === 'function' ? value.bind(instance) : value
+  },
+})
 
 export * from './schema'

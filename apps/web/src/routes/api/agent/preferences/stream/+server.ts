@@ -1,4 +1,4 @@
-import { chatAgentModeSchema } from '@oryxel/ai'
+import { chatAgentModeSchema } from '@oryxel/ai/server'
 import { error, json } from '@sveltejs/kit'
 import { z } from 'zod'
 

@@ -1,1 +1,1 @@
-export * from '@oryxel/ai'
+export * from '@oryxel/ai/server'

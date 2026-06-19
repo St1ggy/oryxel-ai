@@ -1,4 +1,4 @@
-import { AGENT_MEMORY_MAX_ROWS } from '@oryxel/ai'
+import { AGENT_MEMORY_MAX_ROWS } from '@oryxel/ai/server'
 import { error, json } from '@sveltejs/kit'
 import { count, desc, eq } from 'drizzle-orm'
 import { z } from 'zod'

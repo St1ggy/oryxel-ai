@@ -3,7 +3,7 @@ import {
   buildPromptWithOptions,
   createPromptPreviewSampleRequest,
   estimatePromptTokensApprox,
-} from '@oryxel/ai'
+} from '@oryxel/ai/server'
 import { error, json } from '@sveltejs/kit'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'

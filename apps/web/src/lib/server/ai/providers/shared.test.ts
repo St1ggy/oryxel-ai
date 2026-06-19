@@ -1,4 +1,4 @@
-import { buildPrompt } from '@oryxel/ai'
+import { buildPrompt } from '@oryxel/ai/server'
 import { describe, expect, it } from 'vitest'
 
 describe('buildPrompt', () => {
