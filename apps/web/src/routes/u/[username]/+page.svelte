@@ -1,17 +1,43 @@
 <script lang="ts">
-  import Button from '$lib/components/ui/button.svelte'
-  import Card from '$lib/components/ui/card.svelte'
+  import FollowListSheet from '$lib/components/app/profile/follow-list-sheet.svelte'
+  import ProfileAboutTab from '$lib/components/app/profile/profile-about-tab.svelte'
+  import ProfileHeader from '$lib/components/app/profile/profile-header.svelte'
+  import ProfileListsTab from '$lib/components/app/profile/profile-lists-tab.svelte'
+  import ProfileOverviewTab from '$lib/components/app/profile/profile-overview-tab.svelte'
+  import ProfilePostsTab from '$lib/components/app/profile/profile-posts-tab.svelte'
+  import ProfileTabs, { type ProfileTab } from '$lib/components/app/profile/profile-tabs.svelte'
   import * as m from '$lib/paraglide/messages.js'
 
   import type { PageData } from './$types'
 
-  import { invalidateAll } from '$app/navigation'
+  import { goto, invalidateAll } from '$app/navigation'
   import { resolve } from '$app/paths'
+  import { page } from '$app/state'
 
   const { data }: { data: PageData } = $props()
 
   const profile = $derived(data.profile)
   const isSelf = $derived(data.viewerId === profile.userId)
+
+  function parseTab(value: string | null): ProfileTab {
+    if (value === 'posts' || value === 'lists' || value === 'about') return value
+
+    return 'overview'
+  }
+
+  const activeTab = $derived(parseTab(page.url.searchParams.get('tab')))
+
+  let followersOpen = $state(false)
+  let followingOpen = $state(false)
+
+  function setTab(next: ProfileTab) {
+    void goto(
+      next === 'overview'
+        ? resolve(`/u/${profile.username}`)
+        : resolve(`/u/${profile.username}?tab=${next}`),
+      { replaceState: true, keepFocus: true },
+    )
+  }
 
   async function toggleFollow() {
     if (!data.viewerId || isSelf) return
@@ -21,71 +47,53 @@
     await fetch(`/api/users/${profile.username}/follow`, { method })
     await invalidateAll()
   }
+
+  async function refreshPosts() {
+    await invalidateAll()
+  }
 </script>
 
-<div class="mx-auto w-full max-w-2xl space-y-8 p-4 md:p-8">
-  <header class="space-y-3">
-    <h1 class="oryx-heading text-2xl font-medium tracking-tight">
-      {profile.displayName ?? `@${profile.username}`}
-    </h1>
-    <p class="text-sm text-foreground-muted">@{profile.username}</p>
-    {#if profile.bio}
-      <p class="text-sm">{profile.bio}</p>
-    {/if}
-    <div class="flex flex-wrap gap-4 text-sm text-foreground-muted">
-      <span>{m.oryxel_public_profile_followers({ count: profile.followerCount })}</span>
-      <span>{m.oryxel_public_profile_following({ count: profile.followingCount })}</span>
-      {#if profile.totalCount !== null}
-        <span>{m.oryxel_public_profile_fragrances({ count: profile.totalCount })}</span>
-      {/if}
-    </div>
-    {#if profile.archetype}
-      <p class="text-sm text-foreground-muted">{profile.archetype}</p>
-    {/if}
-    {#if data.viewerId && !isSelf}
-      <Button variant={profile.isFollowing ? 'secondary' : 'primary'} onclick={() => void toggleFollow()}>
-        {profile.isFollowing ? m.oryxel_public_profile_unfollow() : m.oryxel_public_profile_follow()}
-      </Button>
-    {/if}
-  </header>
+<div class="mx-auto w-full max-w-2xl space-y-6 p-4 md:p-8">
+  <ProfileHeader
+    {profile}
+    {isSelf}
+    viewerId={data.viewerId}
+    onFollowToggle={toggleFollow}
+    onOpenFollowers={() => (followersOpen = true)}
+    onOpenFollowing={() => (followingOpen = true)}
+    onNewPost={() => setTab('posts')}
+  />
 
-  <section class="space-y-3">
-    <h2 class="text-lg font-medium">{m.oryxel_public_profile_lists()}</h2>
-    {#if data.lists.length === 0}
-      <p class="text-sm text-foreground-muted">{m.oryxel_lists_empty()}</p>
-    {:else}
-      <ul class="space-y-2">
-        {#each data.lists as list (list.id)}
-          <li>
-            <a
-              href={resolve(`/u/${profile.username}/lists/${list.slug}`)}
-              class="block rounded-xl border border-border bg-surface p-4 hover:bg-muted/40"
-            >
-              <p class="font-medium">{list.title}</p>
-              {#if list.description}
-                <p class="mt-1 text-sm text-foreground-muted">{list.description}</p>
-              {/if}
-            </a>
-          </li>
-        {/each}
-      </ul>
-    {/if}
-  </section>
+  <ProfileTabs {activeTab} onTabChange={setTab} />
 
-  <section class="space-y-3">
-    <h2 class="text-lg font-medium">{m.oryxel_public_profile_posts()}</h2>
-    {#if data.posts.length === 0}
-      <p class="text-sm text-foreground-muted">{m.oryxel_feed_empty()}</p>
-    {:else}
-      <ul class="space-y-2">
-        {#each data.posts as post (post.id)}
-          <li>
-            <Card class="p-4">
-              <p class="text-sm whitespace-pre-wrap">{post.body}</p>
-            </Card>
-          </li>
-        {/each}
-      </ul>
-    {/if}
-  </section>
+  {#if activeTab === 'overview'}
+    <ProfileOverviewTab
+      username={profile.username}
+      stats={data.stats}
+      posts={data.posts}
+      lists={data.lists}
+      onSeeAllPosts={() => setTab('posts')}
+      onSeeAllLists={() => setTab('lists')}
+    />
+  {:else if activeTab === 'posts'}
+    <ProfilePostsTab posts={data.posts} {isSelf} onPostsChange={refreshPosts} />
+  {:else if activeTab === 'lists'}
+    <ProfileListsTab username={profile.username} lists={data.lists} />
+  {:else}
+    <ProfileAboutTab {profile} stats={data.stats} />
+  {/if}
 </div>
+
+<FollowListSheet
+  bind:open={followersOpen}
+  username={profile.username}
+  direction="followers"
+  title={m.oryxel_profile_followers_title({ count: profile.followerCount })}
+/>
+
+<FollowListSheet
+  bind:open={followingOpen}
+  username={profile.username}
+  direction="following"
+  title={m.oryxel_profile_following_title({ count: profile.followingCount })}
+/>
