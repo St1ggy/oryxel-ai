@@ -43,6 +43,8 @@ export type {
   FragranceSearchHit,
   UserSearchHit,
   PublicProfile,
+  PublicDiaryStats,
+  FollowProfileHit,
   FeedPost,
   NotificationRow,
 } from './social/types.js'
@@ -62,7 +64,15 @@ export {
   removeListItem,
   listPublicListsForUser,
 } from './social/lists.js'
-export { followUser, unfollowUser, getFollowCounts, listFollowerIds, listFollowingIds } from './social/follow.js'
+export {
+  followUser,
+  unfollowUser,
+  getFollowCounts,
+  listFollowerIds,
+  listFollowingIds,
+  listFollowProfiles,
+} from './social/follow.js'
+export { loadPublicDiaryStats } from './social/public-stats.js'
 export { createPost, getPostById, deletePost, listPostsForAuthor, loadFeedForUser } from './social/posts.js'
 export {
   createNotification,

@@ -61,6 +61,36 @@ export type PublicProfile = {
   followingCount: number
 }
 
+export type PublicDiaryCounts = {
+  owned: number
+  to_try: number
+  liked: number
+  neutral: number
+  disliked: number
+}
+
+export type PublicRadarAxis = {
+  key: string
+  value: number
+  label: string
+}
+
+export type PublicDiaryStats = {
+  archetype: string | null
+  favoriteNote: string | null
+  radarAxes: PublicRadarAxis[]
+  diaryCounts: PublicDiaryCounts
+  totalCount: number
+}
+
+export type FollowProfileHit = {
+  userId: string
+  username: string
+  displayName: string | null
+  avatarUrl: string | null
+  isFollowing: boolean
+}
+
 export type FeedPost = {
   id: number
   authorId: string
