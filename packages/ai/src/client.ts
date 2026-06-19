@@ -14,6 +14,8 @@ export type {
   FragranceSearchHit,
   UserSearchHit,
   PublicProfile,
+  PublicDiaryStats,
+  FollowProfileHit,
   FeedPost,
   NotificationRow,
   ListOp,
