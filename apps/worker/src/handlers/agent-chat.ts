@@ -24,11 +24,11 @@ import {
   sanitizePatchToRecommendationsOnly,
   updatePatchStatus,
   warnIfPatchViolatesDisplayLimits,
-} from '@oryxel/ai'
+} from '@oryxel/ai/server'
 import { db, user, userAiPreferences } from '@oryxel/db'
 import { eq } from 'drizzle-orm'
 
-import type { ChatAgentMode, StructuredPreferencePatch } from '@oryxel/ai'
+import type { ChatAgentMode, StructuredPreferencePatch } from '@oryxel/ai/server'
 
 async function applyPatchWithProgress(
   jobId: number,

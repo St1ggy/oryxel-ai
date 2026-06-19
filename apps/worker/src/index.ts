@@ -1,4 +1,4 @@
-import { emitJobUpdated, failJob, setJobUpdatedHandler } from '@oryxel/ai'
+import { emitJobUpdated, failJob, setJobUpdatedHandler } from '@oryxel/ai/server'
 import { backgroundJob, db, user } from '@oryxel/db'
 import { eq } from 'drizzle-orm'
 import Redis from 'ioredis'

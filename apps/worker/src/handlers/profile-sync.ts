@@ -9,11 +9,11 @@ import {
   loadProfileForUser,
   pushJobProgress,
   recordActivity,
-} from '@oryxel/ai'
+} from '@oryxel/ai/server'
 import { db, userAiPreferences } from '@oryxel/db'
 import { eq } from 'drizzle-orm'
 
-import type { AnalyzePreferencesRequest, DiaryRow } from '@oryxel/ai'
+import type { AnalyzePreferencesRequest, DiaryRow } from '@oryxel/ai/server'
 
 const BATCH_SIZE = 10
 

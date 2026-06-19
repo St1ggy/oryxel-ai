@@ -1,6 +1,6 @@
 // SSE gateway on Railway: JWT auth, Redis SUBSCRIBE job:{id}, snapshots via getJob.
 
-import { getJob } from '@oryxel/ai'
+import { getJob } from '@oryxel/ai/server'
 import Redis from 'ioredis'
 import { jwtVerify } from 'jose'
 import { createServer } from 'node:http'
