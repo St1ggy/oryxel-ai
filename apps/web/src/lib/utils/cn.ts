@@ -12,6 +12,6 @@ export type { ClassDictionary, ClassValue } from 'clsx'
 //
 // @example
 // cn('flex', [gapClass, paddingClass], { 'opacity-50': disabled })
-export function cn(...inputs: ClassValue[]): string {
+export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(...inputs))
 }

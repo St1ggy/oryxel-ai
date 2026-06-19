@@ -1,5 +1,4 @@
 <script lang="ts">
-
   import * as m from '$lib/paraglide/messages.js'
   import {
     type RecommendationRow,
@@ -31,7 +30,7 @@
     ),
   )
 
-  function headerLabel(columnId: string): string {
+  function headerLabel(columnId: string) {
     switch (columnId) {
       case 'brand': {
         return m.oryxel_table_brand()
@@ -71,15 +70,11 @@
         <tr class="border-b border-border text-xs font-medium tracking-wide text-foreground-muted uppercase">
           {#each headerGroup.headers as header (header.id)}
             {@const columnId = header.column.id}
-            <th
-              class={columnId === 'actions' ? 'w-28 px-4 py-3 text-right' : 'px-4 py-3'}
-            >
+            <th class={columnId === 'actions' ? 'w-28 px-4 py-3 text-right' : 'px-4 py-3'}>
               {#if header.column.getCanSort()}
                 <button
                   type="button"
-                  class="flex items-center gap-0.5 hover:text-foreground {columnId === 'actions'
-                    ? 'ml-auto'
-                    : ''}"
+                  class="flex items-center gap-0.5 hover:text-foreground {columnId === 'actions' ? 'ml-auto' : ''}"
                   onclick={header.column.getToggleSortingHandler()}
                 >
                   {headerLabel(columnId)}

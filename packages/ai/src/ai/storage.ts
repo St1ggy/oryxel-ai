@@ -98,7 +98,7 @@ function decryptContent(row: {
   contentIv: string
   contentAuthTag: string
   contentVersion: string
-}): string {
+}) {
   return decryptSecret({
     encryptedKey: row.encryptedContent,
     keyIv: row.contentIv,

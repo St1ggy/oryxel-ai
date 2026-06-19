@@ -21,7 +21,7 @@ if (!JWT_SECRET || !REDIS_URL) {
 
 const secretKey = new TextEncoder().encode(JWT_SECRET)
 
-function corsHeaders(): Record<string, string> {
+function corsHeaders() {
   const headers: Record<string, string> = {
     'Access-Control-Allow-Origin': CORS_ORIGIN,
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
@@ -51,7 +51,7 @@ function isTerminal(status: string) {
   return status === 'done' || status === 'failed' || status === 'cancelled'
 }
 
-async function handleStream(request: IncomingMessage, serverResponse: ServerResponse): Promise<void> {
+async function handleStream(request: IncomingMessage, serverResponse: ServerResponse) {
   const requestUrl = new URL(request.url ?? '/', `http://${request.headers.host ?? 'localhost'}`)
   const token = requestUrl.searchParams.get('token')
 

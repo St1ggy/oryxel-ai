@@ -61,7 +61,7 @@
     deepseek: m.oryxel_provider_deepseek,
   }
 
-  function providerDisplayName(provider: ProviderGuideId): string {
+  function providerDisplayName(provider: ProviderGuideId) {
     return providerNames[provider]()
   }
 
@@ -117,7 +117,7 @@
     }
   }
 
-  function readLegacyProviders(): LegacyProviderRow[] {
+  function readLegacyProviders() {
     if (!browser) return []
 
     const raw = localStorage.getItem(LEGACY_PROVIDERS_KEY)

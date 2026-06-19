@@ -29,7 +29,7 @@
     })
   })
 
-  function setTheme(next: OryxelThemeId): void {
+  function setTheme(next: OryxelThemeId) {
     persistedThemeAtom.set(next)
   }
 

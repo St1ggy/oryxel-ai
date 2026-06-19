@@ -1,14 +1,16 @@
 import type {
   agentMemoryOpSchema,
   analyzePreferencesRequestSchema,
+  listOpSchema,
   structuredPreferencePatchSchema,
   tableOperationSchema,
-} from './schemas'
+} from './schemas.js'
 import type { z } from 'zod'
 
 export type AnalyzePreferencesRequest = z.infer<typeof analyzePreferencesRequestSchema>
 export type TableOperation = z.infer<typeof tableOperationSchema>
 export type AgentMemoryOp = z.infer<typeof agentMemoryOpSchema>
+export type ListOp = z.infer<typeof listOpSchema>
 export type StructuredPreferencePatch = z.infer<typeof structuredPreferencePatchSchema>
 
 export type AiProviderName = 'openai' | 'anthropic' | 'gemini' | 'qwen' | 'perplexity' | 'groq' | 'deepseek'

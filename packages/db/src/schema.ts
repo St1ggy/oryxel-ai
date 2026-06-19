@@ -42,7 +42,16 @@ export const userProfile = pgTable('user_profile', {
   gender: text('gender'),
   noteRelationships: jsonb('note_relationships').$type<{ note: string; sentiment: string; label: string }[]>(),
   onboardingCompletedAt: timestamp('onboarding_completed_at', { withTimezone: true }),
-})
+  /** Public handle @username — unique, lowercase */
+  username: text('username'),
+  /** When false, hidden from user search */
+  isDiscoverable: boolean('is_discoverable').notNull().default(false),
+  defaultListVisibility: text('default_list_visibility').notNull().default('private'),
+  defaultPostVisibility: text('default_post_visibility').notNull().default('followers'),
+  showDiaryStats: boolean('show_diary_stats').notNull().default(false),
+},
+(table) => [uniqueIndex('user_profile_username_idx').on(table.username)],
+)
 
 export const userAiPreferences = pgTable('user_ai_preferences', {
   id: serial('id').primaryKey(),
@@ -287,3 +296,125 @@ export const translations = pgTable(
   },
   (table) => [uniqueIndex('translations_key_locale_idx').on(table.key, table.locale)],
 )
+
+/** User-curated fragrance collections (custom catalog picks or diary slices). */
+export const userList = pgTable(
+  'user_list',
+  {
+    id: serial('id').primaryKey(),
+    userId: text('user_id').notNull(),
+    slug: text('slug').notNull(),
+    title: text('title').notNull(),
+    description: text('description'),
+    /** custom | diary_slice */
+    kind: text('kind').notNull().default('custom'),
+    diaryFilter: jsonb('diary_filter').$type<{ listType: string }>(),
+    /** private | followers | public | unlisted */
+    visibility: text('visibility').notNull().default('private'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('user_list_user_slug_idx').on(table.userId, table.slug),
+    index('user_list_user_id_idx').on(table.userId),
+  ],
+)
+
+export const userListItem = pgTable(
+  'user_list_item',
+  {
+    id: serial('id').primaryKey(),
+    listId: integer('list_id')
+      .references(() => userList.id, { onDelete: 'cascade' })
+      .notNull(),
+    fragranceId: integer('fragrance_id')
+      .references(() => fragrance.id)
+      .notNull(),
+    userFragranceId: integer('user_fragrance_id').references(() => userFragrance.id),
+    sortOrder: integer('sort_order').notNull().default(0),
+    note: text('note'),
+    addedAt: timestamp('added_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('user_list_item_list_fragrance_idx').on(table.listId, table.fragranceId),
+    index('user_list_item_list_id_idx').on(table.listId),
+  ],
+)
+
+export const userFollow = pgTable(
+  'user_follow',
+  {
+    id: serial('id').primaryKey(),
+    followerId: text('follower_id').notNull(),
+    followingId: text('following_id').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('user_follow_pair_idx').on(table.followerId, table.followingId),
+    index('user_follow_following_id_idx').on(table.followingId),
+  ],
+)
+
+export const post = pgTable(
+  'post',
+  {
+    id: serial('id').primaryKey(),
+    authorId: text('author_id').notNull(),
+    body: text('body').notNull(),
+    visibility: text('visibility').notNull().default('followers'),
+    status: text('status').notNull().default('published'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('post_author_id_created_idx').on(table.authorId, table.createdAt)],
+)
+
+export const postAttachment = pgTable('post_attachment', {
+  id: serial('id').primaryKey(),
+  postId: integer('post_id')
+    .references(() => post.id, { onDelete: 'cascade' })
+    .notNull(),
+  kind: text('kind').notNull(),
+  entityId: integer('entity_id'),
+  url: text('url'),
+  meta: jsonb('meta').$type<Record<string, unknown>>(),
+})
+
+export const notification = pgTable(
+  'notification',
+  {
+    id: serial('id').primaryKey(),
+    recipientId: text('recipient_id').notNull(),
+    actorId: text('actor_id'),
+    type: text('type').notNull(),
+    entityType: text('entity_type'),
+    entityId: integer('entity_id'),
+    payload: jsonb('payload').$type<Record<string, unknown>>(),
+    readAt: timestamp('read_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('notification_recipient_created_idx').on(table.recipientId, table.createdAt),
+    index('notification_recipient_unread_idx').on(table.recipientId, table.readAt),
+  ],
+)
+
+export const notificationPreference = pgTable(
+  'notification_preference',
+  {
+    id: serial('id').primaryKey(),
+    userId: text('user_id').notNull(),
+    type: text('type').notNull(),
+    enabled: boolean('enabled').notNull().default(true),
+  },
+  (table) => [uniqueIndex('notification_preference_user_type_idx').on(table.userId, table.type)],
+)
+
+export const userListRelations = relations(userList, ({ many }) => ({
+  items: many(userListItem),
+}))
+
+export const userListItemRelations = relations(userListItem, ({ one }) => ({
+  list: one(userList, { fields: [userListItem.listId], references: [userList.id] }),
+  fragrance: one(fragrance, { fields: [userListItem.fragranceId], references: [fragrance.id] }),
+}))

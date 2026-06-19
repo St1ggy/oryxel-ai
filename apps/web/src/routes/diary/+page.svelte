@@ -16,15 +16,12 @@
   import DiaryTour from '$lib/components/app/diary-tour.svelte'
   import FragranceDetailModal from '$lib/components/app/fragrance-detail-modal.svelte'
   import PatchDetailsModal from '$lib/components/app/patch-details-modal.svelte'
+  import SocialNavLinks from '$lib/components/app/social-nav-links.svelte'
   import Button from '$lib/components/ui/button.svelte'
   import Modal from '$lib/components/ui/modal.svelte'
   import PhantomUiShell from '$lib/components/ui/phantom-ui-shell.svelte'
   import * as m from '$lib/paraglide/messages.js'
-  import {
-    CHAT_PANEL_WIDTH_DEFAULT_PCT,
-    chatPanelWidthPctAtom,
-    clampChatPanelWidthPct,
-  } from '$lib/prefs/client-stores'
+  import { CHAT_PANEL_WIDTH_DEFAULT_PCT, chatPanelWidthPctAtom, clampChatPanelWidthPct } from '$lib/prefs/client-stores'
   import { showPatchAppliedToast } from '$lib/toast/patch-applied'
   import { cn } from '$lib/utils/cn'
 
@@ -215,7 +212,7 @@
     return () => clearTimeout(timer)
   })
 
-  function rowsWithOverrides(rows: DiaryRow[]): DiaryRow[] {
+  function rowsWithOverrides(rows: DiaryRow[]) {
     return rows.map((row) =>
       row.fragranceId in ratingOverrides ? { ...row, rating: ratingOverrides[row.fragranceId] } : row,
     )
@@ -241,7 +238,7 @@
   const shellLoading = $derived(resolvedShell === null)
   const pendingItems = $derived(resolvedShell?.pendingPatches ?? [])
 
-  function renderAssistantMessage(content: string): string {
+  function renderAssistantMessage(content: string) {
     if (content.startsWith('CRITICAL_PENDING:')) {
       return m.oryxel_chat_critical_pending({
         summary: content.replace('CRITICAL_PENDING:', '').trim(),
@@ -321,7 +318,7 @@
   /** Phases that should map to the patch-applying progress UI (legacy 'applying' + new apply_* family). */
   const APPLY_PHASES = new Set(['applying', 'apply_profile', 'apply_ops', 'apply_recs'])
 
-  function isApplyPhase(phase: string | undefined): boolean {
+  function isApplyPhase(phase: string | undefined) {
     return phase ? APPLY_PHASES.has(phase) : false
   }
 
@@ -449,16 +446,13 @@
   let selectedModelId = $state('')
   let chatPrefsHydrated = $state(false)
 
-  const modelOptions = $derived(
-    (modelCatalog[selectedProvider] ?? []) as { id: string; label: string }[],
-  )
+  const modelOptions = $derived((modelCatalog[selectedProvider] ?? []) as { id: string; label: string }[])
 
   const activeModelLabel = $derived(
-    modelOptions.find((model) => model.id === selectedModelId)?.label ??
-      (selectedModelId || m.oryxel_chat_model()),
+    modelOptions.find((model) => model.id === selectedModelId)?.label ?? (selectedModelId || m.oryxel_chat_model()),
   )
 
-  function chatModeLabel(mode: ChatAgentMode): string {
+  function chatModeLabel(mode: ChatAgentMode) {
     switch (mode) {
       case 'ask': {
         return m.oryxel_chat_mode_ask()
@@ -478,11 +472,7 @@
     }
   }
 
-  async function persistChatPreferences(prefs: {
-    chatMode?: ChatAgentMode
-    provider?: string
-    modelId?: string
-  }) {
+  async function persistChatPreferences(prefs: { chatMode?: ChatAgentMode; provider?: string; modelId?: string }) {
     try {
       await fetch('/api/agent/chat-preferences', {
         method: 'PATCH',
@@ -494,11 +484,7 @@
     }
   }
 
-  function onChatPreferencesChange(prefs: {
-    chatMode?: ChatAgentMode
-    provider?: string
-    modelId?: string
-  }) {
+  function onChatPreferencesChange(prefs: { chatMode?: ChatAgentMode; provider?: string; modelId?: string }) {
     if (prefs.chatMode) {
       chatMode = prefs.chatMode
     }
@@ -555,9 +541,7 @@
       const models = (modelCatalog[selectedProvider] ?? []) as { id: string; label: string }[]
 
       selectedModelId =
-        prefs.modelId && models.some((model) => model.id === prefs.modelId)
-          ? prefs.modelId
-          : (models[0]?.id ?? '')
+        prefs.modelId && models.some((model) => model.id === prefs.modelId) ? prefs.modelId : (models[0]?.id ?? '')
       chatPrefsHydrated = true
 
       return
@@ -575,7 +559,7 @@
 
   let jobStreamUrlMissingLogged = false
 
-  function jobStreamEnabled(): boolean {
+  function jobStreamEnabled() {
     const url = env.PUBLIC_JOB_STREAM_URL?.trim() ?? ''
 
     if (!url && browser && !jobStreamUrlMissingLogged) {
@@ -592,8 +576,8 @@
   async function streamJobUntilDone(
     jobId: number,
     options: { signal: AbortSignal; onUpdate: (job: JobResult) => void },
-  ): Promise<JobResult> {
-    return new Promise((resolve, reject) => {
+  ) {
+    return new Promise<JobResult>((resolve, reject) => {
       let settled = false
       let es: EventSource | undefined
 
@@ -672,11 +656,7 @@
     })
   }
 
-  async function pollJobWithUpdate(
-    jobId: number,
-    signal: AbortSignal,
-    onUpdate: (job: JobResult) => void,
-  ): Promise<JobResult> {
+  async function pollJobWithUpdate(jobId: number, signal: AbortSignal, onUpdate: (job: JobResult) => void) {
     const deadline = Date.now() + 12 * 60 * 1000 // 12-min client-side hard stop
 
     while (true) {
@@ -698,11 +678,7 @@
     }
   }
 
-  async function waitForJob(
-    jobId: number,
-    signal: AbortSignal,
-    onUpdate: (job: JobResult) => void,
-  ): Promise<JobResult> {
+  async function waitForJob(jobId: number, signal: AbortSignal, onUpdate: (job: JobResult) => void) {
     if (jobStreamEnabled()) {
       try {
         return await streamJobUntilDone(jobId, { signal, onUpdate })
@@ -761,7 +737,7 @@
     }
   }
 
-  async function onDismissRecommendation(row: DiaryRow): Promise<void> {
+  async function onDismissRecommendation(row: DiaryRow) {
     try {
       const response = await fetch('/api/agent/recommendations/dismiss', {
         method: 'POST',
@@ -1002,14 +978,14 @@
         {modelOptions}
         modelLabel={activeModelLabel}
         suggestions={profileData.suggestions}
-        onChatPreferencesChange={onChatPreferencesChange}
+        {onChatPreferencesChange}
       />
       {#if chatOpen}
         <div
           role="separator"
           aria-orientation="vertical"
           aria-label={m.oryxel_chat_resize_handle()}
-          class="absolute top-0 right-0 z-20 h-full w-2 translate-x-1/2 cursor-col-resize touch-none select-none bg-transparent"
+          class="absolute top-0 right-0 z-20 h-full w-2 translate-x-1/2 cursor-col-resize touch-none bg-transparent select-none"
           onpointerdown={onChatWidthPointerDown}
           onpointerenter={() => (resizeHandleHovered = true)}
           onpointerleave={() => (resizeHandleHovered = false)}
@@ -1030,6 +1006,7 @@
           <span class="sr-only">{chatOpen ? m.oryxel_chat_hide() : m.oryxel_chat_show()}</span>
         </Button>
         <DiaryPrimaryNav variant="desktop" active={desktopShellView} onSelect={selectPrimaryView} />
+        <SocialNavLinks />
         <DiaryHeaderControls
           onStartTour={() => {
             prepareTourChatPanel()
@@ -1136,6 +1113,7 @@
   >
     <div class="flex min-h-0 flex-1 flex-col">
       <div class="flex shrink-0 items-center justify-end gap-2 border-b border-border bg-surface px-3 py-2">
+        <SocialNavLinks />
         <DiaryHeaderControls
           onStartTour={() => {
             prepareTourChatPanel()
@@ -1224,7 +1202,7 @@
             {modelOptions}
             modelLabel={activeModelLabel}
             suggestions={profileData.suggestions}
-            onChatPreferencesChange={onChatPreferencesChange}
+            {onChatPreferencesChange}
           />
         {:else}
           <DiaryGuideTab layout="mobile" />

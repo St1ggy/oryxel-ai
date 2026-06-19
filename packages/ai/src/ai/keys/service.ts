@@ -31,7 +31,7 @@ const DEFAULT_LABEL_BY_PROVIDER: Record<ProviderId, string> = {
   deepseek: 'DeepSeek',
 }
 
-function getPlatformKeyConfig(): { provider: ProviderId; key: string } | null {
+function getPlatformKeyConfig() {
   const provider = process.env.PLATFORM_AI_PROVIDER?.trim()
   const key = process.env.PLATFORM_AI_KEY?.trim()
 
@@ -46,7 +46,7 @@ function getPlatformKeyConfig(): { provider: ProviderId; key: string } | null {
   }
 }
 
-function fallbackProviderKey(provider: ProviderId): string | undefined {
+function fallbackProviderKey(provider: ProviderId) {
   switch (provider) {
     case 'openai': {
       return process.env.OPENAI_API_KEY
@@ -78,13 +78,13 @@ function fallbackProviderKey(provider: ProviderId): string | undefined {
   }
 }
 
-function hasAnyFallbackKey(): boolean {
+function hasAnyFallbackKey() {
   return ['openai', 'anthropic', 'gemini', 'qwen', 'perplexity', 'groq', 'deepseek'].some((provider) =>
     Boolean(fallbackProviderKey(provider as ProviderId)?.trim()),
   )
 }
 
-function toKeyHint(rawKey: string): string {
+function toKeyHint(rawKey: string) {
   const normalized = rawKey.trim()
 
   if (normalized.length <= 4) {
@@ -102,7 +102,7 @@ function assertProvider(provider: string): asserts provider is ProviderId {
   }
 }
 
-export async function listUserProviderKeys(userId: string): Promise<ProviderKeyListItem[]> {
+export async function listUserProviderKeys(userId: string) {
   const rows = await db
     .select()
     .from(userAiProviderKey)
@@ -133,7 +133,7 @@ export async function upsertUserProviderKey(input: {
   key: string
   label?: string
   setDefault?: boolean
-}): Promise<ProviderKeyListItem> {
+}) {
   assertProvider(input.provider)
 
   const key = input.key.trim()
@@ -222,7 +222,7 @@ export async function upsertUserProviderKey(input: {
   })
 }
 
-export async function setDefaultUserProviderKey(userId: string, id: number): Promise<void> {
+export async function setDefaultUserProviderKey(userId: string, id: number) {
   const [target] = await db
     .select()
     .from(userAiProviderKey)
@@ -257,14 +257,14 @@ export async function setDefaultUserProviderKey(userId: string, id: number): Pro
   })
 }
 
-export async function deleteUserProviderKey(userId: string, id: number): Promise<void> {
+export async function deleteUserProviderKey(userId: string, id: number) {
   await db.delete(userAiProviderKey).where(and(eq(userAiProviderKey.id, id), eq(userAiProviderKey.userId, userId)))
 }
 
 export async function importLegacyProviderKeys(
   userId: string,
   rows: { provider: string; label?: string; key?: string; active?: boolean }[],
-): Promise<number> {
+) {
   let imported = 0
 
   for (const row of rows) {
@@ -289,17 +289,13 @@ export async function importLegacyProviderKeys(
   return imported
 }
 
-export async function resolveProviderApiKey(userId: string, provider: ProviderId): Promise<string | null> {
+export async function resolveProviderApiKey(userId: string, provider: ProviderId) {
   const [first] = await listProviderApiKeyCandidates(userId, provider, 1)
 
   return first?.key ?? null
 }
 
-export async function listProviderApiKeyCandidates(
-  userId: string,
-  provider: ProviderId,
-  limit = 10,
-): Promise<ProviderApiKeyCandidate[]> {
+export async function listProviderApiKeyCandidates(userId: string, provider: ProviderId, limit = 10) {
   const rows = await db
     .select()
     .from(userAiProviderKey)
@@ -347,7 +343,7 @@ export async function listProviderApiKeyCandidates(
   return candidates
 }
 
-export async function getUserDefaultProvider(userId: string): Promise<ProviderId | null> {
+export async function getUserDefaultProvider(userId: string) {
   const [row] = await db.select().from(userAiPreferences).where(eq(userAiPreferences.userId, userId)).limit(1)
 
   if (!row?.defaultProvider) {
@@ -363,7 +359,7 @@ export async function getUserDefaultProvider(userId: string): Promise<ProviderId
   }
 }
 
-export async function setUserDefaultProvider(userId: string, provider: string): Promise<void> {
+export async function setUserDefaultProvider(userId: string, provider: string) {
   assertProvider(provider)
   await db
     .insert(userAiPreferences)
@@ -384,25 +380,25 @@ export type ConfiguredProvider = {
   source: 'user' | 'env' | 'platform'
 }
 
-export async function listConfiguredProviders(userId: string): Promise<ConfiguredProvider[]> {
+export async function listConfiguredProviders(userId: string) {
   const results = await Promise.all(
     ALL_PROVIDERS.map(async (p) => {
       const [first] = await listProviderApiKeyCandidates(userId, p, 1)
 
-      return first ? { id: p, source: first.source } : null
+      return first ? ({ id: p, source: first.source } satisfies ConfiguredProvider) : null
     }),
   )
 
   return results.filter((p): p is ConfiguredProvider => p !== null)
 }
 
-export async function listConfiguredProviderIds(userId: string): Promise<ProviderId[]> {
+export async function listConfiguredProviderIds(userId: string) {
   const configured = await listConfiguredProviders(userId)
 
-  return configured.map((p) => p.id)
+  return configured.map((p) => p.id) satisfies ProviderId[]
 }
 
-export async function hasEffectiveProviderAccess(userId: string): Promise<boolean> {
+export async function hasEffectiveProviderAccess(userId: string) {
   const [hasUserKeys] = await db
     .select({ id: userAiProviderKey.id })
     .from(userAiProviderKey)
@@ -414,13 +410,13 @@ export async function hasEffectiveProviderAccess(userId: string): Promise<boolea
   return Boolean(getPlatformKeyConfig())
 }
 
-export async function grantPlatformAccess(userId: string): Promise<void> {
+export async function grantPlatformAccess(userId: string) {
   await db
     .insert(userAiPreferences)
     .values({ userId, platformAccess: true })
     .onConflictDoUpdate({ target: userAiPreferences.userId, set: { platformAccess: true } })
 }
 
-export async function revokePlatformAccess(userId: string): Promise<void> {
+export async function revokePlatformAccess(userId: string) {
   await db.update(userAiPreferences).set({ platformAccess: false }).where(eq(userAiPreferences.userId, userId))
 }

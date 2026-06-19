@@ -69,7 +69,7 @@
 
   const sentimentOptions: NoteRelationshipSentiment[] = ['love', 'like', 'neutral', 'dislike', 'redflag']
 
-  function sentimentLabel(s: NoteRelationshipSentiment): string {
+  function sentimentLabel(s: NoteRelationshipSentiment) {
     const labels: Record<NoteRelationshipSentiment, () => string> = {
       love: m.oryxel_notes_sentiment_love,
       like: m.oryxel_notes_sentiment_like,
@@ -81,14 +81,14 @@
     return labels[s]()
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function sentimentIcon(s: NoteRelationshipSentiment): any {
+   
+  function sentimentIcon(s: NoteRelationshipSentiment) {
     const icons = { love: Heart, like: ThumbsUp, neutral: Minus, dislike: ThumbsDown, redflag: AlertTriangle }
 
     return icons[s]
   }
 
-  function sentimentIconColor(s: NoteRelationshipSentiment): string {
+  function sentimentIconColor(s: NoteRelationshipSentiment) {
     const colors: Record<NoteRelationshipSentiment, string> = {
       love: 'text-accent',
       like: 'text-success',
@@ -100,7 +100,7 @@
     return colors[s]
   }
 
-  function sentimentColor(s: NoteRelationshipSentiment): string {
+  function sentimentColor(s: NoteRelationshipSentiment) {
     const colors: Record<NoteRelationshipSentiment, string> = {
       love: 'bg-accent/20 text-accent border-accent/30',
       like: 'bg-success/15 text-success border-success/30',

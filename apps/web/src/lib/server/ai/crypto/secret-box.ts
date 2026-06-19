@@ -15,7 +15,7 @@ type EncryptedSecret = {
 
 let cachedKey: Buffer | null = null
 
-function getMasterKey(): Buffer {
+function getMasterKey() {
   if (cachedKey) {
     return cachedKey
   }
@@ -43,7 +43,7 @@ function getMasterKey(): Buffer {
   return decoded
 }
 
-export function encryptSecret(plain: string): EncryptedSecret {
+export function encryptSecret(plain: string) {
   if (!plain.trim()) {
     throw new Error('Secret is empty')
   }
@@ -66,7 +66,7 @@ export function decryptSecret(payload: {
   keyIv: string
   keyAuthTag: string
   keyVersion: string
-}): string {
+}) {
   if (payload.keyVersion !== KEY_VERSION) {
     throw new Error(`Unsupported key version: ${payload.keyVersion}`)
   }

@@ -61,16 +61,25 @@ const agentMemoryEntryContextSchema = z.object({
   content: z.string().max(500),
 })
 
+const listsContextEntrySchema = z.object({
+  id: z.number().int(),
+  slug: z.string().max(80),
+  title: z.string().max(120),
+  kind: z.enum(['custom', 'diary_slice']),
+  visibility: z.enum(['private', 'followers', 'public', 'unlisted']),
+})
+
 const contextSchema = z.object({
   profile: profileContextSchema.optional(),
   diary: diaryContextSchema.optional(),
+  lists: z.array(listsContextEntrySchema).max(30).optional(),
   budget: z.string().max(120).optional(),
   recentMessages: z.array(recentMessageSchema).max(10).optional(),
   /** Long-term memory rows with stable ids (for agentMemoryOps update/remove). */
   agentMemoryEntries: z.array(agentMemoryEntryContextSchema).max(20).optional(),
 })
 
-export const chatAgentModeSchema = z.enum(['ask', 'agent', 'add', 'recommend'])
+export const chatAgentModeSchema = z.enum(['ask', 'agent', 'add', 'recommend', 'curate'])
 
 export const analyzePreferencesRequestSchema = z.object({
   userId: z.string().min(1),
@@ -140,6 +149,19 @@ export const agentMemoryOpSchema = z.union([
   }),
 ])
 
+export const listOpSchema = z.object({
+  op: z.enum(['create', 'add', 'remove', 'set_visibility']),
+  listId: z.number().int().positive().optional(),
+  title: z.string().max(120).optional(),
+  description: z.string().max(600).optional(),
+  kind: z.enum(['custom', 'diary_slice']).optional(),
+  visibility: z.enum(['private', 'followers', 'public', 'unlisted']).optional(),
+  diaryFilter: z.object({ listType: z.enum(['to_try', 'liked', 'neutral', 'disliked', 'owned']) }).optional(),
+  fragranceQuery: z.string().max(120).optional(),
+  fragranceId: z.number().int().positive().optional(),
+  userFragranceId: z.number().int().positive().optional(),
+})
+
 export const structuredPreferencePatchSchema = z.object({
   reply: z.string().max(800).optional(),
   confidence: z.number().min(0).max(1),
@@ -189,4 +211,6 @@ export const structuredPreferencePatchSchema = z.object({
   suggestions: z.array(z.string().max(200)).max(5).nullish(),
   /** Agent-driven changes to long-term memory (applied after diary/profile/recs). */
   agentMemoryOps: z.array(agentMemoryOpSchema).max(10).optional(),
+  /** Collection curation ops (curate mode). */
+  listOps: z.array(listOpSchema).max(50).optional(),
 })

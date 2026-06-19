@@ -15,7 +15,7 @@
 
   let analytics = $state(false)
 
-  function themeTitle(id: OryxelThemeId): string {
+  function themeTitle(id: OryxelThemeId) {
     const titles: Record<OryxelThemeId, () => string> = {
       'light-aura': m.oryxel_theme_light,
       'midnight-scent': m.oryxel_theme_midnight,

@@ -163,3 +163,4 @@ bun run check
 | Date | Decision |
 |------|----------|
 | 2026-03-30 | Workspace rules retargeted to **oryxel-ai** (Drizzle + Better Auth + `src/routes/`). |
+| 2026-06-19 | **Social layer MVP**: lists, follow, feed, discover, in-app notifications; chat mode **`curate`** + `listOps`; `@oryxel/ai/src/social/`; migration **0006**. Notifications in-app only — **no VAPID/Web Push**. |

@@ -1,4 +1,4 @@
-export function sanitizeRedirectTarget(value: string | null | undefined): string {
+export function sanitizeRedirectTarget(value: string | null | undefined) {
   if (!value) return '/'
 
   if (!value.startsWith('/')) return '/'

@@ -21,7 +21,7 @@ const providers: Record<AiProviderName, AiProvider> = {
   deepseek: deepseekProvider,
 }
 
-async function callWithTimeout<T>(work: (signal: AbortSignal) => Promise<T>, timeoutMs: number): Promise<T> {
+async function callWithTimeout<T>(work: (signal: AbortSignal) => Promise<T>, timeoutMs: number) {
   const controller = new AbortController()
   const timeoutId = globalThis.setTimeout(() => controller.abort(), timeoutMs)
 
@@ -53,7 +53,7 @@ async function tryProviderAttempt(input: {
   }
 }
 
-function shouldRotateKey(error: unknown): boolean {
+function shouldRotateKey(error: unknown) {
   if (!(error instanceof Error)) {
     return false
   }
@@ -69,7 +69,7 @@ function shouldRotateKey(error: unknown): boolean {
   return status === 401 || status === 429 || status >= 500
 }
 
-function getOrderedProviders(policyOrder: AiProviderName[], preferredProvider?: AiProviderName): AiProviderName[] {
+function getOrderedProviders(policyOrder: AiProviderName[], preferredProvider?: AiProviderName) {
   if (!preferredProvider) {
     return policyOrder
   }
@@ -80,7 +80,7 @@ function getOrderedProviders(policyOrder: AiProviderName[], preferredProvider?: 
 }
 
 // eslint-disable-next-line sonarjs/cognitive-complexity
-export async function analyzePreferences(rawInput: unknown, options?: AiCallOptions): Promise<AiRouterResult> {
+export async function analyzePreferences(rawInput: unknown, options?: AiCallOptions) {
   const request = analyzePreferencesRequestSchema.parse(rawInput) as AnalyzePreferencesRequest
   const policy = getAiRouterPolicy()
   const attempts: AiRouterResult['attempts'] = []

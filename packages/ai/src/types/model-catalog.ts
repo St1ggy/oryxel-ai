@@ -71,11 +71,11 @@ const ENV_MODEL_KEYS: Record<AiProviderName, string> = {
   perplexity: 'PERPLEXITY_MODEL',
 }
 
-export function getDefaultModel(provider: AiProviderName): string {
+export function getDefaultModel(provider: AiProviderName) {
   return DEFAULT_MODELS[provider]
 }
 
-export function resolveModel(provider: AiProviderName, override?: string | null): string {
+export function resolveModel(provider: AiProviderName, override?: string | null) {
   if (override?.trim()) {
     return override.trim()
   }
@@ -90,12 +90,12 @@ export function resolveModel(provider: AiProviderName, override?: string | null)
   return getDefaultModel(provider)
 }
 
-export function getModelLabel(provider: AiProviderName, modelId: string): string {
+export function getModelLabel(provider: AiProviderName, modelId: string) {
   const entry = MODEL_CATALOG[provider].find((model) => model.id === modelId)
 
   return entry?.label ?? modelId
 }
 
-export function getModelsForProvider(provider: AiProviderName): ModelCatalogEntry[] {
+export function getModelsForProvider(provider: AiProviderName) {
   return MODEL_CATALOG[provider]
 }

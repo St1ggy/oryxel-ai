@@ -29,7 +29,7 @@
   let saving = $state(false)
   let saveError = $state(false)
 
-  function inferStatus(r: DiaryRow): StatusValue {
+  function inferStatus(r: DiaryRow) {
     if (r.isTried && r.isLiked) return 'liked'
 
     if (r.isTried && r.isDisliked) return 'disliked'
@@ -55,7 +55,7 @@
     { value: 'disliked', label: m.oryxel_tab_disliked },
   ]
 
-  function statusButtonClass(value: StatusValue, selected: boolean): string {
+  function statusButtonClass(value: StatusValue, selected: boolean) {
     if (!selected) {
       return 'border-border text-foreground-muted hover:border-border-strong hover:text-foreground'
     }

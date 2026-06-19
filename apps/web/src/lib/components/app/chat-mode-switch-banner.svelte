@@ -46,6 +46,10 @@
       case 'agent_intent': {
         return m.oryxel_chat_mode_switch_reason_agent_intent()
       }
+
+      case 'curate_intent': {
+        return m.oryxel_chat_mode_switch_reason_curate_intent()
+      }
     }
   })
 
@@ -115,7 +119,7 @@
       <Button size="sm" variant="ghost" class="h-7 px-2.5 text-xs" onclick={onDismiss}>
         {m.oryxel_chat_mode_switch_stay()}
       </Button>
-      <span class="w-8 text-right text-[11px] tabular-nums text-foreground-muted">
+      <span class="w-8 text-right text-[11px] text-foreground-muted tabular-nums">
         {m.oryxel_chat_mode_switch_countdown({ seconds: secondsLeft })}
       </span>
     </div>

@@ -22,7 +22,7 @@ import { loadProfileForUser } from '$lib/server/profile/load'
 
 import type { PageServerLoad } from './$types'
 
-async function applyConfirmedPatches(userId: string): Promise<void> {
+async function applyConfirmedPatches(userId: string) {
   const confirmed = await db
     .select()
     .from(aiPendingPatch)

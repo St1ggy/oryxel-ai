@@ -9,7 +9,7 @@ export type ConfiguredOAuthProviders = {
   yandex: boolean
 }
 
-export function getConfiguredOAuthProviders(): ConfiguredOAuthProviders {
+export function getConfiguredOAuthProviders() {
   return {
     google: Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
     apple: Boolean(env.APPLE_CLIENT_ID && env.APPLE_CLIENT_SECRET),

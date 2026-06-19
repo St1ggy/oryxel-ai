@@ -6,7 +6,7 @@ export const AGENT_MEMORY_MAX_ROWS = 20
 
 export type AgentMemoryEntryRow = { id: number; content: string }
 
-export async function listAgentMemoryEntriesForUser(userId: string): Promise<AgentMemoryEntryRow[]> {
+export async function listAgentMemoryEntriesForUser(userId: string) {
   return db
     .select({ id: userAgentMemory.id, content: userAgentMemory.content })
     .from(userAgentMemory)

@@ -1,3 +1,4 @@
+import { createJob } from '@oryxel/ai/server'
 import { error, json } from '@sveltejs/kit'
 import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
@@ -9,7 +10,7 @@ import { listTypeToFlags } from '$lib/server/diary/flags'
 
 import type { RequestHandler } from './$types'
 
-async function getFragranceLabel(entryId: number, userId: string): Promise<string> {
+async function getFragranceLabel(entryId: number, userId: string) {
   const [row] = await db
     .select({ brandName: brand.name, fragName: fragrance.name })
     .from(userFragrance)
@@ -38,6 +39,8 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
     actor: 'user',
     summary: `Removed: ${label}`,
   })
+
+  void createJob(locals.user.id, 'list_slice_sync', {})
 
   return json({ ok: true })
 }
@@ -85,7 +88,7 @@ export const PATCH: RequestHandler = async ({ params, locals, request }) => {
     .set(updates)
     .where(and(eq(userFragrance.id, id), eq(userFragrance.userId, locals.user.id)))
 
-  function buildSummary(): string {
+  function buildSummary() {
     if (typeof body.rating === 'number') return `Rated ${label}: ${body.rating}★`
 
     if (body.listType) return `Moved ${label} → ${body.listType}`
@@ -101,6 +104,10 @@ export const PATCH: RequestHandler = async ({ params, locals, request }) => {
     actor: 'user',
     summary: buildSummary(),
   })
+
+  if (body.listType) {
+    void createJob(locals.user.id, 'list_slice_sync', {})
+  }
 
   return json({ ok: true })
 }

@@ -27,7 +27,7 @@
 
   const tooltip = $derived(times.map((t) => timeLabels[t]?.() ?? t).join(', '))
 
-  function resolveIcon(list: string[]): 'night' | 'evening' | 'day' {
+  function resolveIcon(list: string[]) {
     if (list.includes('night')) return 'night'
 
     if (list.includes('evening')) return 'evening'

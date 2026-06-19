@@ -18,7 +18,7 @@
 
   const sentimentOptions: NoteRelationshipSentiment[] = ['love', 'like', 'neutral', 'dislike', 'redflag']
 
-  function sentimentLabel(s: NoteRelationshipSentiment): string {
+  function sentimentLabel(s: NoteRelationshipSentiment) {
     switch (s) {
       case 'love': {
         return m.oryxel_notes_sentiment_love()
@@ -42,7 +42,7 @@
     }
   }
 
-  function sentimentColor(s: NoteRelationshipSentiment): string {
+  function sentimentColor(s: NoteRelationshipSentiment) {
     switch (s) {
       case 'love': {
         return 'bg-accent/20 text-accent border-accent/30'

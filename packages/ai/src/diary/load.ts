@@ -5,7 +5,7 @@ import { extractEnglishKey, lookupTranslations, resolveCommaSeparated } from '..
 
 import type { DiaryData, DiaryRow } from '../types/diary'
 
-function parseNotes(raw: string | null): string[] {
+function parseNotes(raw: string | null) {
   if (!raw) return []
 
   return raw
@@ -20,7 +20,7 @@ function collectKeys(r: {
   pyramidTop: string | null
   pyramidMid: string | null
   pyramidBase: string | null
-}): string[] {
+}) {
   const phrases = [
     extractEnglishKey(r.notesSummary),
     extractEnglishKey(r.pyramidTop),
@@ -59,7 +59,7 @@ function buildDiaryRow(
     pyramidBase: string | null
   },
   translations: Map<string, string>,
-): DiaryRow {
+) {
   return {
     id: r.id,
     fragranceId: r.fragranceId,
@@ -83,7 +83,7 @@ function buildDiaryRow(
   }
 }
 
-export async function loadDiaryForUser(userId: string, locale = 'en'): Promise<DiaryData> {
+export async function loadDiaryForUser(userId: string, locale = 'en') {
   try {
     const rows = await database
       .select({
@@ -151,7 +151,7 @@ export type DismissedFragrance = { id: number; brand: string; fragrance: string 
 
 const DISMISSED_LIMIT = 200
 
-export async function loadDismissedForUser(userId: string): Promise<DismissedFragrance[]> {
+export async function loadDismissedForUser(userId: string) {
   try {
     const rows = await database
       .select({

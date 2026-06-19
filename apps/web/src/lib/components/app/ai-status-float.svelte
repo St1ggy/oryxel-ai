@@ -86,7 +86,7 @@
     if (pendingPatches.length > 0) collapsed = false
   })
 
-  function phaseLabel(phase: string): string {
+  function phaseLabel(phase: string) {
     switch (phase) {
       case 'owned': {
         return m.oryxel_sync_phase_owned()
@@ -166,7 +166,7 @@
     }
   }
 
-  function getStatusLabel(): string {
+  function getStatusLabel() {
     if (patchProgress) return m.oryxel_patch_applying()
 
     if (syncProgress) return `${m.oryxel_profile_sync()} — ${phaseLabel(syncProgress.phase)}`
@@ -187,7 +187,7 @@
     done: boolean
   }
 
-  function summarizePhases(events: ProgressEvent[]): PhaseSummary[] {
+  function summarizePhases(events: ProgressEvent[]) {
     if (events.length === 0) return []
 
     // Plain Map: this is a non-reactive helper consuming a snapshot of progressEvents.
@@ -214,7 +214,7 @@
     return order.map((phase) => byPhase.get(phase)!)
   }
 
-  function activePhaseId(events: ProgressEvent[]): string | null {
+  function activePhaseId(events: ProgressEvent[]) {
     return events.at(-1)?.phase ?? null
   }
 
@@ -223,7 +223,7 @@
   const showTimeline = $derived(progressEvents.length > 0)
   const latestMeta = $derived(progressEvents.at(-1)?.meta)
 
-  function formatDuration(ms: number | undefined): string {
+  function formatDuration(ms: number | undefined) {
     if (!ms || ms < 0) return ''
 
     if (ms < 1000) return `${ms}ms`
@@ -304,7 +304,9 @@
                 {/if}
               </span>
               {#if item.meta?.durationMs}
-                <span class="shrink-0 tabular-nums text-foreground-muted/80">{formatDuration(item.meta.durationMs)}</span>
+                <span class="shrink-0 text-foreground-muted/80 tabular-nums"
+                  >{formatDuration(item.meta.durationMs)}</span
+                >
               {/if}
             </li>
           {/each}
@@ -313,9 +315,12 @@
           <div class="border-t border-border/50 px-4 py-2 text-[10px] text-foreground-muted/80">
             <span class="font-mono">
               {#if latestMeta.provider}{latestMeta.provider}{/if}
-              {#if latestMeta.model} · {latestMeta.model}{/if}
-              {#if latestMeta.tokensOut} · {latestMeta.tokensOut}t{/if}
-              {#if latestMeta.attempt && latestMeta.attempt > 1} · attempt {latestMeta.attempt}{/if}
+              {#if latestMeta.model}
+                · {latestMeta.model}{/if}
+              {#if latestMeta.tokensOut}
+                · {latestMeta.tokensOut}t{/if}
+              {#if latestMeta.attempt && latestMeta.attempt > 1}
+                · attempt {latestMeta.attempt}{/if}
             </span>
           </div>
         {/if}
@@ -500,7 +505,7 @@
             {/if}
 
             <!-- eslint-disable-next-line sonarjs/no-use-of-empty-return-value -->
-        {@render timelineBlock()}
+            {@render timelineBlock()}
           </div>
         {/if}
 

@@ -7,7 +7,7 @@ import type { NoteLink, NoteNode, RenderedSelections, StyleContext, StyleRendere
 
 // ── Constellation style — dark sky, star dots, bezier arc links ──────────────
 
-function arcPath(x1: number, y1: number, x2: number, y2: number): string {
+function arcPath(x1: number, y1: number, x2: number, y2: number) {
   const mx = (x1 + x2) / 2
   const my = (y1 + y2) / 2
   const dx = x2 - x1
@@ -18,7 +18,7 @@ function arcPath(x1: number, y1: number, x2: number, y2: number): string {
   return `M${x1},${y1} Q${mx},${my - bow} ${x2},${y2}`
 }
 
-const init = (context: StyleContext): RenderedSelections => {
+const init = (context: StyleContext) => {
   const { g, nodes, links, width, height, svgElement } = context
 
   // Background sky + stars — inserted directly into the SVG (outside zoom group)
@@ -160,7 +160,7 @@ const init = (context: StyleContext): RenderedSelections => {
   }
 }
 
-const tick = (sel: RenderedSelections): void => {
+const tick = (sel: RenderedSelections) => {
   sel.linkSel.attr('d', (lk) => {
     const s = lk.source as NoteNode
     const t = lk.target as NoteNode
@@ -174,7 +174,7 @@ const tick = (sel: RenderedSelections): void => {
 // Newtonian gravity: F = G·mA·mB / r²  (Plummer softening to avoid singularity)
 // Acceleration on each node depends only on the OTHER node's mass — so large
 // stars barely move while small stars are strongly attracted toward them.
-function makeNewtonian(nodes: NoteNode[]): (alpha: number) => void {
+function makeNewtonian(nodes: NoteNode[]) {
   const G = 0.55
   const epsilon2 = 350 // softening radius² (~19px), prevents force blow-up on overlap
 
@@ -203,12 +203,7 @@ function makeNewtonian(nodes: NoteNode[]): (alpha: number) => void {
   }
 }
 
-const buildSimulation = (
-  nodes: NoteNode[],
-  links: NoteLink[],
-  width: number,
-  height: number,
-): Simulation<NoteNode, NoteLink> =>
+const buildSimulation = (nodes: NoteNode[], links: NoteLink[], width: number, height: number) =>
   forceSimulation<NoteNode>(nodes)
     .velocityDecay(0.22)
     .force(

@@ -73,11 +73,11 @@
     { style: 'timeline', icon: Layers, label: m.oryxel_note_graph_style_timeline },
   ]
 
-  function localFamily(family: string): string {
+  function localFamily(family: string) {
     return familyLabel[family]?.() ?? family
   }
 
-  function localTier(tier: string): string {
+  function localTier(tier: string) {
     return tierLabel[tier]?.() ?? tier
   }
 
@@ -89,7 +89,7 @@
 
   const VALID_STYLES: GraphStyle[] = ['default', 'constellation', 'bubble', 'ink', 'cluster', 'timeline']
 
-  function coerceStyle(s: string): GraphStyle {
+  function coerceStyle(s: string) {
     return (VALID_STYLES as string[]).includes(s) ? (s as GraphStyle) : 'default'
   }
 
@@ -97,7 +97,7 @@
 
   let saveTimeout: ReturnType<typeof setTimeout> | null = null
 
-  function persistStyle(style: GraphStyle): void {
+  function persistStyle(style: GraphStyle) {
     if (saveTimeout) clearTimeout(saveTimeout)
 
     saveTimeout = setTimeout(() => {
@@ -117,7 +117,7 @@
 
   // Fragrances containing the selected note
 
-  const panelFragrances = $derived.by((): FragranceEntry[] => {
+  const panelFragrances = $derived.by(() => {
     if (!panelNode) return []
 
     const noteId = panelNode.id
@@ -178,7 +178,7 @@
 
   onDestroy(() => controls?.cleanup())
 
-  function tooltipStyle(x: number, y: number): string {
+  function tooltipStyle(x: number, y: number) {
     return `left:${x + 14}px;top:${y - 8}px`
   }
 </script>

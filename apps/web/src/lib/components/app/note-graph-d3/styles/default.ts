@@ -15,7 +15,7 @@ import type { NoteLink, NoteNode, RenderedSelections, StyleContext, StyleRendere
 
 // ── Default style — gradient bubbles with radial fills ────────────────────────
 
-const init = (context: StyleContext): RenderedSelections => {
+const init = (context: StyleContext) => {
   const { g, defs, nodes, links, uid } = context
 
   buildShadowFilter(defs, uid)
@@ -106,7 +106,7 @@ const init = (context: StyleContext): RenderedSelections => {
   return { linkSel: linkSel as any, nodeGroupSel, extras: { linkGrads: linkGrads as any } }
 }
 
-const tick = (sel: RenderedSelections, _nodes: NoteNode[], links: NoteLink[]): void => {
+const tick = (sel: RenderedSelections, _nodes: NoteNode[], links: NoteLink[]) => {
   const linkGrads = sel.extras?.['linkGrads']
 
   if (linkGrads) {
@@ -126,12 +126,7 @@ const tick = (sel: RenderedSelections, _nodes: NoteNode[], links: NoteLink[]): v
   sel.nodeGroupSel.attr('transform', (d) => `translate(${d.x ?? 0},${d.y ?? 0})`)
 }
 
-const buildSimulation = (
-  nodes: NoteNode[],
-  links: NoteLink[],
-  width: number,
-  height: number,
-): Simulation<NoteNode, NoteLink> =>
+const buildSimulation = (nodes: NoteNode[], links: NoteLink[], width: number, height: number) =>
   forceSimulation<NoteNode>(nodes)
     .velocityDecay(0.28)
     .force(

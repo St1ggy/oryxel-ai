@@ -15,6 +15,7 @@
 
   const tabs = $derived([
     { href: resolve('/settings/profile'), label: m.oryxel_settings_nav_profile(), match: '/settings/profile' as const },
+    { href: resolve('/settings/social'), label: m.oryxel_settings_nav_social(), match: '/settings/social' as const },
     {
       href: resolve('/settings/appearance'),
       label: m.oryxel_settings_nav_appearance(),
@@ -33,7 +34,7 @@
     },
   ])
 
-  function tabActive(match: string): boolean {
+  function tabActive(match: string) {
     if (match === '/settings/agents') {
       return path.includes('/settings/agents') && !path.includes('/settings/agents/memory')
     }

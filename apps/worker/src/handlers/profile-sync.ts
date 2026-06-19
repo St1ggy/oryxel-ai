@@ -51,7 +51,7 @@ type StepContext = {
 const FILL_BATCH_MSG =
   'Fill MISSING data for every fragrance in the listed entries. For each entry generate op=status with rowId. Only set a field if it is currently null/empty — DO NOT overwrite fields that already have values. Fields to fill if missing: notesSummary (up to 5 notes, lowercase English), pyramidTop/Mid/Base (lowercase English, all three tiers), agentComment (max 80 chars), season (comma-separated from spring/summer/autumn/winter), timeOfDay (comma-separated from day/evening/night), gender (female/male/unisex). One op=status per entry, no exceptions.'
 
-function chunk<T>(array: T[], size: number): T[][] {
+function chunk<T>(array: T[], size: number) {
   const result: T[][] = []
 
   for (let index = 0; index < array.length; index += size) {
@@ -62,7 +62,7 @@ function chunk<T>(array: T[], size: number): T[][] {
 }
 
 /** Row needs an AI fill pass if any of the visible-in-UI metadata fields is empty. */
-function needsEnrichment(row: DiaryRow): boolean {
+function needsEnrichment(row: DiaryRow) {
   return (
     row.notes.length === 0 ||
     !row.pyramidTop ||
@@ -75,7 +75,7 @@ function needsEnrichment(row: DiaryRow): boolean {
   )
 }
 
-function toEntry({ id, brand, fragrance }: DiaryRow): DiaryEntry {
+function toEntry({ id, brand, fragrance }: DiaryRow) {
   return { id, brand, fragrance }
 }
 
@@ -87,7 +87,7 @@ async function fillListBatches(
   phase: FillPhase,
   startStep: number,
   total: number,
-): Promise<void> {
+) {
   const batches = chunk(entries, BATCH_SIZE)
 
   for (const [index, batch] of batches.entries()) {
@@ -145,7 +145,7 @@ async function fillListBatches(
   }
 }
 
-async function runProfileStep(context: StepContext): Promise<void> {
+async function runProfileStep(context: StepContext) {
   try {
     const profileRouter = await analyzePreferences({
       userId: context.userId,
@@ -173,7 +173,7 @@ async function runProfileStep(context: StepContext): Promise<void> {
   }
 }
 
-async function runRecommendationsStep(context: StepContext): Promise<void> {
+async function runRecommendationsStep(context: StepContext) {
   try {
     const updatedProfile = await loadProfileForUser(context.userId, context.userName, context.locale)
     const recRouter = await analyzePreferences({
@@ -224,7 +224,7 @@ async function runFillPhases(
   phases: FillPhaseConfig[],
   total: number,
   startStep: number,
-): Promise<number> {
+) {
   let step = startStep
 
   for (const { phase, entries } of phases) {
@@ -237,7 +237,7 @@ async function runFillPhases(
   return step
 }
 
-async function runSync(jobId: number, context: StepContext, total: number, hasPreferences: boolean): Promise<void> {
+async function runSync(jobId: number, context: StepContext, total: number, hasPreferences: boolean) {
   let step = await runFillPhases(
     jobId,
     context,
@@ -295,7 +295,7 @@ export async function handleProfileSync(
   userId: string,
   userName: string,
   params: Record<string, unknown>,
-): Promise<void> {
+) {
   const locale = (params['locale'] as string | undefined) ?? 'en'
 
   try {

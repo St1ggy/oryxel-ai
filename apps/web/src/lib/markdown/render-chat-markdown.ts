@@ -25,7 +25,7 @@ const ASSISTANT_MARKDOWN_SANITIZE: IOptions = {
 }
 
 // Markdown for assistant chat bubbles — parse then sanitize for {@html ...}.
-export function renderAssistantMarkdown(text: string): string {
+export function renderAssistantMarkdown(text: string) {
   const raw = marked.parse(text, { async: false }) as string
 
   return sanitizeHtml(raw, ASSISTANT_MARKDOWN_SANITIZE)

@@ -68,31 +68,31 @@ const empty: PatchPreview = {
   agentMemoryOps: [],
 }
 
-function asRecord(v: unknown): Record<string, unknown> | null {
+function asRecord(v: unknown) {
   if (v && typeof v === 'object' && !Array.isArray(v)) return v as Record<string, unknown>
 
   return null
 }
 
-function number_(v: unknown): number | undefined {
+function number_(v: unknown) {
   if (typeof v === 'number' && !Number.isNaN(v)) return v
 
-  return undefined
+  return
 }
 
-function string_(v: unknown): string | undefined {
+function string_(v: unknown) {
   if (typeof v === 'string' && v.length > 0) return v
 
-  return undefined
+  return
 }
 
-function bool(v: unknown): boolean | undefined {
+function bool(v: unknown) {
   if (typeof v === 'boolean') return v
 
-  return undefined
+  return
 }
 
-function parseTableOps(raw: unknown): ParsedTableOp[] {
+function parseTableOps(raw: unknown) {
   if (!Array.isArray(raw)) return []
 
   return raw
@@ -127,8 +127,8 @@ function parseTableOps(raw: unknown): ParsedTableOp[] {
     .filter((x): x is ParsedTableOp => x != null)
 }
 
-function parseRadar(radarRaw: unknown): Record<string, number> | undefined {
-  if (!radarRaw || typeof radarRaw !== 'object' || Array.isArray(radarRaw)) return undefined
+function parseRadar(radarRaw: unknown) {
+  if (!radarRaw || typeof radarRaw !== 'object' || Array.isArray(radarRaw)) return
 
   const radar: Record<string, number> = {}
 
@@ -141,8 +141,8 @@ function parseRadar(radarRaw: unknown): Record<string, number> | undefined {
   return Object.keys(radar).length > 0 ? radar : undefined
 }
 
-function parseNoteRelationships(nrRaw: unknown): ParsedNoteRelationship[] | undefined {
-  if (!Array.isArray(nrRaw)) return undefined
+function parseNoteRelationships(nrRaw: unknown) {
+  if (!Array.isArray(nrRaw)) return
 
   const list: ParsedNoteRelationship[] = []
 
@@ -168,7 +168,7 @@ function parseNoteRelationships(nrRaw: unknown): ParsedNoteRelationship[] | unde
   return list.length > 0 ? list : undefined
 }
 
-function parseProfile(prof: unknown): PatchPreview['profile'] {
+function parseProfile(prof: unknown) {
   const p = asRecord(prof)
 
   if (!p) return null
@@ -201,7 +201,7 @@ function parseProfile(prof: unknown): PatchPreview['profile'] {
   }
 }
 
-function parseRecommendations(raw: unknown): ParsedRec[] {
+function parseRecommendations(raw: unknown) {
   if (!Array.isArray(raw)) return []
 
   const out: ParsedRec[] = []
@@ -231,13 +231,13 @@ function parseRecommendations(raw: unknown): ParsedRec[] {
   return out
 }
 
-function parseSuggestions(raw: unknown): string[] {
+function parseSuggestions(raw: unknown) {
   if (!Array.isArray(raw)) return []
 
   return raw.map((s) => (typeof s === 'string' ? s : '')).filter(Boolean)
 }
 
-function parseMemoryOps(raw: unknown): ParsedMemoryOp[] {
+function parseMemoryOps(raw: unknown) {
   if (!Array.isArray(raw)) return []
 
   const out: ParsedMemoryOp[] = []
@@ -261,7 +261,7 @@ function parseMemoryOps(raw: unknown): ParsedMemoryOp[] {
   return out
 }
 
-export function parsePatchPreview(raw: unknown): PatchPreview {
+export function parsePatchPreview(raw: unknown) {
   const root = asRecord(raw)
 
   if (!root) return { ...empty }
@@ -278,7 +278,7 @@ export function parsePatchPreview(raw: unknown): PatchPreview {
   }
 }
 
-export function patchPreviewHasBody(p: PatchPreview): boolean {
+export function patchPreviewHasBody(p: PatchPreview) {
   return (
     p.tableOps.length > 0 ||
     p.profile != null ||

@@ -4,7 +4,7 @@ import { deleteUserProviderKey } from '$lib/server/ai/keys/service'
 
 import type { RequestHandler } from './$types'
 
-function parseProviderId(rawId: string): number {
+function parseProviderId(rawId: string) {
   const id = Number(rawId)
 
   if (!Number.isInteger(id) || id <= 0) {

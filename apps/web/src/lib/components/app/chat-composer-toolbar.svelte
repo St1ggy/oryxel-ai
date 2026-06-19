@@ -1,5 +1,14 @@
 <script lang="ts">
-  import { Check, ChevronDown, Infinity as InfinityIcon, ListPlus, MessageCircle, Plus, Sparkles } from '@lucide/svelte'
+  import {
+    Check,
+    ChevronDown,
+    Infinity as InfinityIcon,
+    LayoutList,
+    ListPlus,
+    MessageCircle,
+    Plus,
+    Sparkles,
+  } from '@lucide/svelte'
   import { DropdownMenu } from 'bits-ui'
 
   import * as m from '$lib/paraglide/messages.js'
@@ -72,12 +81,16 @@
       description: m.oryxel_chat_mode_recommend_desc(),
       icon: ListPlus,
     },
+    {
+      value: 'curate',
+      label: m.oryxel_chat_mode_curate(),
+      description: m.oryxel_chat_mode_curate_desc(),
+      icon: LayoutList,
+    },
   ])
 
   const activeMode = $derived(modeOptions.find((option) => option.value === chatMode) ?? modeOptions[1]!)
-  const activeModel = $derived(
-    modelOptions.find((option) => option.id === modelId) ?? modelOptions[0],
-  )
+  const activeModel = $derived(modelOptions.find((option) => option.id === modelId) ?? modelOptions[0])
   const activeProvider = $derived(
     providerOptions.find((option) => option.value === selectedProvider) ?? providerOptions[0],
   )
@@ -162,9 +175,7 @@
         >
           {#each providerOptions as option (option.value)}
             {@const meta =
-              option.source === 'platform'
-                ? m.oryxel_provider_source_platform()
-                : m.oryxel_provider_source_own()}
+              option.source === 'platform' ? m.oryxel_provider_source_platform() : m.oryxel_provider_source_own()}
             <DropdownMenu.Item
               class={cn(
                 'oryx-transition flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm outline-none select-none hover:bg-muted data-[highlighted]:bg-muted',

@@ -28,9 +28,9 @@
   let previewScenario = $state('command')
   let previewBusy = $state(false)
   let previewError = $state<string | null>(null)
-  let previewSections = $state<
-    { key: string; label: string; chars: number; tokensApprox: number; content: string }[]
-  >([])
+  let previewSections = $state<{ key: string; label: string; chars: number; tokensApprox: number; content: string }[]>(
+    [],
+  )
   let previewBuiltinFull = $state('')
   let previewResolvedFull = $state('')
   let previewTotalChars = $state(0)
@@ -65,7 +65,7 @@
     { value: 'profile_sync', label: 'profile_sync' },
   ])
 
-  function sectionTitle(key: string): string {
+  function sectionTitle(key: string) {
     if (key === 'base') return m.oryxel_prompt_section_base()
 
     if (key === 'limits') return m.oryxel_prompt_section_limits()
@@ -301,7 +301,8 @@
             {:else if previewError}
               {previewError}
             {:else}
-              {m.oryxel_ai_system_prompt_total()}: {previewTotalChars} {m.oryxel_ai_system_prompt_chars()} / ~
+              {m.oryxel_ai_system_prompt_total()}: {previewTotalChars}
+              {m.oryxel_ai_system_prompt_chars()} / ~
               {previewTotalTokens}
               {m.oryxel_ai_system_prompt_tokens()}
             {/if}
@@ -343,7 +344,11 @@
           {#if systemPromptMode === 'append'}
             <div>
               <Label for="prompt-append">{m.oryxel_ai_system_prompt_append_label()}</Label>
-              <Textarea id="prompt-append" class="mt-1 min-h-[100px] font-mono text-xs" bind:value={systemPromptAppend} />
+              <Textarea
+                id="prompt-append"
+                class="mt-1 min-h-[100px] font-mono text-xs"
+                bind:value={systemPromptAppend}
+              />
             </div>
           {/if}
 
@@ -364,16 +369,12 @@
           <div>
             <Label class="text-xs font-medium">{m.oryxel_ai_system_prompt_preview_builtin()}</Label>
             <pre
-              class="mt-1 max-h-56 overflow-auto rounded-md border border-border bg-muted/20 p-2 text-[11px] leading-snug whitespace-pre-wrap font-mono text-foreground-muted"
-              >{previewBuiltinFull}</pre
-            >
+              class="mt-1 max-h-56 overflow-auto rounded-md border border-border bg-muted/20 p-2 font-mono text-[11px] leading-snug whitespace-pre-wrap text-foreground-muted">{previewBuiltinFull}</pre>
           </div>
           <div>
             <Label class="text-xs font-medium">{m.oryxel_ai_system_prompt_preview_resolved()}</Label>
             <pre
-              class="mt-1 max-h-56 overflow-auto rounded-md border border-border bg-muted/20 p-2 text-[11px] leading-snug whitespace-pre-wrap font-mono"
-              >{previewResolvedFull}</pre
-            >
+              class="mt-1 max-h-56 overflow-auto rounded-md border border-border bg-muted/20 p-2 font-mono text-[11px] leading-snug whitespace-pre-wrap">{previewResolvedFull}</pre>
           </div>
         </div>
       </div>

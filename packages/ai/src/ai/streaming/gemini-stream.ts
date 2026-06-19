@@ -14,7 +14,7 @@ export type GeminiStreamInput = {
   onTokenProgress?: (info: { tokensOut: number; durationMs: number }) => void
 }
 
-export async function streamGemini(input: GeminiStreamInput): Promise<string> {
+export async function streamGemini(input: GeminiStreamInput) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${input.model}:streamGenerateContent?alt=sse&key=${input.apiKey}`
   const response = await fetch(url, {
     method: 'POST',
@@ -67,11 +67,11 @@ export async function streamGemini(input: GeminiStreamInput): Promise<string> {
   return buffer
 }
 
-function estimateTokens(buffer: string): number {
+function estimateTokens(buffer: string) {
   return Math.ceil(buffer.length / 4)
 }
 
-function emitPartial(buffer: string, onPartial: (partial: Partial<StructuredPreferencePatch>) => void): void {
+function emitPartial(buffer: string, onPartial: (partial: Partial<StructuredPreferencePatch>) => void) {
   const { value } = tryParsePartial<Partial<StructuredPreferencePatch>>(buffer)
 
   if (value && typeof value === 'object') {

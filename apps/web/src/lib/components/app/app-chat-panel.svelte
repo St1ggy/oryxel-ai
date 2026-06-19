@@ -43,11 +43,7 @@
     modelOptions?: ModelOption[]
     suggestions?: string[]
     onSend?: (text: string) => void
-    onChatPreferencesChange?: (prefs: {
-      chatMode?: ChatAgentMode
-      provider?: string
-      modelId?: string
-    }) => void
+    onChatPreferencesChange?: (prefs: { chatMode?: ChatAgentMode; provider?: string; modelId?: string }) => void
   }
 
   let {
@@ -91,6 +87,10 @@
         return m.oryxel_chat_placeholder_recommend()
       }
 
+      case 'curate': {
+        return m.oryxel_chat_placeholder_curate()
+      }
+
       default: {
         return m.oryxel_chat_placeholder_agent()
       }
@@ -102,7 +102,7 @@
   let modeBannerKey = $state(0)
   const sessionDismissed = new SvelteSet<string>()
 
-  function modeLabelFor(mode: ChatAgentMode): string {
+  function modeLabelFor(mode: ChatAgentMode) {
     switch (mode) {
       case 'ask': {
         return m.oryxel_chat_mode_ask()
@@ -114,6 +114,10 @@
 
       case 'recommend': {
         return m.oryxel_chat_mode_recommend()
+      }
+
+      case 'curate': {
+        return m.oryxel_chat_mode_curate()
       }
 
       default: {
@@ -329,11 +333,7 @@
                 style="transform: translateY({row.start}px);"
               >
                 <div in:fly={{ y: 8, duration: 280, opacity: 0.9 }}>
-                  <ChatBubble
-                    role={message.role}
-                    text={message.content}
-                    contentFormat={message.contentFormat}
-                  />
+                  <ChatBubble role={message.role} text={message.content} contentFormat={message.contentFormat} />
                 </div>
               </div>
             {/each}
@@ -342,11 +342,7 @@
           <div class="space-y-5">
             {#each messages as message (message.id)}
               <div in:fly={{ y: 8, duration: 280, opacity: 0.9 }}>
-                <ChatBubble
-                  role={message.role}
-                  text={message.content}
-                  contentFormat={message.contentFormat}
-                />
+                <ChatBubble role={message.role} text={message.content} contentFormat={message.contentFormat} />
               </div>
             {/each}
           </div>
@@ -403,7 +399,7 @@
             bind:this={draftElement}
             bind:value={draft}
             rows={2}
-            placeholder={placeholder}
+            {placeholder}
             class="oryx-chat-draft min-h-[64px] flex-1 resize-none overflow-y-auto border-0 bg-transparent px-2 py-2 text-[15px] leading-snug text-foreground outline-none placeholder:text-foreground-muted"
             style="max-height: {MAX_TEXTAREA_HEIGHT}px"
             onkeydown={onDraftKeydown}

@@ -13,7 +13,7 @@ import {
   toKeyHint,
 } from './types'
 
-export async function listUserProviderKeys(userId: string): Promise<ProviderKeyListItem[]> {
+export async function listUserProviderKeys(userId: string) {
   const rows = await db
     .select()
     .from(userAiProviderKey)
@@ -44,7 +44,7 @@ export async function upsertUserProviderKey(input: {
   key: string
   label?: string
   setDefault?: boolean
-}): Promise<ProviderKeyListItem> {
+}) {
   assertProvider(input.provider)
 
   const key = input.key.trim()
@@ -124,7 +124,7 @@ export async function upsertUserProviderKey(input: {
   })
 }
 
-export async function setDefaultUserProviderKey(userId: string, id: number): Promise<void> {
+export async function setDefaultUserProviderKey(userId: string, id: number) {
   const [target] = await db
     .select()
     .from(userAiProviderKey)
@@ -153,14 +153,14 @@ export async function setDefaultUserProviderKey(userId: string, id: number): Pro
   })
 }
 
-export async function deleteUserProviderKey(userId: string, id: number): Promise<void> {
+export async function deleteUserProviderKey(userId: string, id: number) {
   await db.delete(userAiProviderKey).where(and(eq(userAiProviderKey.id, id), eq(userAiProviderKey.userId, userId)))
 }
 
 export async function importLegacyProviderKeys(
   userId: string,
   rows: { provider: string; label?: string; key?: string; active?: boolean }[],
-): Promise<number> {
+) {
   let imported = 0
 
   for (const row of rows) {

@@ -5,7 +5,7 @@ import { and, eq } from 'drizzle-orm'
 // Works for both the top-level db instance and a transaction object
 type DatabaseOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0]
 
-export async function findOrCreateBrand(tx: DatabaseOrTx, name: string): Promise<number> {
+export async function findOrCreateBrand(tx: DatabaseOrTx, name: string) {
   const trimmed = name.trim()
 
   // brand.name has a unique constraint — onConflictDoNothing is safe here
@@ -28,7 +28,7 @@ export async function findOrCreateFragrance(
   name: string,
   notesSummary?: string | null,
   pyramid?: PyramidFields,
-): Promise<number> {
+) {
   const trimmed = name.trim()
 
   // fragrance table has NO unique constraint on (brandId, name) — select-then-insert

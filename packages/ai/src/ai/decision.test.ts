@@ -5,17 +5,18 @@ import { inferSuggestedChatMode, shouldSuggestModeSwitch } from './mode-inferenc
 
 import type { StructuredPreferencePatch } from './contracts.js'
 
-const basePatch = (): StructuredPreferencePatch => ({
-  confidence: 0.9,
-  summary: 'Updated diary',
-  reply: 'Done',
-  tableOps: [
-    { op: 'add', brandName: 'Dior', fragranceName: 'Sauvage' },
-    { op: 'remove', rowId: 1 },
-  ],
-  profile: { archetype: 'Woody explorer' },
-  recommendations: [{ id: '1', brand: 'Chanel', name: 'Bleu', tag: 'fresh' }],
-})
+const basePatch = () =>
+  ({
+    confidence: 0.9,
+    summary: 'Updated diary',
+    reply: 'Done',
+    tableOps: [
+      { op: 'add' as const, brandName: 'Dior', fragranceName: 'Sauvage' },
+      { op: 'remove' as const, rowId: 1 },
+    ],
+    profile: { archetype: 'Woody explorer' },
+    recommendations: [{ id: '1', brand: 'Chanel', name: 'Bleu', tag: 'fresh' }],
+  }) satisfies StructuredPreferencePatch
 
 describe('sanitizePatchForChatMode', () => {
   it('ask mode keeps only conversational fields', () => {
@@ -41,6 +42,20 @@ describe('sanitizePatchForChatMode', () => {
     expect(sanitized.tableOps).toEqual([])
     expect(sanitized.profile).toBeUndefined()
     expect(sanitized.recommendations?.length).toBe(1)
+  })
+
+  it('curate mode keeps listOps only', () => {
+    const patch: StructuredPreferencePatch = {
+      ...basePatch(),
+      listOps: [{ op: 'create', title: 'Summer picks' }],
+    }
+
+    const sanitized = sanitizePatchForChatMode(patch, 'curate')
+
+    expect(sanitized.listOps?.length).toBe(1)
+    expect(sanitized.tableOps).toEqual([])
+    expect(sanitized.profile).toBeUndefined()
+    expect(sanitized.recommendations).toBeUndefined()
   })
 })
 
@@ -68,6 +83,11 @@ describe('inferSuggestedChatMode', () => {
 
   it('detects agent intent for removals', () => {
     expect(inferSuggestedChatMode('удали всё из disliked')).toBe('agent')
+  })
+
+  it('detects curate intent', () => {
+    expect(inferSuggestedChatMode('собери коллекцию летних ванильных')).toBe('curate')
+    expect(inferSuggestedChatMode('create a summer vanilla collection')).toBe('curate')
   })
 })
 

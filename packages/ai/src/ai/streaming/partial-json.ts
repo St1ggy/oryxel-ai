@@ -10,7 +10,7 @@ export type PartialParseResult<T = unknown> = {
   complete: boolean
 }
 
-export function tryParsePartial<T = unknown>(buffer: string): PartialParseResult<T> {
+export function tryParsePartial<T = unknown>(buffer: string) {
   const trimmed = buffer.trim()
 
   if (!trimmed) {
@@ -39,7 +39,7 @@ export function tryParsePartial<T = unknown>(buffer: string): PartialParseResult
   return { value: undefined, complete: false }
 }
 
-function closeBrackets(input: string): string {
+function closeBrackets(input: string) {
   const state = scanStructure(input)
 
   let result = input
@@ -62,7 +62,7 @@ function closeBrackets(input: string): string {
 
 type ScanState = { stack: string[]; inString: boolean; escape: boolean }
 
-function scanStructure(input: string): ScanState {
+function scanStructure(input: string) {
   const state: ScanState = { stack: [], inString: false, escape: false }
 
   for (const c of input) {
@@ -82,7 +82,7 @@ function scanStructure(input: string): ScanState {
   return state
 }
 
-function handleStringChar(c: string, state: ScanState): void {
+function handleStringChar(c: string, state: ScanState) {
   if (c === '\\') {
     state.escape = true
   } else if (c === '"') {
@@ -93,7 +93,7 @@ function handleStringChar(c: string, state: ScanState): void {
 const OPEN_TO_CLOSE: Record<string, string> = { '[': ']', '{': '}' }
 const CLOSERS = new Set(['}', ']'])
 
-function handleOuterChar(c: string, state: ScanState): void {
+function handleOuterChar(c: string, state: ScanState) {
   if (c === '"') {
     state.inString = true
 
@@ -109,7 +109,7 @@ function handleOuterChar(c: string, state: ScanState): void {
   }
 }
 
-function stripIncompleteEscape(s: string): string {
+function stripIncompleteEscape(s: string) {
   const trail = /\\u[0-9a-fA-F]{0,3}$|\\$/u.exec(s)
 
   if (trail) {

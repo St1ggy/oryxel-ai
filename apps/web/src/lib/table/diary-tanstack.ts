@@ -43,7 +43,7 @@ export function createDiaryDataTable<T extends DiaryRow | RecommendationRow>(
   sorting: SortingState,
   onSortingChange: OnChangeFn<SortingState>,
   getRowId: (row: T) => string,
-): Table<T> {
+) {
   return createTable<T>({
     data,
     columns,

@@ -8,7 +8,7 @@ import type { Simulation } from 'd3-force'
 
 // ── Color utilities ──────────────────────────────────────────────────────────
 
-export function lightenHex(hex: string, amount: number): string {
+export function lightenHex(hex: string, amount: number) {
   const color = hsl(hex)
 
   color.l = Math.min(0.97, color.l + amount)
@@ -18,7 +18,7 @@ export function lightenHex(hex: string, amount: number): string {
 
 // ── Link weight helpers ───────────────────────────────────────────────────────
 
-export function linkThickness(weight: number): number {
+export function linkThickness(weight: number) {
   if (weight <= 2) return 1
 
   if (weight <= 6) return 1.5
@@ -28,7 +28,7 @@ export function linkThickness(weight: number): number {
   return Math.min(3.5 + (weight - 12) * 0.12, 5.5)
 }
 
-export function linkOpacity(weight: number): number {
+export function linkOpacity(weight: number) {
   if (weight <= 2) return 0.1
 
   if (weight <= 6) return 0.2
@@ -42,7 +42,7 @@ export function linkOpacity(weight: number): number {
 
 // Truncates a node label to fit inside a circle of `size` radius.
 // Uses an approximate char-width heuristic; avoids SVG clipPath overhead.
-export function truncateLabel(name: string, size: number): string {
+export function truncateLabel(name: string, size: number) {
   const fontSize = Math.max(9, Math.min(size * 0.26, 13))
   // usable diameter minus padding
   const maxWidth = size * 1.7
@@ -58,13 +58,13 @@ export function truncateLabel(name: string, size: number): string {
 // ── Link distance factor ──────────────────────────────────────────────────────
 // Returns a multiplier in [0.35, 1.0]: heavier links pull nodes closer together.
 // weight=1 → 1.0x, weight=5 → 0.84x, weight=10 → 0.64x, weight=17+ → 0.35x
-export function linkDistanceFactor(weight: number): number {
+export function linkDistanceFactor(weight: number) {
   return Math.max(0.35, 1 - (weight - 1) * 0.04)
 }
 
 // ── Adjacency ─────────────────────────────────────────────────────────────────
 
-export function buildAdjacency(links: NoteLink[]): Set<string> {
+export function buildAdjacency(links: NoteLink[]) {
   const adjacency = new Set<string>()
 
   for (const lk of links) {
@@ -80,7 +80,7 @@ export function buildAdjacency(links: NoteLink[]): Set<string> {
 
 // ── SVG defs builders ─────────────────────────────────────────────────────────
 
-export function buildShadowFilter(defs: Selection<SVGDefsElement, unknown, null, undefined>, uid: string): void {
+export function buildShadowFilter(defs: Selection<SVGDefsElement, unknown, null, undefined>, uid: string) {
   const shadow = defs
     .append('filter')
     .attr('id', `${uid}-shadow`)
@@ -101,7 +101,7 @@ export function buildNodeGradients(
   defs: Selection<SVGDefsElement, unknown, null, undefined>,
   nodes: NoteNode[],
   uid: string,
-): Selection<SVGRadialGradientElement, NoteNode, SVGDefsElement, unknown> {
+) {
   const nodeGrads = defs
     .selectAll<SVGRadialGradientElement, NoteNode>('radialGradient')
     .data(nodes)
@@ -135,7 +135,7 @@ export function buildLinkGradients(
   defs: Selection<SVGDefsElement, unknown, null, undefined>,
   links: NoteLink[],
   uid: string,
-): Selection<SVGLinearGradientElement, NoteLink, SVGDefsElement, unknown> {
+) {
   const linkGrads = defs
     .selectAll<SVGLinearGradientElement, NoteLink>('linearGradient')
     .data(links)
@@ -162,7 +162,7 @@ export function buildLinkGradients(
 export function attachZoom(
   svg: Selection<SVGSVGElement, unknown, null, undefined>,
   g: Selection<SVGGElement, unknown, null, undefined>,
-): ZoomBehavior<SVGSVGElement, unknown> {
+) {
   const zoomBehavior = zoom<SVGSVGElement, unknown>()
     .scaleExtent([0.2, 6])
     .on('zoom', (event) => {
@@ -183,7 +183,7 @@ export function makeControls(
   svgElement: SVGSVGElement,
   zoomBehavior: ZoomBehavior<SVGSVGElement, unknown>,
   simulation: Simulation<NoteNode, NoteLink>,
-): GraphControls {
+) {
   return {
     cleanup: () => simulation.stop(),
     zoomIn: () => select(svgElement).transition().duration(250).call(zoomBehavior.scaleBy, 1.4),

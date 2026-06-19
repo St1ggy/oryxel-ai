@@ -8,7 +8,7 @@
 
   const { value }: Props = $props()
 
-  function resolveLabel(v: string | null): string | null {
+  function resolveLabel(v: string | null) {
     if (v === 'female') return m.oryxel_meta_female()
 
     if (v === 'male') return m.oryxel_meta_male()
@@ -18,7 +18,7 @@
     return null
   }
 
-  function resolveGlyph(v: string | null): string | null {
+  function resolveGlyph(v: string | null) {
     if (v === 'female') return '♀'
 
     if (v === 'male') return '♂'

@@ -4,7 +4,7 @@ import { and, eq, inArray } from 'drizzle-orm'
 // Batch-looks up cached translations for a set of canonical English keys + locale.
 // Returns a map of key → translated text. Missing keys are absent from the map.
 // For English locale always returns an empty map (no translation needed).
-export async function lookupTranslations(keys: string[], locale: string): Promise<Map<string, string>> {
+export async function lookupTranslations(keys: string[], locale: string) {
   if (locale === 'en' || keys.length === 0) return new Map()
 
   const unique = [...new Set(keys.filter(Boolean))]
@@ -23,7 +23,7 @@ export async function lookupTranslations(keys: string[], locale: string): Promis
 // each individual term in the translation map and rejoining them.
 // Falls back to the original term when no translation is found.
 // Returns null when raw is null/empty.
-export function resolveCommaSeparated(raw: string | null, map: Map<string, string>): string | null {
+export function resolveCommaSeparated(raw: string | null, map: Map<string, string>) {
   if (!raw) return null
 
   return raw
@@ -39,14 +39,14 @@ export function resolveCommaSeparated(raw: string | null, map: Map<string, strin
 
 // Persists a batch of translations.
 // Skips keys that already have a cached translation (onConflictDoNothing).
-export async function saveTranslations(entries: { key: string; locale: string; value: string }[]): Promise<void> {
+export async function saveTranslations(entries: { key: string; locale: string; value: string }[]) {
   if (entries.length === 0) return
 
   await db.insert(translations).values(entries).onConflictDoNothing()
 }
 
 /** Extracts canonical English text from a stored value (plain text or legacy locale-map JSON). */
-export function extractEnglishKey(raw: string | null): string | null {
+export function extractEnglishKey(raw: string | null) {
   if (!raw) return null
 
   if (raw.startsWith('{')) {

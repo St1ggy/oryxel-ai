@@ -19,6 +19,7 @@
     class?: string
     disabled?: boolean
     triggerAriaLabel?: string
+    onChange?: (value: string) => void
   }
 
   let {
@@ -29,11 +30,12 @@
     class: className,
     disabled = false,
     triggerAriaLabel,
+    onChange,
   }: Props = $props()
 
   const selected = $derived(options.find((option) => option.value === value))
 
-  function badgeClass(tone: SelectOption['tone']): string {
+  function badgeClass(tone: SelectOption['tone']) {
     switch (tone) {
       case 'free': {
         return 'border-success/30 bg-success/10 text-success'
@@ -53,7 +55,7 @@
     }
   }
 
-  function badgeDotClass(tone: SelectOption['tone']): string {
+  function badgeDotClass(tone: SelectOption['tone']) {
     switch (tone) {
       case 'free': {
         return 'bg-success'
@@ -112,7 +114,10 @@
       {#each options as option (option.value)}
         <DropdownMenu.Item
           disabled={option.disabled}
-          onSelect={() => (value = option.value)}
+          onSelect={() => {
+            value = option.value
+            onChange?.(option.value)
+          }}
           class={cn(
             'oryx-transition flex cursor-pointer items-center justify-between gap-2 rounded-md px-3 py-2 text-sm outline-none select-none hover:bg-muted data-highlighted:bg-muted',
             value === option.value ? 'text-foreground' : 'text-foreground-muted',

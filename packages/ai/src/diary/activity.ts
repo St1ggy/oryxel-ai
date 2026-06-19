@@ -16,7 +16,7 @@ export async function recordActivity(params: {
   actor: 'user' | 'agent'
   provider?: string | null
   summary: string
-}): Promise<void> {
+}) {
   await db.insert(userActivityLog).values({
     userId: params.userId,
     action: params.action,
@@ -26,7 +26,7 @@ export async function recordActivity(params: {
   })
 }
 
-export async function loadRecentActivity(userId: string, limit = 30): Promise<ActivityEntry[]> {
+export async function loadRecentActivity(userId: string, limit = 30) {
   const rows = await db
     .select()
     .from(userActivityLog)

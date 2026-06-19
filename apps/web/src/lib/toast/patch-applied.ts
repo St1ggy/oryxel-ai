@@ -6,7 +6,7 @@ export function showPatchAppliedToast(options: {
   summary: string
   payload: Record<string, unknown>
   onViewDetails: (payload: Record<string, unknown>, summary: string) => void
-}): void {
+}) {
   const { summary, payload, onViewDetails } = options
 
   const toastId = toast.success(m.oryxel_patch_applied_notice(), {

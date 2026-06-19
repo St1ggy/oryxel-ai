@@ -21,7 +21,7 @@
 
   let { open = $bindable(false), node, diaryData, onClose }: Props = $props()
 
-  const fragrances = $derived.by((): FragranceEntry[] => {
+  const fragrances = $derived.by(() => {
     if (!node) return []
 
     const noteId = node.id
@@ -84,11 +84,11 @@
     unknown: m.oryxel_note_tier_unknown,
   }
 
-  function localFamily(family: string): string {
+  function localFamily(family: string) {
     return familyLabel[family]?.() ?? family
   }
 
-  function localTier(tier: string): string {
+  function localTier(tier: string) {
     return tierLabel[tier]?.() ?? tier
   }
 </script>

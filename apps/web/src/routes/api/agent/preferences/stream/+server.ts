@@ -23,7 +23,7 @@ const bodySchema = z.object({
     .optional(),
 })
 
-function inferScenarioFromMessage(message: string): 'analog' | 'pyramid' | 'recommendation' | 'comparison' | 'command' {
+function inferScenarioFromMessage(message: string) {
   const normalized = message.toLowerCase()
 
   if (message.includes('\n')) {

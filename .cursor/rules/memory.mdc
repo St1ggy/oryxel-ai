@@ -89,6 +89,22 @@ alwaysApply: true
 
 ---
 
+## 2026-06-19 — Social layer MVP
+
+### What changed
+
+- Migration **`0006_social_layer`**: `user_profile` social fields, `user_list` / `user_list_item`, `user_follow`, `post`, `notification`, `notification_preference`.
+- **`packages/ai/src/social/`** — visibility, lists, follow, posts, search, notifications, `applyListOps`; exported via `@oryxel/ai/server`; types via `@oryxel/ai`.
+- Web routes: `/discover`, `/feed`, `/lists`, `/notifications`, `/u/[username]`, `/settings/social`; APIs for lists, search, feed, posts, follow, notifications.
+- **5th chat mode `curate`** with `listOps` in patch schema; worker applies list ops and enqueues `notify_list`.
+- **In-app notifications only** (bell + inbox); worker jobs `notify_post`, `notify_follow`, `notify_list`, `list_slice_sync`. **No Web Push / VAPID.**
+
+### Why
+
+- Product social MVP: collections, subscriptions, feed, discoverability, agent-curated lists — without push complexity.
+
+---
+
 ## Template for new entries
 
 ```

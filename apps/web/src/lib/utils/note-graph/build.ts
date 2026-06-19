@@ -4,7 +4,7 @@ import type { DiaryData, DiaryRow, NoteRelationship, NoteRelationshipSentiment }
 import type { FamilyDefinition } from './families'
 import type { NoteGraph, NoteLink, NoteNode } from './types'
 
-export function parseNotes(string_: string | null): string[] {
+export function parseNotes(string_: string | null) {
   if (!string_) return []
 
   return string_
@@ -13,7 +13,7 @@ export function parseNotes(string_: string | null): string[] {
     .filter(Boolean)
 }
 
-function scoreToSize(score: number, maxScore: number): number {
+function scoreToSize(score: number, maxScore: number) {
   if (maxScore === 0) return 20
 
   // Linear interpolation: min score → 18px, max score → 80px
@@ -23,7 +23,7 @@ function scoreToSize(score: number, maxScore: number): number {
 }
 
 /** Rating multiplier: 0 (unrated) → 1.0 neutral; 1 → 0.4; 3 → 1.0; 5 → 1.6 */
-function ratingMult(rating: number): number {
+function ratingMult(rating: number) {
   if (rating === 0) return 1
 
   return 0.4 + (rating - 1) * 0.3
@@ -68,7 +68,7 @@ type LinkAccumulator = {
   fragrances: Set<number>
 }
 
-function accumulateNotes(entries: ListEntry[]): Map<string, NodeAccumulator> {
+function accumulateNotes(entries: ListEntry[]) {
   const nodeMap = new Map<string, NodeAccumulator>()
 
   for (const { row, statusWeight, ratingWeight } of entries) {
@@ -97,7 +97,7 @@ function accumulateNotes(entries: ListEntry[]): Map<string, NodeAccumulator> {
   return nodeMap
 }
 
-function accumulateLinks(entries: ListEntry[], nodeMap: Map<string, NodeAccumulator>): Map<string, LinkAccumulator> {
+function accumulateLinks(entries: ListEntry[], nodeMap: Map<string, NodeAccumulator>) {
   const linkMap = new Map<string, LinkAccumulator>()
 
   for (const { row, statusWeight, ratingWeight } of entries) {
@@ -131,7 +131,7 @@ export function buildNoteGraph(
   diaryData: DiaryData,
   noteRelationships: NoteRelationship[] = [],
   families?: FamilyDefinition[],
-): NoteGraph {
+) {
   // Build a lookup map: note key → sentiment multiplier
   const sentimentMap = new Map<string, number>()
 

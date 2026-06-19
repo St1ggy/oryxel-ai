@@ -28,7 +28,7 @@
 
   const tooltip = $derived(seasons.map((s) => seasonLabels[s]?.() ?? s).join(', '))
 
-  function resolveIcon(list: string[]): 'winter' | 'summer' | 'leaf' {
+  function resolveIcon(list: string[]) {
     if (list.includes('winter') && list.length === 1) return 'winter'
 
     if (list.includes('summer') && !list.includes('winter')) return 'summer'

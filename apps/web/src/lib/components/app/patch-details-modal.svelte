@@ -15,7 +15,7 @@
   const preview = $derived(payload ? parsePatchPreview(payload) : null)
   const rawJson = $derived(payload ? JSON.stringify(payload, null, 2) : '')
 
-  function opTitle(op: ParsedTableOp['op']): string {
+  function opTitle(op: ParsedTableOp['op']) {
     switch (op) {
       case 'add': {
         return m.oryxel_patch_op_add()
@@ -42,7 +42,7 @@
     }
   }
 
-  function flagParts(op: ParsedTableOp): string[] {
+  function flagParts(op: ParsedTableOp) {
     const p: string[] = []
 
     if (op.isOwned === true) p.push(m.oryxel_patch_flag_owned())
