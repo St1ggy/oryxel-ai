@@ -9,7 +9,7 @@ export const CHAT_PANEL_WIDTH_MIN_PCT = 22
 export const CHAT_PANEL_WIDTH_MAX_PCT = 58
 export const CHAT_PANEL_WIDTH_DEFAULT_PCT = 35
 
-export function clampChatPanelWidthPct(value: number): number {
+export function clampChatPanelWidthPct(value: number) {
   if (!Number.isFinite(value)) return CHAT_PANEL_WIDTH_DEFAULT_PCT
 
   return Math.min(CHAT_PANEL_WIDTH_MAX_PCT, Math.max(CHAT_PANEL_WIDTH_MIN_PCT, Math.round(value)))

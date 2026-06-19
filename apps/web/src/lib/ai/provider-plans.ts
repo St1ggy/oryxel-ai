@@ -2,7 +2,7 @@ import type { ProviderGuideId } from './provider-guides'
 
 export type ProviderPlanKind = 'free' | 'paid'
 
-export function providerPlanKind(provider: ProviderGuideId | string): ProviderPlanKind {
+export function providerPlanKind(provider: ProviderGuideId | string) {
   switch (provider) {
     case 'gemini': {
       return 'free'

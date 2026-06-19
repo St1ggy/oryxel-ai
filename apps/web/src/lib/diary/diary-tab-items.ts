@@ -18,29 +18,27 @@ export const DIARY_LIST_TAB_VALUES = [...FRAGRANCE_LIST_TAB_VALUES, 'profile', '
 
 export type DiaryListTabValue = (typeof DIARY_LIST_TAB_VALUES)[number]
 
-export function diaryPrimaryItems(): { value: DiaryPrimaryView; label: () => string }[] {
+export function diaryPrimaryItems() {
   return [
-    { value: 'fragrances', label: () => m.oryxel_nav_fragrances() },
-    { value: 'notes', label: () => m.oryxel_tab_notes() },
-    { value: 'profile', label: () => m.oryxel_tab_profile() },
-    { value: 'guide', label: () => m.oryxel_tab_guide() },
+    { value: 'fragrances' as const, label: () => m.oryxel_nav_fragrances() },
+    { value: 'notes' as const, label: () => m.oryxel_tab_notes() },
+    { value: 'profile' as const, label: () => m.oryxel_tab_profile() },
+    { value: 'guide' as const, label: () => m.oryxel_tab_guide() },
   ]
 }
 
 /** Desktop nav omits chat (sidebar assistant). Mobile adds chat as a fifth tab. */
-export function diaryPrimaryNavItems(
-  variant: 'desktop' | 'mobile',
-): { value: DiaryPrimaryView; label: () => string }[] {
+export function diaryPrimaryNavItems(variant: 'desktop' | 'mobile') {
   const base = diaryPrimaryItems()
 
   if (variant === 'mobile') {
-    return [...base, { value: 'chat', label: () => m.oryxel_chat_title() }]
+    return [...base, { value: 'chat' as const, label: () => m.oryxel_chat_title() }]
   }
 
   return base
 }
 
-export function fragranceListTabItems(): { value: FragranceListTabValue; label: string }[] {
+export function fragranceListTabItems() {
   return [
     { value: 'owned', label: m.oryxel_tab_collection() },
     { value: 'to_try', label: m.oryxel_tab_try() },
@@ -52,7 +50,7 @@ export function fragranceListTabItems(): { value: FragranceListTabValue; label: 
 
 /** @deprecated */
 
-export function diaryListTabItems(): { value: DiaryListTabValue; label: string }[] {
+export function diaryListTabItems() {
   return [
     ...fragranceListTabItems(),
     { value: 'profile', label: m.oryxel_tab_profile() },

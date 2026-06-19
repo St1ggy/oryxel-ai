@@ -38,7 +38,7 @@
     ),
   )
 
-  function headerLabel(columnId: string): string {
+  function headerLabel(columnId: string) {
     switch (columnId) {
       case 'brand': {
         return m.oryxel_table_brand()
@@ -58,7 +58,7 @@
     }
   }
 
-  function buildRowActions(diaryRow: DiaryRow): { label: string; onclick: () => void; danger?: boolean }[] {
+  function buildRowActions(diaryRow: DiaryRow) {
     const items: { label: string; onclick: () => void; danger?: boolean }[] = []
 
     if (onDismiss && diaryRow.isRecommendation) {

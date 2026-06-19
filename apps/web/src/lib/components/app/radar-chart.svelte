@@ -13,7 +13,7 @@
   const r = $derived(size * 0.36)
   const n = $derived(axes.length)
 
-  function angleFor(index: number): number {
+  function angleFor(index: number) {
     return -Math.PI / 2 + (index * 2 * Math.PI) / n
   }
 
@@ -29,7 +29,7 @@
   const ringRadii = $derived([0.33, 0.67, 1].map((f) => f * r))
 
   // Straight-edge polygon with small rounded corners at each vertex.
-  function roundedPolygonPath(pts: { x: number; y: number }[], cornerR = 6): string {
+  function roundedPolygonPath(pts: { x: number; y: number }[], cornerR = 6) {
     if (pts.length < 3) return ''
 
     const count = pts.length

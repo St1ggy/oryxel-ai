@@ -20,7 +20,7 @@ const deleteBodySchema = z.object({
   note: z.string().min(1).max(80),
 })
 
-async function getCurrentRelationships(userId: string): Promise<NoteRelationship[]> {
+async function getCurrentRelationships(userId: string) {
   const [row] = await db
     .select({ noteRelationships: userProfile.noteRelationships })
     .from(userProfile)
@@ -30,7 +30,7 @@ async function getCurrentRelationships(userId: string): Promise<NoteRelationship
   return (row?.noteRelationships ?? []) as NoteRelationship[]
 }
 
-async function saveRelationships(userId: string, relationships: NoteRelationship[]): Promise<void> {
+async function saveRelationships(userId: string, relationships: NoteRelationship[]) {
   await db
     .insert(userProfile)
     .values({ userId, noteRelationships: relationships as never[] })

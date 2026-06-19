@@ -7,7 +7,7 @@ export type FamilyDefinition = {
 }
 
 /** Resolve the display name for a family in a given locale. */
-export function familyDisplayName(family: FamilyDefinition, locale: string): string {
+export function familyDisplayName(family: FamilyDefinition, locale: string) {
   return family.translations?.[locale] ?? family.translations?.['en'] ?? family.family
 }
 
@@ -656,10 +656,7 @@ const FAMILY_DEFS: FamilyDefinition[] = [
   },
 ]
 
-export function detectFamily(
-  note: string,
-  families: FamilyDefinition[] = FAMILY_DEFS,
-): { family: string; color: string } {
+export function detectFamily(note: string, families: FamilyDefinition[] = FAMILY_DEFS) {
   const lower = note.toLowerCase()
 
   for (const familyEntry of families) {

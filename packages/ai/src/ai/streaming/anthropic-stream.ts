@@ -13,7 +13,7 @@ export type AnthropicStreamInput = {
   onTokenProgress?: (info: { tokensOut: number; durationMs: number }) => void
 }
 
-export async function streamAnthropic(input: AnthropicStreamInput): Promise<string> {
+export async function streamAnthropic(input: AnthropicStreamInput) {
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -71,11 +71,11 @@ export async function streamAnthropic(input: AnthropicStreamInput): Promise<stri
   return buffer
 }
 
-function estimateTokens(buffer: string): number {
+function estimateTokens(buffer: string) {
   return Math.ceil(buffer.length / 4)
 }
 
-function emitPartial(buffer: string, onPartial: (partial: Partial<StructuredPreferencePatch>) => void): void {
+function emitPartial(buffer: string, onPartial: (partial: Partial<StructuredPreferencePatch>) => void) {
   const { value } = tryParsePartial<Partial<StructuredPreferencePatch>>(buffer)
 
   if (value && typeof value === 'object') {

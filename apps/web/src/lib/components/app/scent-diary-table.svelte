@@ -1,7 +1,6 @@
 <script lang="ts">
   import { Inbox } from '@lucide/svelte'
 
-
   import AgentCommentIcon from '$lib/components/app/agent-comment-icon.svelte'
   import GenderIcon from '$lib/components/app/gender-icon.svelte'
   import PurchaseIndicator from '$lib/components/app/purchase-indicator.svelte'
@@ -40,7 +39,7 @@
     ),
   )
 
-  function headerLabel(columnId: string): string {
+  function headerLabel(columnId: string) {
     switch (columnId) {
       case 'brand': {
         return m.oryxel_table_brand()

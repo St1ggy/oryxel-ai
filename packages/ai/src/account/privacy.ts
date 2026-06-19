@@ -51,13 +51,13 @@ export type UserExportPayload = {
   patchAuditLog: (typeof aiPatchAuditLog.$inferSelect)[]
 }
 
-function keyHintFromEncrypted(raw: string): string {
+function keyHintFromEncrypted(raw: string) {
   const tail = raw.slice(-4)
 
   return `••••${tail || '****'}`
 }
 
-export async function collectUserExportData(userId: string): Promise<UserExportPayload> {
+export async function collectUserExportData(userId: string) {
   const [userRow, profileRow, aiPreferencesRow, providerKeyRows, diaryRows, chatRows, pendingRows, auditRows] =
     await Promise.all([
       db.select().from(user).where(eq(user.id, userId)).limit(1),
@@ -105,7 +105,7 @@ export async function collectUserExportData(userId: string): Promise<UserExportP
   }
 }
 
-export function toMarkdownExport(data: UserExportPayload): string {
+export function toMarkdownExport(data: UserExportPayload) {
   return [
     '# Oryxel Data Export',
     '',
@@ -149,7 +149,7 @@ export function toMarkdownExport(data: UserExportPayload): string {
   ].join('\n')
 }
 
-export async function deleteUserDataCompletely(input: { userId: string; userEmail?: string | null }): Promise<void> {
+export async function deleteUserDataCompletely(input: { userId: string; userEmail?: string | null }) {
   await db.transaction(async (tx) => {
     await tx.delete(aiPatchAuditLog).where(eq(aiPatchAuditLog.userId, input.userId))
     await tx.delete(aiPendingPatch).where(eq(aiPendingPatch.userId, input.userId))

@@ -33,7 +33,7 @@ const bodySchema = z.object({
     .optional(),
 })
 
-function inferScenarioFromMessage(message: string): 'analog' | 'pyramid' | 'recommendation' | 'comparison' | 'command' {
+function inferScenarioFromMessage(message: string) {
   const normalized = message.toLowerCase()
 
   // Detect structured bulk import: markdown headers (# ...) or known RU/EN section labels

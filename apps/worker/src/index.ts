@@ -4,6 +4,8 @@ import { eq } from 'drizzle-orm'
 import Redis from 'ioredis'
 
 import { handleAgentChat } from './handlers/agent-chat'
+import { handleListSliceSync } from './handlers/list-slice-sync'
+import { handleNotifyFollow, handleNotifyList, handleNotifyPost } from './handlers/social-notify'
 import { handleProfileSync } from './handlers/profile-sync'
 
 /** Background poll cadence (ms). Lower than before so the worker picks up new jobs quickly without a publisher. */
@@ -81,7 +83,7 @@ async function processJob(job: {
   userId: string
   type: string
   params: Record<string, unknown> | null
-}): Promise<void> {
+}) {
   const params = job.params ?? {}
 
   const [userRow] = await db.select({ name: user.name }).from(user).where(eq(user.id, job.userId)).limit(1)
@@ -96,6 +98,14 @@ async function processJob(job: {
     await handleAgentChat(job.id, job.userId, params)
   } else if (job.type === 'profile_sync') {
     await handleProfileSync(job.id, job.userId, userName, params)
+  } else if (job.type === 'notify_post') {
+    await handleNotifyPost(job.id, params)
+  } else if (job.type === 'notify_follow') {
+    await handleNotifyFollow(job.id, params)
+  } else if (job.type === 'notify_list') {
+    await handleNotifyList(job.id, job.userId, params)
+  } else if (job.type === 'list_slice_sync') {
+    await handleListSliceSync(job.id, job.userId, params)
   } else {
     await failJob(job.id, `Unknown job type: ${job.type}`)
   }
@@ -103,7 +113,7 @@ async function processJob(job: {
 
 let polling = false
 
-async function poll(): Promise<void> {
+async function poll() {
   if (polling) return
 
   polling = true

@@ -20,7 +20,7 @@ export const PROVIDER_DISPLAY_NAME: Record<string, string> = {
   deepseek: 'DeepSeek',
 }
 
-export function getProviderGuideLocalized(id: string, locale: string): { steps: string[]; notes: string[] } {
+export function getProviderGuideLocalized(id: string, locale: string) {
   const guide = PROVIDER_GUIDES[id as keyof typeof PROVIDER_GUIDES]
 
   if (!guide) return { steps: [], notes: [] }

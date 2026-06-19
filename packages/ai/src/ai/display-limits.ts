@@ -7,7 +7,7 @@ export type PatchDisplayLimits = {
   maxRecommendations: number
 }
 
-function countTierNotes(value: string | null | undefined): number {
+function countTierNotes(value: string | null | undefined) {
   if (value == null || value.trim() === '') {
     return 0
   }
@@ -26,7 +26,7 @@ export function getPatchDisplayLimitViolations(
     scenario: string
     limits: Partial<PatchDisplayLimits>
   },
-): string[] {
+) {
   const violations: string[] = []
   const minP = input.limits.minPyramidNotes ?? 1
   const maxP = input.limits.maxPyramidNotes ?? 5
@@ -78,7 +78,7 @@ export function getPatchDisplayLimitViolations(
 export function warnIfPatchViolatesDisplayLimits(
   patch: StructuredPreferencePatch,
   input: { scenario: string; limits: Partial<PatchDisplayLimits>; userId?: string },
-): void {
+) {
   const violations = getPatchDisplayLimitViolations(patch, input)
 
   if (violations.length === 0) {

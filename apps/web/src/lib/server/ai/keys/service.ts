@@ -25,17 +25,13 @@ export {
 } from './crud'
 export { PROVIDER_DISPLAY_NAME } from '$lib/ai/provider-guides'
 
-export async function resolveProviderApiKey(userId: string, provider: ProviderId): Promise<string | null> {
+export async function resolveProviderApiKey(userId: string, provider: ProviderId) {
   const [first] = await listProviderApiKeyCandidates(userId, provider, 1)
 
   return first?.key ?? null
 }
 
-export async function listProviderApiKeyCandidates(
-  userId: string,
-  provider: ProviderId,
-  limit = 10,
-): Promise<ProviderApiKeyCandidate[]> {
+export async function listProviderApiKeyCandidates(userId: string, provider: ProviderId, limit = 10) {
   const rows = await db
     .select()
     .from(userAiProviderKey)
@@ -71,7 +67,7 @@ export async function listProviderApiKeyCandidates(
   return candidates
 }
 
-export async function getUserDefaultProvider(userId: string): Promise<ProviderId | null> {
+export async function getUserDefaultProvider(userId: string) {
   const [row] = await db.select().from(userAiPreferences).where(eq(userAiPreferences.userId, userId)).limit(1)
 
   if (!row?.defaultProvider) return null
@@ -85,7 +81,7 @@ export async function getUserDefaultProvider(userId: string): Promise<ProviderId
   }
 }
 
-export async function setUserDefaultProvider(userId: string, provider: string): Promise<void> {
+export async function setUserDefaultProvider(userId: string, provider: string) {
   assertProvider(provider)
   await db
     .insert(userAiPreferences)
@@ -93,25 +89,25 @@ export async function setUserDefaultProvider(userId: string, provider: string): 
     .onConflictDoUpdate({ target: userAiPreferences.userId, set: { defaultProvider: provider } })
 }
 
-export async function listConfiguredProviders(userId: string): Promise<ConfiguredProvider[]> {
+export async function listConfiguredProviders(userId: string) {
   const results = await Promise.all(
     ALL_PROVIDERS.map(async (p) => {
       const [first] = await listProviderApiKeyCandidates(userId, p, 1)
 
-      return first ? { id: p, source: first.source } : null
+      return first ? ({ id: p, source: first.source } satisfies ConfiguredProvider) : null
     }),
   )
 
   return results.filter((p): p is ConfiguredProvider => p !== null)
 }
 
-export async function listConfiguredProviderIds(userId: string): Promise<ProviderId[]> {
+export async function listConfiguredProviderIds(userId: string) {
   const configured = await listConfiguredProviders(userId)
 
-  return configured.map((p) => p.id)
+  return configured.map((p) => p.id) satisfies ProviderId[]
 }
 
-export async function hasEffectiveProviderAccess(userId: string): Promise<boolean> {
+export async function hasEffectiveProviderAccess(userId: string) {
   const [hasUserKeys] = await db
     .select({ id: userAiProviderKey.id })
     .from(userAiProviderKey)
@@ -123,13 +119,13 @@ export async function hasEffectiveProviderAccess(userId: string): Promise<boolea
   return Boolean(getPlatformKeyConfig())
 }
 
-export async function grantPlatformAccess(userId: string): Promise<void> {
+export async function grantPlatformAccess(userId: string) {
   await db
     .insert(userAiPreferences)
     .values({ userId, platformAccess: true })
     .onConflictDoUpdate({ target: userAiPreferences.userId, set: { platformAccess: true } })
 }
 
-export async function revokePlatformAccess(userId: string): Promise<void> {
+export async function revokePlatformAccess(userId: string) {
   await db.update(userAiPreferences).set({ platformAccess: false }).where(eq(userAiPreferences.userId, userId))
 }

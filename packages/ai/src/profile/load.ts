@@ -6,7 +6,7 @@ import { lookupTranslations } from '../translation/service'
 import type { NoteRelationship, RadarAxes, RadarAxis } from '../types/diary'
 
 /** Handles both new plain strings and old locale-map JSON (backward compat). */
-function resolveStringOrMap(value: unknown, locale: string): string | null {
+function resolveStringOrMap(value: unknown, locale: string) {
   if (!value) return null
 
   if (typeof value === 'string') {
@@ -33,7 +33,7 @@ function resolveStringOrMap(value: unknown, locale: string): string | null {
 }
 
 /** Strip commentary that older AI responses appended after a comma / dash / parenthesis, then clip. */
-function compactRadarLabel(raw: string, fallback: string): string {
+function compactRadarLabel(raw: string, fallback: string) {
   const head = raw
     .split(/[,—–\-(]/u)[0]
     .trim()
@@ -42,7 +42,7 @@ function compactRadarLabel(raw: string, fallback: string): string {
   return head.length > 0 ? head : fallback
 }
 
-function buildRadarAxes(radar: unknown, radarLabels: unknown, locale: string): RadarAxis[] {
+function buildRadarAxes(radar: unknown, radarLabels: unknown, locale: string) {
   if (!radar || typeof radar !== 'object') return []
 
   const values = radar as RadarAxes

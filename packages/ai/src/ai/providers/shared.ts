@@ -4,7 +4,7 @@ import { structuredPreferencePatchSchema } from '../schemas.js'
 
 import type { AnalyzePreferencesRequest, StructuredPreferencePatch } from '../contracts.js'
 
-function languageForLocale(locale: string): string {
+function languageForLocale(locale: string) {
   if (locale.startsWith('es')) return 'Spanish'
 
   if (locale.startsWith('fr')) return 'French'
@@ -21,7 +21,7 @@ function languageForLocale(locale: string): string {
 /* eslint-disable camelcase */
 type TableNames = { to_try: string; liked: string; neutral: string; disliked: string; owned: string }
 
-function tableNamesForLocale(locale: string): TableNames {
+function tableNamesForLocale(locale: string) {
   if (locale === 'ru')
     return {
       to_try: 'Хочу попробовать',
@@ -53,7 +53,7 @@ function tableNamesForLocale(locale: string): TableNames {
 }
 /* eslint-enable camelcase */
 
-function buildUserDisplayHardLimits(request: AnalyzePreferencesRequest): string[] {
+function buildUserDisplayHardLimits(request: AnalyzePreferencesRequest) {
   const minP = request.minPyramidNotes ?? 1
   const maxP = request.maxPyramidNotes ?? 5
   const minR = request.minRecommendations ?? 5
@@ -70,7 +70,7 @@ function buildUserDisplayHardLimits(request: AnalyzePreferencesRequest): string[
   ]
 }
 
-function buildChatModeBlock(mode: AnalyzePreferencesRequest['chatMode']): string[] {
+function buildChatModeBlock(mode: AnalyzePreferencesRequest['chatMode']) {
   switch (mode) {
     case 'ask': {
       return [
@@ -86,7 +86,13 @@ function buildChatModeBlock(mode: AnalyzePreferencesRequest['chatMode']): string
 
     case 'recommend': {
       return [
-        'MODE: recommendations refresh only — return a full new recommendations[]; tableOps []; omit profile, suggestions, agentMemoryOps.',
+        'MODE: recommendations refresh only — return a full new recommendations[]; tableOps []; omit profile, suggestions, agentMemoryOps, listOps.',
+      ]
+    }
+
+    case 'curate': {
+      return [
+        'MODE: collection curation only — use listOps to create/add/remove/set_visibility on user lists. tableOps must be []. Do not change profile, suggestions, recommendations, or agentMemoryOps.',
       ]
     }
 
@@ -96,7 +102,7 @@ function buildChatModeBlock(mode: AnalyzePreferencesRequest['chatMode']): string
   }
 }
 
-function buildBaseInstructions(request: AnalyzePreferencesRequest): string[] {
+function buildBaseInstructions(request: AnalyzePreferencesRequest) {
   const language = languageForLocale(request.locale)
   const tableNames = tableNamesForLocale(request.locale)
   const allowAgentMemoryOps = request.allowAgentMemoryOps !== false
@@ -157,7 +163,7 @@ type DiaryContextEntry = {
 
 const SCENARIOS_NEEDING_FULL_PYRAMID = new Set(['pyramid', 'analog', 'comparison'])
 
-function formatDiaryList(entries: DiaryContextEntry[], scenario: string): string {
+function formatDiaryList(entries: DiaryContextEntry[], scenario: string) {
   if (entries.length === 0) return '[]'
 
   const includePyramidAndNotes = SCENARIOS_NEEDING_FULL_PYRAMID.has(scenario)
@@ -181,13 +187,13 @@ const RECENT_MESSAGE_LIMIT = 3
 const RECENT_MESSAGE_CHAR_LIMIT = 280
 const MAX_EXCLUDE_IDS = 200
 
-function clampRecent(content: string): string {
+function clampRecent(content: string) {
   return content.length > RECENT_MESSAGE_CHAR_LIMIT ? `${content.slice(0, RECENT_MESSAGE_CHAR_LIMIT)}…` : content
 }
 
 type DiaryContext = NonNullable<NonNullable<AnalyzePreferencesRequest['context']>['diary']>
 
-function collectExcludeIds(diary: DiaryContext): number[] {
+function collectExcludeIds(diary: DiaryContext) {
   const seen = new Set<number>()
   const lists: readonly ({ id: number }[] | undefined)[] = [
     diary.owned,
@@ -207,7 +213,7 @@ function collectExcludeIds(diary: DiaryContext): number[] {
   return [...seen]
 }
 
-function buildExcludeLine(diary: DiaryContext): string | null {
+function buildExcludeLine(diary: DiaryContext) {
   const ids = collectExcludeIds(diary)
 
   if (ids.length === 0) return null
@@ -219,7 +225,7 @@ function buildExcludeLine(diary: DiaryContext): string | null {
 }
 
 /* eslint-disable sonarjs/cognitive-complexity */
-function buildContextBlock(request: AnalyzePreferencesRequest): string[] {
+function buildContextBlock(request: AnalyzePreferencesRequest) {
   const context = request.context
 
   if (!context) {
@@ -286,7 +292,7 @@ function buildContextBlock(request: AnalyzePreferencesRequest): string[] {
 }
 /* eslint-enable sonarjs/cognitive-complexity */
 
-function buildScenarioBlock(request: AnalyzePreferencesRequest): string[] {
+function buildScenarioBlock(request: AnalyzePreferencesRequest) {
   const scenario = request.scenario
   const language = languageForLocale(request.locale)
   const minP = request.minPyramidNotes ?? 1
@@ -340,14 +346,14 @@ function buildScenarioBlock(request: AnalyzePreferencesRequest): string[] {
 }
 
 /** Rough token estimate (Latin + Cyrillic mixed; ~4 chars/token). Not a billing count. */
-export function estimatePromptTokensApprox(text: string): number {
+export function estimatePromptTokensApprox(text: string) {
   return Math.ceil(text.length / 4)
 }
 
 let cachedOutputSchemaJson: string | undefined
 
 /** JSON Schema for the patch the model must emit. Cached — schema is static across requests. */
-function getOutputSchemaJson(): string {
+function getOutputSchemaJson() {
   if (cachedOutputSchemaJson) return cachedOutputSchemaJson
 
   const schema = z.toJSONSchema(structuredPreferencePatchSchema, { unrepresentable: 'any' })
@@ -357,7 +363,7 @@ function getOutputSchemaJson(): string {
   return cachedOutputSchemaJson
 }
 
-function buildOutputSchemaSection(): string[] {
+function buildOutputSchemaSection() {
   return [
     'Output schema (JSON Schema 2020-12). The response MUST validate against this schema — field names, types, enums, lengths, ranges:',
     '```json',
@@ -367,7 +373,7 @@ function buildOutputSchemaSection(): string[] {
 }
 
 /** Instruction blocks only (no trailing `User message:` line). */
-export function buildPromptInstructionBlock(request: AnalyzePreferencesRequest): string {
+export function buildPromptInstructionBlock(request: AnalyzePreferencesRequest) {
   return [
     ...buildBaseInstructions(request),
     ...buildOutputSchemaSection(),
@@ -380,7 +386,7 @@ export function buildPromptInstructionBlock(request: AnalyzePreferencesRequest):
 export type PromptSection = { key: string; label: string; content: string }
 
 /** Structured breakdown for UI (token map). */
-export function buildPromptSections(request: AnalyzePreferencesRequest): PromptSection[] {
+export function buildPromptSections(request: AnalyzePreferencesRequest) {
   const sections: PromptSection[] = [
     { key: 'base', label: 'Base instructions', content: buildBaseInstructions(request).join('\n') },
     { key: 'schema', label: 'Output schema', content: buildOutputSchemaSection().join('\n') },
@@ -402,7 +408,7 @@ export function buildPromptWithOptions(
     append?: string | null
     replace?: string | null
   },
-): string {
+) {
   const instructionBlock = buildPromptInstructionBlock(request)
   const userLine = `User message: ${request.message}`
   const mode = options?.mode ?? 'default'
@@ -418,11 +424,7 @@ export function buildPromptWithOptions(
   return `${instructionBlock}\n${userLine}`
 }
 
-function resolvePromptOptions(request: AnalyzePreferencesRequest): {
-  mode: SystemPromptMode
-  append: string | null
-  replace: string | null
-} {
+function resolvePromptOptions(request: AnalyzePreferencesRequest) {
   const mode = request.systemPromptMode ?? 'default'
 
   return {
@@ -432,13 +434,13 @@ function resolvePromptOptions(request: AnalyzePreferencesRequest): {
   }
 }
 
-export function buildPrompt(request: AnalyzePreferencesRequest): string {
+export function buildPrompt(request: AnalyzePreferencesRequest) {
   const o = resolvePromptOptions(request)
 
   return buildPromptWithOptions(request, { mode: o.mode, append: o.append, replace: o.replace })
 }
 
-export function parseStructuredPatch(raw: unknown): StructuredPreferencePatch {
+export function parseStructuredPatch(raw: unknown) {
   let payload: unknown = raw
 
   if (typeof raw === 'string') {

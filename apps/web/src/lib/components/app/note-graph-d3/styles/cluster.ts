@@ -9,7 +9,7 @@ import type { Selection } from 'd3-selection'
 
 type FamilyCenter = { x: number; y: number; color: string; count: number }
 
-function buildFamilyCenters(nodes: NoteNode[], width: number, height: number): Map<string, FamilyCenter> {
+function buildFamilyCenters(nodes: NoteNode[], width: number, height: number) {
   const families = [...new Map(nodes.map((n) => [n.family, n.color])).entries()]
   const cx = width / 2
   const cy = height / 2
@@ -31,7 +31,7 @@ function buildFamilyCenters(nodes: NoteNode[], width: number, height: number): M
   return centers
 }
 
-const init = (context: StyleContext): RenderedSelections => {
+const init = (context: StyleContext) => {
   const { g, defs, nodes, links, width, height, uid } = context
 
   buildShadowFilter(defs, uid)
@@ -160,8 +160,8 @@ const init = (context: StyleContext): RenderedSelections => {
   }
 }
 
-const tick = (sel: RenderedSelections): void => {
-  function updateLines(lineSel: Selection<SVGLineElement, NoteLink, SVGGElement, unknown>): void {
+const tick = (sel: RenderedSelections) => {
+  function updateLines(lineSel: Selection<SVGLineElement, NoteLink, SVGGElement, unknown>) {
     lineSel
       .attr('x1', (lk) => (lk.source as NoteNode).x ?? 0)
       .attr('y1', (lk) => (lk.source as NoteNode).y ?? 0)
@@ -178,12 +178,7 @@ const tick = (sel: RenderedSelections): void => {
   sel.nodeGroupSel.attr('transform', (d) => `translate(${d.x ?? 0},${d.y ?? 0})`)
 }
 
-const buildSimulation = (
-  nodes: NoteNode[],
-  links: NoteLink[],
-  width: number,
-  height: number,
-): Simulation<NoteNode, NoteLink> => {
+const buildSimulation = (nodes: NoteNode[], links: NoteLink[], width: number, height: number) => {
   const familyCenters = buildFamilyCenters(nodes, width, height)
 
   return (

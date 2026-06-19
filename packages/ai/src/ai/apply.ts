@@ -12,7 +12,7 @@ type DatabaseExecutor = typeof db | Parameters<Parameters<typeof db.transaction>
 
 // Merges incoming agent noteRelationships with the currently stored ones,
 // preserving any entry the user has manually locked (`lockedByUser: true`).
-async function mergeNoteRelationships(userId: string, incoming: NoteRelationship[]): Promise<NoteRelationship[]> {
+async function mergeNoteRelationships(userId: string, incoming: NoteRelationship[]) {
   const [row] = await db
     .select({ noteRelationships: userProfile.noteRelationships })
     .from(userProfile)
@@ -36,11 +36,11 @@ async function mergeNoteRelationships(userId: string, incoming: NoteRelationship
 }
 
 /** Lowercase a string field; passes through null/undefined unchanged. */
-function lc(s: string | null | undefined): string | null | undefined {
+function lc(s: string | null | undefined) {
   return s ? s.toLowerCase() : s
 }
 
-function opToFlags(op: TableOperation): { isOwned: boolean; isTried: boolean; isLiked: boolean; isDisliked: boolean } {
+function opToFlags(op: TableOperation) {
   return {
     isOwned: op.isOwned ?? false,
     isTried: op.isTried ?? false,
@@ -49,11 +49,7 @@ function opToFlags(op: TableOperation): { isOwned: boolean; isTried: boolean; is
   }
 }
 
-async function updateFragranceFields(
-  executor: DatabaseExecutor,
-  fragranceId: number,
-  op: TableOperation,
-): Promise<void> {
+async function updateFragranceFields(executor: DatabaseExecutor, fragranceId: number, op: TableOperation) {
   const updates: Partial<typeof fragrance.$inferInsert> = {}
 
   if (op.notesSummary !== undefined) updates.notesSummary = lc(op.notesSummary) ?? null
@@ -69,7 +65,7 @@ async function updateFragranceFields(
   }
 }
 
-async function applyAddOp(executor: DatabaseExecutor, userId: string, op: TableOperation): Promise<void> {
+async function applyAddOp(executor: DatabaseExecutor, userId: string, op: TableOperation) {
   let resolvedFragranceId = op.fragranceId
 
   if (!resolvedFragranceId && op.brandName && op.fragranceName) {
@@ -123,7 +119,7 @@ async function applyPyramidAndNotesUpdate(
   userId: string,
   rowId: number,
   op: TableOperation,
-): Promise<void> {
+) {
   const [uf] = await executor
     .select({ fragranceId: userFragrance.fragranceId })
     .from(userFragrance)
@@ -143,7 +139,7 @@ async function applyPyramidAndNotesUpdate(
   await updateFragranceFields(executor, uf.fragranceId, op)
 }
 
-async function applyUpdateOp(executor: DatabaseExecutor, userId: string, op: TableOperation): Promise<void> {
+async function applyUpdateOp(executor: DatabaseExecutor, userId: string, op: TableOperation) {
   if (!op.rowId) return
 
   await applyPyramidAndNotesUpdate(executor, userId, op.rowId, op)
@@ -178,7 +174,7 @@ async function applyUpdateOp(executor: DatabaseExecutor, userId: string, op: Tab
     .where(and(eq(userFragrance.userId, userId), eq(userFragrance.id, op.rowId)))
 }
 
-async function applyTableOp(executor: DatabaseExecutor, userId: string, op: TableOperation): Promise<void> {
+async function applyTableOp(executor: DatabaseExecutor, userId: string, op: TableOperation) {
   if (op.op === 'add') {
     await applyAddOp(executor, userId, op)
 
@@ -220,7 +216,7 @@ export async function applyAgentMemoryOps(
   executor: DatabaseExecutor,
   userId: string,
   ops: AgentMemoryOp[] | undefined | null,
-): Promise<void> {
+) {
   if (ops == null || ops.length === 0) {
     return
   }
@@ -254,7 +250,7 @@ export async function applyAgentMemoryOps(
   }
 }
 
-export async function applyPatchToDatabase(userId: string, patch: StructuredPreferencePatch): Promise<void> {
+export async function applyPatchToDatabase(userId: string, patch: StructuredPreferencePatch) {
   await db.transaction(async (tx) => {
     if (patch.profile != null || patch.suggestions != null) {
       const mergedNoteRels =
@@ -339,7 +335,7 @@ export async function applyPatchToDatabase(userId: string, patch: StructuredPref
 }
 
 /** Apply only the profile/suggestions part of a patch (no transaction needed — simple upsert). */
-export async function applyProfileAndSuggestions(userId: string, patch: StructuredPreferencePatch): Promise<void> {
+export async function applyProfileAndSuggestions(userId: string, patch: StructuredPreferencePatch) {
   if (patch.profile == null && patch.suggestions == null) return
 
   const mergedNoteRels =
@@ -374,7 +370,7 @@ export async function applyProfileAndSuggestions(userId: string, patch: Structur
 }
 
 /** Apply only the recommendations part of a patch (clears old unreached recs, inserts new). */
-export async function applyRecommendations(userId: string, patch: StructuredPreferencePatch): Promise<void> {
+export async function applyRecommendations(userId: string, patch: StructuredPreferencePatch) {
   const recommendations = patch.recommendations
 
   if (recommendations == null) return
@@ -428,6 +424,6 @@ export async function applyRecommendations(userId: string, patch: StructuredPref
 }
 
 /** Apply a single table operation (no wrapping transaction). */
-export async function applySingleTableOp(userId: string, op: TableOperation): Promise<void> {
+export async function applySingleTableOp(userId: string, op: TableOperation) {
   await applyTableOp(db, userId, op)
 }

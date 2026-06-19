@@ -54,6 +54,22 @@ const ADD_KEYWORDS = [
   '添加',
 ]
 
+const CURATE_KEYWORDS = [
+  'коллекц',
+  'список',
+  'подборк',
+  'собери',
+  'собрать',
+  'collection',
+  'curate',
+  'list of',
+  'make a list',
+  'colección',
+  'liste',
+  'リスト',
+  '清单',
+]
+
 const RECOMMEND_KEYWORDS = [
   'порекомендуй',
   'порекомендовать',
@@ -119,15 +135,15 @@ const BULK_MARKERS = [
   'disliked:',
 ]
 
-function normalize(message: string): string {
+function normalize(message: string) {
   return message.toLowerCase().trim()
 }
 
-function hasKeyword(normalized: string, keywords: readonly string[]): boolean {
+function hasKeyword(normalized: string, keywords: readonly string[]) {
   return keywords.some((keyword) => normalized.includes(keyword))
 }
 
-function isBulkImport(message: string, normalized: string): boolean {
+function isBulkImport(message: string, normalized: string) {
   if (!message.includes('\n')) {
     return false
   }
@@ -137,7 +153,7 @@ function isBulkImport(message: string, normalized: string): boolean {
   return hasMarkdownHeader || BULK_MARKERS.some((marker) => normalized.includes(marker))
 }
 
-function isQuestionIntent(normalized: string): boolean {
+function isQuestionIntent(normalized: string) {
   if (normalized.endsWith('?')) {
     return true
   }
@@ -145,44 +161,41 @@ function isQuestionIntent(normalized: string): boolean {
   return hasKeyword(normalized, ASK_KEYWORDS)
 }
 
-function countIntentSignals(
-  message: string,
-  normalized: string,
-): {
-  agent: boolean
-  add: boolean
-  recommend: boolean
-  ask: boolean
-} {
+function countIntentSignals(message: string, normalized: string) {
   const agent = hasKeyword(normalized, AGENT_KEYWORDS) || isBulkImport(message, normalized)
   const add = hasKeyword(normalized, ADD_KEYWORDS)
   const recommend = hasKeyword(normalized, RECOMMEND_KEYWORDS)
-  const ask = isQuestionIntent(normalized) && !agent && !add && !recommend
+  const curate = hasKeyword(normalized, CURATE_KEYWORDS)
+  const ask = isQuestionIntent(normalized) && !agent && !add && !recommend && !curate
 
-  return { agent, add, recommend, ask }
+  return { agent, add, recommend, ask, curate }
 }
 
-function reasonForMode(mode: ChatAgentMode): ModeSwitchReasonKey {
+function reasonForMode(mode: ChatAgentMode) {
   switch (mode) {
     case 'ask': {
-      return 'ask_intent'
+      return 'ask_intent' satisfies ModeSwitchReasonKey
     }
 
     case 'add': {
-      return 'add_intent'
+      return 'add_intent' satisfies ModeSwitchReasonKey
     }
 
     case 'recommend': {
-      return 'recommend_intent'
+      return 'recommend_intent' satisfies ModeSwitchReasonKey
     }
 
     case 'agent': {
-      return 'agent_intent'
+      return 'agent_intent' satisfies ModeSwitchReasonKey
+    }
+
+    case 'curate': {
+      return 'curate_intent' satisfies ModeSwitchReasonKey
     }
   }
 }
 
-export function inferSuggestedChatMode(message: string): ChatAgentMode | null {
+export function inferSuggestedChatMode(message: string) {
   const normalized = normalize(message)
 
   if (normalized.length < 4) {
@@ -190,14 +203,16 @@ export function inferSuggestedChatMode(message: string): ChatAgentMode | null {
   }
 
   const signals = countIntentSignals(message, normalized)
-  const active = (['agent', 'add', 'recommend', 'ask'] as const).filter((key) => signals[key])
+  const active = (['agent', 'add', 'recommend', 'ask', 'curate'] as const).filter((key) => signals[key])
 
   if (active.length !== 1) {
     if (signals.agent) return 'agent'
 
-    if (signals.recommend && !signals.agent) return 'recommend'
-
     if (signals.add && !signals.agent) return 'add'
+
+    if (signals.curate && !signals.agent) return 'curate'
+
+    if (signals.recommend && !signals.agent) return 'recommend'
 
     if (signals.ask) return 'ask'
 
@@ -211,7 +226,7 @@ export function shouldSuggestModeSwitch(
   message: string,
   currentMode: ChatAgentMode,
   dismissedTexts?: ReadonlySet<string>,
-): ModeSwitchSuggestion | null {
+) {
   const trimmed = message.trim()
 
   if (trimmed.length < 4) {
@@ -231,5 +246,5 @@ export function shouldSuggestModeSwitch(
   return {
     suggested,
     reasonKey: reasonForMode(suggested),
-  }
+  } satisfies ModeSwitchSuggestion
 }

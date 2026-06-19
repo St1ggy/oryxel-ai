@@ -19,7 +19,7 @@ const RENDERERS: Record<GraphStyle, StyleRenderer> = {
   timeline: defaultRenderer,
 }
 
-async function loadRenderer(style: GraphStyle): Promise<StyleRenderer> {
+async function loadRenderer(style: GraphStyle) {
   if (style === 'default') return defaultRenderer
 
   switch (style) {
@@ -63,7 +63,7 @@ export async function initNoteGraphD3(
   onNodeClick: (node: NoteNode) => void,
   onTooltipChange: (state: TooltipState | null) => void,
   style: GraphStyle = 'default',
-): Promise<GraphControls> {
+) {
   const nodes: NoteNode[] = graph.nodes.map((n) => ({ ...n }))
 
   // Pre-resolve link sources/targets to NoteNode objects so that renderers
@@ -136,7 +136,7 @@ export async function initNoteGraphD3(
   const adjacency = buildAdjacency(graph.links)
   let hoveredNode: NoteNode | null = null
 
-  function isConnected(a: string, b: string): boolean {
+  function isConnected(a: string, b: string) {
     return a === b || adjacency.has(`${a}|${b}`)
   }
 

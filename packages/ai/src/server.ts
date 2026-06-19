@@ -34,3 +34,51 @@ export * from './types/provider-guides'
 export * from './types/chat-mode.js'
 export * from './types/model-catalog.js'
 export * from './ai/mode-inference.js'
+export type {
+  Visibility,
+  ListKind,
+  NotificationType,
+  UserListRow,
+  UserListItemRow,
+  FragranceSearchHit,
+  UserSearchHit,
+  PublicProfile,
+  FeedPost,
+  NotificationRow,
+} from './social/types.js'
+export { VISIBILITIES, LIST_KINDS, NOTIFICATION_TYPES } from './social/types.js'
+export { canView, isFollowing, isVisibility, slugifyTitle, visibilityAtLeast } from './social/visibility.js'
+export { validateUsername, normalizeUsername } from './social/username.js'
+export { searchFragrances, searchUsers, searchFragrancesByQuery } from './social/search.js'
+export {
+  listListsForUser,
+  getListById,
+  getListBySlug,
+  listItemsForList,
+  createList,
+  updateList,
+  deleteList,
+  addListItem,
+  removeListItem,
+  listPublicListsForUser,
+} from './social/lists.js'
+export { followUser, unfollowUser, getFollowCounts, listFollowerIds, listFollowingIds } from './social/follow.js'
+export { createPost, getPostById, deletePost, listPostsForAuthor, loadFeedForUser } from './social/posts.js'
+export {
+  createNotification,
+  createNotificationsBatch,
+  listNotifications,
+  countUnreadNotifications,
+  markNotificationsRead,
+  getNotificationPreferences,
+  setNotificationPreference,
+  isNotificationEnabled,
+} from './social/notifications.js'
+export {
+  getProfileByUsername,
+  loadPublicProfile,
+  updateSocialProfileFields,
+  getSocialProfileFields,
+} from './social/users.js'
+export { syncDiarySliceList, syncAllDiarySliceListsForUser } from './social/slice-sync.js'
+export { applyListOps, enqueueListNotifyJob } from './social/apply-list-ops.js'

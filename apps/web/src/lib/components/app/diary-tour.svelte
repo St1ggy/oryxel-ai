@@ -5,7 +5,7 @@
 
   import * as m from '$lib/paraglide/messages.js'
 
-  import type { DriveStep } from 'driver.js'
+  import type { DriveStep, Driver } from 'driver.js'
 
   import { browser } from '$app/environment'
 
@@ -18,7 +18,7 @@
 
   const { completed, onComplete, onReady, prepareChatPanel }: Props = $props()
 
-  function firstVisible(selector: string): HTMLElement | undefined {
+  function firstVisible(selector: string) {
     const nodes = document.querySelectorAll<HTMLElement>(selector)
 
     for (const element of nodes) {
@@ -35,27 +35,27 @@
   }
 
   /** Clicks the first matching element that is actually on screen (skips `hidden md:flex` desktop clones). */
-  function clickTourTarget(selector: string): void {
+  function clickTourTarget(selector: string) {
     firstVisible(selector)?.click()
   }
 
-  function tourElement(selector: string): HTMLElement {
+  function tourElement(selector: string) {
     return firstVisible(selector) ?? document.body
   }
 
   /** driver.js resolves `element` before `onHighlightStarted`, so tab switches must run from the *previous* step’s Next via `tick()`. */
-  async function afterTabSwitchNavigate(drv: { moveNext: () => void }, function_: () => void): Promise<void> {
+  async function afterTabSwitchNavigate(drv: { moveNext: () => void }, function_: () => void) {
     function_()
     await tick()
     await tick()
     drv.moveNext()
   }
 
-  function isMobileWidth(): boolean {
+  function isMobileWidth() {
     return browser && globalThis.matchMedia('(max-width: 767px)').matches
   }
 
-  async function markCompleted(): Promise<void> {
+  async function markCompleted() {
     if (completed) return
 
     try {
@@ -66,13 +66,13 @@
     onComplete()
   }
 
-  function scheduleDriverRefresh(drv: { refresh: () => void }): void {
+  function scheduleDriverRefresh(drv: { refresh: () => void }) {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => drv.refresh())
     })
   }
 
-  function buildTourSteps(mobile: boolean): DriveStep[] {
+  function buildTourSteps(mobile: boolean) {
     return [
       {
         popover: {
@@ -88,7 +88,7 @@
 
           return firstVisible('[data-tour="chat-panel"]') ?? tourElement('[data-tour="diary-primary-tabs"]')
         },
-        onHighlighted: (_element, _step, { driver: drv }) => {
+        onHighlighted: (_element: Element | undefined, _step: DriveStep, { driver: drv }: { driver: Driver }) => {
           if (firstVisible('[data-tour="chat-panel"]')) return
 
           requestAnimationFrame(() => {
@@ -119,7 +119,7 @@
           description: m.oryxel_tour_tabs_desc(),
           side: 'top',
           align: mobile ? 'center' : 'start',
-          onNextClick: async (_element, _step, { driver: drv }) => {
+          onNextClick: async (_element: Element | undefined, _step: DriveStep, { driver: drv }: { driver: Driver }) => {
             clickTourTarget('[data-tour="primary-fragrances"]')
             await tick()
             clickTourTarget('[data-tour="fragrance-list-owned"]')
@@ -136,14 +136,14 @@
           description: m.oryxel_tour_table_desc(),
           side: 'bottom',
           align: mobile ? 'center' : 'start',
-          onNextClick: async (_element, _step, { driver: drv }) => {
+          onNextClick: async (_element: Element | undefined, _step: DriveStep, { driver: drv }: { driver: Driver }) => {
             await afterTabSwitchNavigate(drv, () => clickTourTarget('[data-tour="primary-profile"]'))
           },
         },
       },
       {
         element: () => firstVisible('[data-tour="profile-header"]') ?? tourElement('[data-tour="diary-primary-tabs"]'),
-        onHighlighted: (_element, _step, { driver: drv }) => {
+        onHighlighted: (_element: Element | undefined, _step: DriveStep, { driver: drv }: { driver: Driver }) => {
           scheduleDriverRefresh(drv)
         },
         popover: {
@@ -156,7 +156,7 @@
       },
       {
         element: () => tourElement('[data-tour="profile-radar"]'),
-        onHighlighted: (_element, _step, { driver: drv }) => {
+        onHighlighted: (_element: Element | undefined, _step: DriveStep, { driver: drv }: { driver: Driver }) => {
           scheduleDriverRefresh(drv)
         },
         popover: {
@@ -164,14 +164,14 @@
           description: m.oryxel_tour_profile_radar_desc(),
           side: mobile ? 'top' : 'right',
           align: mobile ? 'center' : 'start',
-          onNextClick: async (_element, _step, { driver: drv }) => {
+          onNextClick: async (_element: Element | undefined, _step: DriveStep, { driver: drv }: { driver: Driver }) => {
             await afterTabSwitchNavigate(drv, () => clickTourTarget('[data-tour="primary-notes"]'))
           },
         },
       },
       {
         element: () => tourElement('[data-tour="notes-view-toggle"]'),
-        onHighlighted: (_element, _step, { driver: drv }) => {
+        onHighlighted: (_element: Element | undefined, _step: DriveStep, { driver: drv }: { driver: Driver }) => {
           scheduleDriverRefresh(drv)
         },
         popover: {
@@ -183,7 +183,7 @@
       },
       {
         element: () => tourElement('[data-tour="notes-content"]'),
-        onHighlighted: (_element, _step, { driver: drv }) => {
+        onHighlighted: (_element: Element | undefined, _step: DriveStep, { driver: drv }: { driver: Driver }) => {
           scheduleDriverRefresh(drv)
         },
         popover: {
@@ -191,7 +191,7 @@
           description: m.oryxel_tour_notes_sentiments_desc(),
           side: 'top',
           align: mobile ? 'center' : 'start',
-          onNextClick: async (_element, _step, { driver: drv }) => {
+          onNextClick: async (_element: Element | undefined, _step: DriveStep, { driver: drv }: { driver: Driver }) => {
             await afterTabSwitchNavigate(drv, () => clickTourTarget('[data-tour="primary-profile"]'))
           },
         },
@@ -201,7 +201,7 @@
           firstVisible('[data-tour="profile-settings"]') ??
           firstVisible('[data-tour="profile-header"]') ??
           tourElement('[data-tour="diary-primary-tabs"]'),
-        onHighlighted: (_element, _step, { driver: drv }) => {
+        onHighlighted: (_element: Element | undefined, _step: DriveStep, { driver: drv }: { driver: Driver }) => {
           scheduleDriverRefresh(drv)
         },
         popover: {
@@ -219,7 +219,7 @@
           align: 'center',
         },
       },
-    ]
+    ] as DriveStep[]
   }
 
   onMount(() => {

@@ -25,6 +25,11 @@ import {
   updatePatchStatus,
   warnIfPatchViolatesDisplayLimits,
 } from '@oryxel/ai/server'
+import {
+  applyListOps,
+  enqueueListNotifyJob,
+  listListsForUser,
+} from '@oryxel/ai/server'
 import { db, user, userAiPreferences } from '@oryxel/db'
 import { eq } from 'drizzle-orm'
 
@@ -36,7 +41,7 @@ async function applyPatchWithProgress(
   patch: StructuredPreferencePatch,
   baseStep: number,
   total: number,
-): Promise<boolean> {
+) {
   const profileStep = patch.profile != null || patch.suggestions != null ? 1 : 0
   const recStep = patch.recommendations == null ? 0 : 1
   let step = baseStep
@@ -107,7 +112,7 @@ async function applyNonCriticalPatchFlow(
   routerAttempts: unknown,
   explicitProvider: string | undefined,
   defaultProvider: string | null | undefined,
-): Promise<boolean> {
+) {
   const ok = await applyPatchWithProgress(jobId, userId, patch, PRE_APPLY_STEP_COUNT, totalSteps)
 
   if (!ok) {
@@ -153,6 +158,7 @@ function buildPreferenceAnalysisContext(
   budget: string | undefined,
   rememberContext: boolean | undefined,
   recentMessages: RecentChatSlice,
+  lists: Awaited<ReturnType<typeof listListsForUser>>,
 ) {
   type DiaryEntry = (typeof diary.to_try)[number]
 
@@ -192,6 +198,16 @@ function buildPreferenceAnalysisContext(
     },
     budget,
     recentMessages: (rememberContext ?? true) ? recentMessages : undefined,
+    lists:
+      lists.length > 0
+        ? lists.map((list) => ({
+            id: list.id,
+            slug: list.slug,
+            title: list.title,
+            kind: list.kind,
+            visibility: list.visibility,
+          }))
+        : undefined,
   }
 }
 
@@ -199,7 +215,7 @@ function sanitizeAgentChatPatch(
   patch: StructuredPreferencePatch,
   recommendationsOnly: boolean,
   chatMode: ChatAgentMode,
-): StructuredPreferencePatch {
+) {
   if (recommendationsOnly || chatMode === 'recommend') {
     return sanitizePatchToRecommendationsOnly(patch)
   }
@@ -215,13 +231,17 @@ function assistantFallbackMessage(
   patch: StructuredPreferencePatch,
   critical: boolean,
   chatMode: ChatAgentMode,
-): string {
+) {
   if (critical) {
     return `CRITICAL_PENDING:${patch.summary}`
   }
 
   if (chatMode === 'ask') {
     return patch.summary
+  }
+
+  if (chatMode === 'curate') {
+    return patch.reply ?? patch.summary
   }
 
   return `PATCH_APPLIED:${patch.summary}`
@@ -248,7 +268,7 @@ type AgentChatFinishInput = {
     | undefined
 }
 
-async function finishAgentChatFromPatch(input: AgentChatFinishInput): Promise<void> {
+async function finishAgentChatFromPatch(input: AgentChatFinishInput) {
   const {
     jobId,
     userId,
@@ -298,7 +318,7 @@ async function finishAgentChatFromPatch(input: AgentChatFinishInput): Promise<vo
   const applyTotal = profileStep + recStep + patch.tableOps.length
   const totalSteps = PRE_APPLY_STEP_COUNT + applyTotal
 
-  const skipApply = chatMode === 'ask' || critical
+  const skipApply = chatMode === 'ask' || chatMode === 'curate' || critical
 
   if (!skipApply) {
     const continued = await applyNonCriticalPatchFlow(
@@ -314,6 +334,14 @@ async function finishAgentChatFromPatch(input: AgentChatFinishInput): Promise<vo
     )
 
     if (!continued) return
+  }
+
+  if (chatMode === 'curate' && patch.listOps && patch.listOps.length > 0) {
+    const listResult = await applyListOps(userId, patch.listOps)
+
+    if (listResult.notifyList && listResult.createdListIds[0]) {
+      await enqueueListNotifyJob(userId, listResult.createdListIds[0])
+    }
   }
 
   const assistantMessage = patch.reply ?? assistantFallbackMessage(patch, critical, chatMode)
@@ -344,7 +372,7 @@ async function finishAgentChatFromPatch(input: AgentChatFinishInput): Promise<vo
   })
 }
 
-export async function handleAgentChat(jobId: number, userId: string, params: Record<string, unknown>): Promise<void> {
+export async function handleAgentChat(jobId: number, userId: string, params: Record<string, unknown>) {
   const message = params['message'] as string
   const locale = (params['locale'] as string | undefined) ?? 'en'
   const scenario = (params['scenario'] as string | undefined) ?? 'recommendation'
@@ -372,7 +400,7 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
     const userName = userRow?.name ?? 'User'
 
     const contextStartedAt = Date.now()
-    const [profile, diary, dismissed, defaultProvider, recentMessages, aiPrefs] = await Promise.all([
+    const [profile, diary, dismissed, defaultProvider, recentMessages, aiPrefs, lists] = await Promise.all([
       loadProfileForUser(userId, userName),
       loadDiaryForUser(userId, locale),
       loadDismissedForUser(userId),
@@ -395,6 +423,7 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
         .where(eq(userAiPreferences.userId, userId))
         .limit(1)
         .then((rows) => rows[0]),
+      listListsForUser(userId),
     ])
 
     await pushJobProgress(jobId, {
@@ -411,6 +440,7 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
       budget,
       aiPrefs?.rememberContext,
       recentMessages,
+      lists,
     )
 
     const preferredProvider =

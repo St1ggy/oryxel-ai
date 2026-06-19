@@ -14,7 +14,7 @@ import type { NoteLink, NoteNode, RenderedSelections, StyleContext, StyleRendere
 // Fixed wobble offsets per link (computed once, reused in tick)
 const wobbleCache = new Map<string, number>()
 
-function wobbleFor(index: number): number {
+function wobbleFor(index: number) {
   const key = String(index)
 
   if (!wobbleCache.has(key)) wobbleCache.set(key, Math.sin(index * 2.7) * 20)
@@ -22,7 +22,7 @@ function wobbleFor(index: number): number {
   return wobbleCache.get(key)!
 }
 
-function desaturate(hex: string): string {
+function desaturate(hex: string) {
   const c = hsl(hex)
 
   c.s *= 0.45
@@ -30,7 +30,7 @@ function desaturate(hex: string): string {
   return c.formatHex()
 }
 
-function inkPath(x1: number, y1: number, x2: number, y2: number, wobble: number): string {
+function inkPath(x1: number, y1: number, x2: number, y2: number, wobble: number) {
   const mx = (x1 + x2) / 2
   const my = (y1 + y2) / 2
   const dx = x2 - x1
@@ -42,7 +42,7 @@ function inkPath(x1: number, y1: number, x2: number, y2: number, wobble: number)
   return `M${x1},${y1} Q${mx + px},${my + py} ${x2},${y2}`
 }
 
-const init = (context: StyleContext): RenderedSelections => {
+const init = (context: StyleContext) => {
   const { g, defs, nodes, links, uid, width, height, svgElement } = context
 
   // Paper background — outside zoom group so it stays fixed when panning/zooming
@@ -200,7 +200,7 @@ const init = (context: StyleContext): RenderedSelections => {
   }
 }
 
-const tick = (sel: RenderedSelections, _nodes: NoteNode[], links: NoteLink[]): void => {
+const tick = (sel: RenderedSelections, _nodes: NoteNode[], links: NoteLink[]) => {
   sel.linkSel.attr('d', (lk, index) => {
     const s = lk.source as NoteNode
     const t = lk.target as NoteNode
@@ -221,12 +221,7 @@ const tick = (sel: RenderedSelections, _nodes: NoteNode[], links: NoteLink[]): v
   sel.extras?.labelsG?.attr('transform', (d: NoteNode) => `translate(${d.x ?? 0},${d.y ?? 0})`)
 }
 
-const buildSimulation = (
-  nodes: NoteNode[],
-  links: NoteLink[],
-  width: number,
-  height: number,
-): Simulation<NoteNode, NoteLink> =>
+const buildSimulation = (nodes: NoteNode[], links: NoteLink[], width: number, height: number) =>
   forceSimulation<NoteNode>(nodes)
     .velocityDecay(0.3)
     .force(

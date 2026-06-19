@@ -15,9 +15,7 @@
 
   const format = $derived(contentFormat ?? (role === 'assistant' ? 'markdown' : 'plain'))
 
-  const assistantHtml = $derived(
-    role === 'assistant' && format === 'markdown' ? renderAssistantMarkdown(text) : null,
-  )
+  const assistantHtml = $derived(role === 'assistant' && format === 'markdown' ? renderAssistantMarkdown(text) : null)
 </script>
 
 <div
@@ -35,7 +33,9 @@
   style={role === 'user' ? 'background: var(--oryx-bg-chat-user);' : 'background-color: var(--oryx-bg-chat-ai);'}
 >
   {#if assistantHtml !== null}
-    <div class="[&_a]:text-accent [&_code]:rounded [&_code]:bg-muted/80 [&_code]:px-1 [&_code]:py-px [&_pre]:overflow-x-auto">
+    <div
+      class="[&_a]:text-accent [&_code]:rounded [&_code]:bg-muted/80 [&_code]:px-1 [&_code]:py-px [&_pre]:overflow-x-auto"
+    >
       <!-- eslint-disable svelte/no-at-html-tags -- sanitized via sanitize-html -->
       {@html assistantHtml}
     </div>

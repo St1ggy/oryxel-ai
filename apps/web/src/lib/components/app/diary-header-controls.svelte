@@ -19,7 +19,7 @@
   const { onStartTour }: Props = $props()
 
   const themeContext = getThemeContext()
-  function themeLabel(themeId: OryxelThemeId): string {
+  function themeLabel(themeId: OryxelThemeId) {
     switch (themeId) {
       case 'light-aura': {
         return m.oryxel_theme_light()
@@ -43,7 +43,7 @@
     }
   }
 
-  function localeLabel(locale: (typeof locales)[number]): string {
+  function localeLabel(locale: (typeof locales)[number]) {
     switch (locale) {
       case 'en': {
         return 'English'
@@ -71,7 +71,7 @@
     }
   }
 
-  async function onLocaleSelect(locale: (typeof locales)[number]): Promise<void> {
+  async function onLocaleSelect(locale: (typeof locales)[number]) {
     localeStore.set(locale)
     await invalidateAll()
   }

@@ -5,7 +5,13 @@ import { emitJobCreated, emitJobUpdated } from './job-notify'
 
 import type { AiProviderName, StructuredPreferencePatch } from './contracts'
 
-export type JobType = 'profile_sync' | 'agent_chat'
+export type JobType =
+  | 'profile_sync'
+  | 'agent_chat'
+  | 'notify_post'
+  | 'notify_follow'
+  | 'notify_list'
+  | 'list_slice_sync'
 export type JobStatus = 'pending' | 'processing' | 'done' | 'failed' | 'cancelled'
 
 /** Sync-pipeline phases (profile_sync handler). */
@@ -50,7 +56,7 @@ export type JobProgress = {
 /** Most recent N progress events kept on a job — older ones drop on append. */
 export const MAX_PROGRESS_EVENTS = 50
 
-export async function createJob(userId: string, type: JobType, params?: Record<string, unknown>): Promise<number> {
+export async function createJob(userId: string, type: JobType, params?: Record<string, unknown>) {
   // For non-chat types, cancel any pending jobs of the same type so the
   // user always gets a fresh run without queue buildup.
   if (type !== 'agent_chat') {
@@ -70,7 +76,7 @@ export async function createJob(userId: string, type: JobType, params?: Record<s
   return row.id
 }
 
-export async function pushJobProgress(jobId: number, event: JobProgress): Promise<void> {
+export async function pushJobProgress(jobId: number, event: JobProgress) {
   const appended = JSON.stringify([event])
 
   await db
@@ -92,7 +98,7 @@ export async function pushJobProgress(jobId: number, event: JobProgress): Promis
 }
 
 /** Stream-time partial result from an in-flight provider call. UI may render preview. */
-export async function pushPartialResult(jobId: number, partial: Partial<StructuredPreferencePatch>): Promise<void> {
+export async function pushPartialResult(jobId: number, partial: Partial<StructuredPreferencePatch>) {
   await db
     .update(backgroundJob)
     .set({ result: { partial: true, ...partial } as unknown as Record<string, unknown> })
@@ -101,7 +107,7 @@ export async function pushPartialResult(jobId: number, partial: Partial<Structur
   emitJobUpdated(jobId)
 }
 
-export async function completeJob(jobId: number, result: Record<string, unknown>): Promise<void> {
+export async function completeJob(jobId: number, result: Record<string, unknown>) {
   await db
     .update(backgroundJob)
     .set({ status: 'done', result, completedAt: new Date() })
@@ -110,7 +116,7 @@ export async function completeJob(jobId: number, result: Record<string, unknown>
   emitJobUpdated(jobId)
 }
 
-export async function failJob(jobId: number, errorMessage: string): Promise<void> {
+export async function failJob(jobId: number, errorMessage: string) {
   await db
     .update(backgroundJob)
     .set({ status: 'failed', errorMessage, completedAt: new Date() })
@@ -122,9 +128,7 @@ export async function failJob(jobId: number, errorMessage: string): Promise<void
 /** Jobs in 'processing' older than this are considered stale and auto-failed. */
 const STALE_PROCESSING_MS = 15 * 60 * 1000 // 15 minutes
 
-export async function getActiveJobsForUser(
-  userId: string,
-): Promise<{ id: number; type: JobType; status: JobStatus; progress: JobProgress[] }[]> {
+export async function getActiveJobsForUser(userId: string) {
   const rows = await db
     .select({
       id: backgroundJob.id,
@@ -155,16 +159,7 @@ export async function getActiveJobsForUser(
     }))
 }
 
-export async function getJob(
-  jobId: number,
-  userId: string,
-): Promise<{
-  id: number
-  status: string
-  progress: JobProgress[]
-  result: Record<string, unknown> | null
-  errorMessage: string | null
-} | null> {
+export async function getJob(jobId: number, userId: string) {
   const rows = await db
     .select({
       id: backgroundJob.id,

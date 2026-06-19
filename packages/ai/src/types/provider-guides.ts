@@ -550,7 +550,7 @@ export const PROVIDER_DISPLAY_NAME: Record<ProviderGuideId, string> = {
   deepseek: 'DeepSeek',
 }
 
-export function getProviderGuideLocalized(id: ProviderGuideId, locale: string): { steps: string[]; notes: string[] } {
+export function getProviderGuideLocalized(id: ProviderGuideId, locale: string) {
   const guide = PROVIDER_GUIDES[id]
   const lang = locale in guide.steps ? locale : 'en'
 

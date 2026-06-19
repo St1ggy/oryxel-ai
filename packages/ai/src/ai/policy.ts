@@ -10,9 +10,19 @@ const providerNameSet = new Set<AiProviderName>([
   'deepseek',
 ])
 
-function parseProviderOrder(raw: string | undefined): AiProviderName[] {
+function parseProviderOrder(raw: string | undefined) {
+  const fallback = [
+    'groq',
+    'openai',
+    'qwen',
+    'deepseek',
+    'perplexity',
+    'anthropic',
+    'gemini',
+  ] satisfies AiProviderName[]
+
   if (!raw) {
-    return ['groq', 'openai', 'qwen', 'deepseek', 'perplexity', 'anthropic', 'gemini']
+    return fallback
   }
 
   const parsed = raw
@@ -20,10 +30,10 @@ function parseProviderOrder(raw: string | undefined): AiProviderName[] {
     .map((v) => v.trim().toLowerCase())
     .filter((v): v is AiProviderName => providerNameSet.has(v as AiProviderName))
 
-  return parsed.length > 0 ? parsed : ['groq', 'openai', 'qwen', 'deepseek', 'perplexity', 'anthropic', 'gemini']
+  return parsed.length > 0 ? parsed : fallback
 }
 
-export function getAiRouterPolicy(): AiRouterPolicy {
+export function getAiRouterPolicy() {
   return {
     timeoutMs: Number(process.env.AI_ROUTER_TIMEOUT_MS ?? 120_000),
     maxRetriesPerProvider: Number(process.env.AI_ROUTER_MAX_RETRIES ?? 0),

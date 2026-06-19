@@ -9,11 +9,11 @@ export type ThemeContextValue = {
 
 const THEME_CONTEXT_KEY = Symbol('oryxel-theme')
 
-export function setThemeContext(value: ThemeContextValue): void {
+export function setThemeContext(value: ThemeContextValue) {
   setContext(THEME_CONTEXT_KEY, value)
 }
 
-export function getThemeContext(): ThemeContextValue {
+export function getThemeContext() {
   const value = getContext<ThemeContextValue | undefined>(THEME_CONTEXT_KEY)
 
   if (!value) {

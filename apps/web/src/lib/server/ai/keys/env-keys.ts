@@ -2,7 +2,7 @@ import { type ProviderId, assertProvider } from './types'
 
 import { env } from '$env/dynamic/private'
 
-export function getPlatformKeyConfig(): { provider: ProviderId; key: string } | null {
+export function getPlatformKeyConfig() {
   const provider = env.PLATFORM_AI_PROVIDER?.trim()
   const key = env.PLATFORM_AI_KEY?.trim()
 
@@ -17,7 +17,7 @@ export function getPlatformKeyConfig(): { provider: ProviderId; key: string } | 
   }
 }
 
-export function fallbackProviderKey(provider: ProviderId): string | undefined {
+export function fallbackProviderKey(provider: ProviderId) {
   switch (provider) {
     case 'openai': {
       return env.OPENAI_API_KEY
@@ -49,7 +49,7 @@ export function fallbackProviderKey(provider: ProviderId): string | undefined {
   }
 }
 
-export function hasAnyFallbackKey(): boolean {
+export function hasAnyFallbackKey() {
   return ['openai', 'anthropic', 'gemini', 'qwen', 'perplexity', 'groq', 'deepseek'].some((provider) =>
     Boolean(fallbackProviderKey(provider as ProviderId)?.trim()),
   )

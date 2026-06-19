@@ -10,13 +10,13 @@ export function createPromptPreviewSampleRequest(input: {
   maxRecommendations: number
   tone?: string | null
   depth?: string | null
-}): AnalyzePreferencesRequest {
+}) {
   return {
     userId: 'preview',
     message: '[sample user message]',
     locale: input.locale,
     scenario: input.scenario,
-    chatMode: 'agent',
+    chatMode: 'agent' as const,
     allowAgentMemoryOps: true,
     recommendationsOnly: false,
     minPyramidNotes: input.minPyramidNotes,
@@ -30,7 +30,7 @@ export function createPromptPreviewSampleRequest(input: {
         displayName: 'Preview',
         bio: 'Sample bio text for prompt preview.',
         preferences: 'Sample preferences line.',
-        gender: 'female',
+        gender: 'female' as const,
       },
       diary: {
         // eslint-disable-next-line camelcase -- diary list key matches schema/API
@@ -52,8 +52,8 @@ export function createPromptPreviewSampleRequest(input: {
         owned: [],
       },
       budget: undefined,
-      recentMessages: [{ role: 'user', content: 'Earlier message (preview).' }],
+      recentMessages: [{ role: 'user' as const, content: 'Earlier message (preview).' }],
       agentMemoryEntries: undefined,
     },
-  }
+  } satisfies AnalyzePreferencesRequest
 }

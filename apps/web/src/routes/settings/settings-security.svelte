@@ -35,7 +35,7 @@
   )
 
   /** Short provider name for link buttons and linked-account titles (not login CTA copy). */
-  function oauthProviderName(id: string): string {
+  function oauthProviderName(id: string) {
     const map: Record<string, () => string> = {
       google: m.oryxel_auth_provider_google,
       apple: m.oryxel_auth_provider_apple,
@@ -68,7 +68,7 @@
     void refreshAccounts()
   })
 
-  function isLinked(providerId: string): boolean {
+  function isLinked(providerId: string) {
     return accounts.some((account) => account.providerId === providerId)
   }
 

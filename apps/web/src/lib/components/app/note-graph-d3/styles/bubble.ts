@@ -7,7 +7,7 @@ import type { NoteLink, NoteNode, RenderedSelections, StyleContext, StyleRendere
 // ── Bubble style — crisp translucent circles, links trimmed to circle edge ────
 
 // Returns the point on the src→tgt ray at distance `trim` from src.
-function trimmedEnd(sx: number, sy: number, tx: number, ty: number, trim: number): [number, number] {
+function trimmedEnd(sx: number, sy: number, tx: number, ty: number, trim: number) {
   const dx = tx - sx
   const dy = ty - sy
   const length = Math.hypot(dx, dy) || 1
@@ -15,7 +15,7 @@ function trimmedEnd(sx: number, sy: number, tx: number, ty: number, trim: number
   return [sx + (dx / length) * trim, sy + (dy / length) * trim]
 }
 
-const init = (context: StyleContext): RenderedSelections => {
+const init = (context: StyleContext) => {
   const { g, nodes, links } = context
 
   // Links trimmed to node-circle edge so they appear to dissolve into nodes.
@@ -99,7 +99,7 @@ const init = (context: StyleContext): RenderedSelections => {
   return { linkSel: linkSel as any, nodeGroupSel }
 }
 
-const tick = (sel: RenderedSelections): void => {
+const tick = (sel: RenderedSelections) => {
   sel.linkSel
     .attr('x1', (lk) => {
       const s = lk.source as NoteNode
@@ -129,12 +129,7 @@ const tick = (sel: RenderedSelections): void => {
   sel.nodeGroupSel.attr('transform', (d) => `translate(${d.x ?? 0},${d.y ?? 0})`)
 }
 
-const buildSimulation = (
-  nodes: NoteNode[],
-  links: NoteLink[],
-  width: number,
-  height: number,
-): Simulation<NoteNode, NoteLink> =>
+const buildSimulation = (nodes: NoteNode[], links: NoteLink[], width: number, height: number) =>
   forceSimulation<NoteNode>(nodes)
     .velocityDecay(0.32)
     .force(

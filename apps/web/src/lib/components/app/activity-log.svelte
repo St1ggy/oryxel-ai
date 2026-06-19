@@ -19,7 +19,7 @@
   const visible = $derived(showAll ? entries : entries.slice(0, INITIAL_VISIBLE))
   const hasMore = $derived(entries.length > INITIAL_VISIBLE)
 
-  function relativeTime(date: Date): string {
+  function relativeTime(date: Date) {
     const diff = Date.now() - new Date(date).getTime()
     const minutes = Math.floor(diff / 60_000)
     const hours = Math.floor(diff / 3_600_000)
@@ -36,7 +36,7 @@
     return new Date(date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
   }
 
-  function providerLabel(provider: string | null): string {
+  function providerLabel(provider: string | null) {
     if (!provider) return ''
 
     return PROVIDER_DISPLAY_NAME[provider as keyof typeof PROVIDER_DISPLAY_NAME] ?? provider

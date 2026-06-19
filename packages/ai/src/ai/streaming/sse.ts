@@ -2,7 +2,7 @@
 //
 // Yields raw `data:` payloads (one per SSE event). Empty lines, comments,
 // and other event fields are dropped. Multi-line `data:` is concatenated with `\n`.
-export async function* readSseEvents(body: ReadableStream<Uint8Array>, signal: AbortSignal): AsyncGenerator<string> {
+export async function* readSseEvents(body: ReadableStream<Uint8Array>, signal: AbortSignal) {
   const reader = body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
@@ -42,7 +42,7 @@ export async function* readSseEvents(body: ReadableStream<Uint8Array>, signal: A
   }
 }
 
-function extractDataField(block: string): string | null {
+function extractDataField(block: string) {
   const lines = block.split('\n')
   const dataParts: string[] = []
 

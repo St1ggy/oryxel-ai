@@ -8,7 +8,7 @@ import type { NoteLink, NoteNode, RenderedSelections, StyleContext, StyleRendere
 
 type TierKey = 'top' | 'heart' | 'base' | 'unknown'
 
-function tierY(tier: string, height: number): number {
+function tierY(tier: string, height: number) {
   const map: Record<TierKey, number> = {
     top: height * 0.18,
     heart: height * 0.5,
@@ -19,7 +19,7 @@ function tierY(tier: string, height: number): number {
   return map[tier as TierKey] ?? height * 0.5
 }
 
-function bezierPath(x1: number, y1: number, x2: number, y2: number, sameRow: boolean): string {
+function bezierPath(x1: number, y1: number, x2: number, y2: number, sameRow: boolean) {
   if (sameRow) {
     // bow upward for same-tier
     const mx = (x1 + x2) / 2
@@ -37,7 +37,7 @@ function bezierPath(x1: number, y1: number, x2: number, y2: number, sameRow: boo
 
 const TIERS: TierKey[] = ['top', 'heart', 'base']
 
-const init = (context: StyleContext): RenderedSelections => {
+const init = (context: StyleContext) => {
   const { g, nodes, links, width, height } = context
 
   // Tier band heights
@@ -154,7 +154,7 @@ const init = (context: StyleContext): RenderedSelections => {
   return { linkSel: linkSel as any, nodeGroupSel }
 }
 
-const tick = (sel: RenderedSelections): void => {
+const tick = (sel: RenderedSelections) => {
   sel.linkSel.attr('d', (lk) => {
     const s = lk.source as NoteNode
     const t = lk.target as NoteNode
@@ -166,12 +166,7 @@ const tick = (sel: RenderedSelections): void => {
   sel.nodeGroupSel.attr('transform', (d) => `translate(${d.x ?? 0},${d.y ?? 0})`)
 }
 
-const buildSimulation = (
-  nodes: NoteNode[],
-  links: NoteLink[],
-  width: number,
-  height: number,
-): Simulation<NoteNode, NoteLink> =>
+const buildSimulation = (nodes: NoteNode[], links: NoteLink[], width: number, height: number) =>
   forceSimulation<NoteNode>(nodes)
     .velocityDecay(0.32)
     .force(

@@ -6,7 +6,7 @@ import { translateBatch } from './translate'
 
 const TRANSLATE_BATCH_SIZE = 30
 
-function splitTerms(raw: string | null): string[] {
+function splitTerms(raw: string | null) {
   if (!raw) return []
 
   return raw
@@ -20,7 +20,7 @@ function collectRowKeys(r: {
   pyramidTop: string | null
   pyramidMid: string | null
   pyramidBase: string | null
-}): string[] {
+}) {
   const phrases = [
     extractEnglishKey(r.notesSummary),
     extractEnglishKey(r.pyramidTop),
@@ -31,7 +31,7 @@ function collectRowKeys(r: {
   return phrases.flatMap((p) => splitTerms(p))
 }
 
-async function loadUserCanonicalKeys(userId: string): Promise<string[]> {
+async function loadUserCanonicalKeys(userId: string) {
   const rows = await db
     .select({
       notesSummary: fragrance.notesSummary,
@@ -54,7 +54,7 @@ async function loadUserCanonicalKeys(userId: string): Promise<string[]> {
   return [...keySet]
 }
 
-async function findMissingKeys(keys: string[], locale: string): Promise<string[]> {
+async function findMissingKeys(keys: string[], locale: string) {
   if (keys.length === 0) return []
 
   const existing = await db
@@ -67,7 +67,7 @@ async function findMissingKeys(keys: string[], locale: string): Promise<string[]
   return keys.filter((k) => !existingSet.has(k))
 }
 
-function chunkArray<T>(array: T[], size: number): T[][] {
+function chunkArray<T>(array: T[], size: number) {
   const result: T[][] = []
 
   for (let index = 0; index < array.length; index += size) {
@@ -80,7 +80,7 @@ function chunkArray<T>(array: T[], size: number): T[][] {
 // Finds all canonical English fragrance keys for a user that lack translations
 // in the given locale, generates them via AI, and saves them to the DB.
 // No-op for locale === 'en'.
-export async function generateMissingTranslations(userId: string, locale: string): Promise<void> {
+export async function generateMissingTranslations(userId: string, locale: string) {
   if (locale === 'en') return
 
   try {

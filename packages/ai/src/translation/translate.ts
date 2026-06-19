@@ -14,7 +14,7 @@ const OPENAI_COMPAT_URLS: Partial<Record<AiProviderName, string>> = {
   perplexity: 'https://api.perplexity.ai/chat/completions',
 }
 
-function modelForProvider(name: AiProviderName): string {
+function modelForProvider(name: AiProviderName) {
   switch (name) {
     case 'openai': {
       return process.env.OPENAI_MODEL ?? 'gpt-4o-mini'
@@ -46,7 +46,7 @@ function modelForProvider(name: AiProviderName): string {
   }
 }
 
-function languageForLocale(locale: string): string {
+function languageForLocale(locale: string) {
   if (locale.startsWith('es')) return 'Spanish'
 
   if (locale.startsWith('fr')) return 'French'
@@ -60,7 +60,7 @@ function languageForLocale(locale: string): string {
   return locale
 }
 
-function buildTranslatePrompt(indexed: IndexedPhrases, locale: string): string {
+function buildTranslatePrompt(indexed: IndexedPhrases, locale: string) {
   const language = languageForLocale(locale)
 
   return [
@@ -71,7 +71,7 @@ function buildTranslatePrompt(indexed: IndexedPhrases, locale: string): string {
   ].join('\n')
 }
 
-async function callOpenAICompat(url: string, model: string, prompt: string, apiKey: string): Promise<string> {
+async function callOpenAICompat(url: string, model: string, prompt: string, apiKey: string) {
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
@@ -95,7 +95,7 @@ async function callOpenAICompat(url: string, model: string, prompt: string, apiK
   return json.choices?.[0]?.message?.content ?? '{}'
 }
 
-async function callAnthropic(model: string, prompt: string, apiKey: string): Promise<string> {
+async function callAnthropic(model: string, prompt: string, apiKey: string) {
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -119,7 +119,7 @@ async function callAnthropic(model: string, prompt: string, apiKey: string): Pro
   return json.content?.find((c) => c.type === 'text')?.text ?? '{}'
 }
 
-async function callGemini(model: string, prompt: string, apiKey: string): Promise<string> {
+async function callGemini(model: string, prompt: string, apiKey: string) {
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
     {
@@ -142,7 +142,7 @@ async function callGemini(model: string, prompt: string, apiKey: string): Promis
   return json.candidates?.[0]?.content?.parts?.[0]?.text ?? '{}'
 }
 
-async function callProvider(providerName: AiProviderName, prompt: string, apiKey: string): Promise<string> {
+async function callProvider(providerName: AiProviderName, prompt: string, apiKey: string) {
   const model = modelForProvider(providerName)
 
   if (providerName === 'anthropic') return callAnthropic(model, prompt, apiKey)
@@ -156,7 +156,7 @@ async function callProvider(providerName: AiProviderName, prompt: string, apiKey
   return callOpenAICompat(url, model, prompt, apiKey)
 }
 
-function parseTranslationResponse(raw: string, phrases: string[]): Map<string, string> {
+function parseTranslationResponse(raw: string, phrases: string[]) {
   const result = new Map<string, string>()
 
   let parsed: Record<string, unknown>
@@ -186,7 +186,7 @@ function parseTranslationResponse(raw: string, phrases: string[]): Map<string, s
 // the first available AI provider configured for the user.
 // Returns a Map of English phrase → translated phrase.
 // Returns an empty map if all providers fail or locale === 'en'.
-export async function translateBatch(userId: string, phrases: string[], locale: string): Promise<Map<string, string>> {
+export async function translateBatch(userId: string, phrases: string[], locale: string) {
   if (phrases.length === 0 || locale === 'en') return new Map()
 
   const policy = getAiRouterPolicy()
@@ -201,7 +201,7 @@ export async function translateBatch(userId: string, phrases: string[], locale: 
   // Mirror analyzePreferences: policy-ordered providers first, then any configured-but-out-of-policy ones
   const policyOrdered = policy.providerOrder.filter((p) => configuredIds.includes(p))
   const notInPolicy = configuredIds.filter((p) => !policy.providerOrder.includes(p))
-  const providerOrder: AiProviderName[] = [...policyOrdered, ...notInPolicy]
+  const providerOrder = [...policyOrdered, ...notInPolicy] satisfies AiProviderName[]
 
   const indexed: IndexedPhrases = Object.fromEntries(phrases.map((p, index) => [String(index), p]))
   const prompt = buildTranslatePrompt(indexed, locale)

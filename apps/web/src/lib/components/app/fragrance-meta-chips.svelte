@@ -42,7 +42,7 @@
     night: m.oryxel_meta_night,
   }
 
-  function resolveGenderLabel(gender: string | null): string | null {
+  function resolveGenderLabel(gender: string | null) {
     if (gender === 'female') return m.oryxel_meta_female()
 
     if (gender === 'male') return m.oryxel_meta_male()
@@ -52,7 +52,7 @@
     return null
   }
 
-  function resolveGenderGlyph(gender: string | null): string {
+  function resolveGenderGlyph(gender: string | null) {
     if (gender === 'female') return '♀'
 
     if (gender === 'male') return '♂'

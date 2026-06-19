@@ -5,7 +5,7 @@ export type FragranceFlags = {
   isOwned: boolean
 }
 
-export function listTypeToFlags(listType: string): FragranceFlags {
+export function listTypeToFlags(listType: string) {
   if (listType === 'liked') return { isTried: true, isLiked: true, isDisliked: false, isOwned: false }
 
   if (listType === 'disliked') return { isTried: true, isLiked: false, isDisliked: true, isOwned: false }

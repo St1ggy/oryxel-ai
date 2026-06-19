@@ -236,6 +236,7 @@ bun run check
 | 2026-03-31 | Added AI router + critical-confirm baseline and mandatory social auth guard (Google/Apple/Yandex). |
 | 2026-04-10 | **`@st1ggy/linter-config` v5**, ESLint 10 + **import-x**; Biome from the same package evaluated and **not** adopted; Prettier + ESLint + stylelint (web) remain. |
 | 2026-04-11 | **`@st1ggy/linter-config` `6.3.2`**, `type` aliases in Svelte via local `consistent-type-definitions` override. |
+| 2026-06-19 | **Social layer MVP**: lists, follow, feed, discover, in-app notifications; chat mode **`curate`**; migration **0006**; no Web Push. |
 
 ### `memory.mdc`
 
@@ -296,6 +297,19 @@ bun run check
 ### Why
 
 - Match the shared preset’s **`type`‑first** style; avoid duplicating the earlier mistake of mass‑converting to `interface` when the rule did not run inside `.svelte` scripts.
+
+---
+
+## 2026-06-19 — Social layer MVP
+
+### What changed
+
+- Migration **`0006_social_layer`**: social tables and profile fields; **`packages/ai/src/social/`**; web routes `/discover`, `/feed`, `/lists`, `/notifications`, `/u/[username]`; chat mode **`curate`** with `listOps`.
+- **In-app notifications only** — no Web Push / VAPID.
+
+### Why
+
+- Social MVP without push infrastructure.
 
 ---
 

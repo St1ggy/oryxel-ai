@@ -17,7 +17,7 @@ export type OpenAiCompatStreamInput = {
 }
 
 /** Streams an OpenAI-compatible chat completion (openai, groq, deepseek). Returns the full content text. */
-export async function streamOpenAiCompatible(input: OpenAiCompatStreamInput): Promise<string> {
+export async function streamOpenAiCompatible(input: OpenAiCompatStreamInput) {
   const response = await fetch(input.url, {
     method: 'POST',
     headers: {
@@ -75,11 +75,11 @@ export async function streamOpenAiCompatible(input: OpenAiCompatStreamInput): Pr
   return buffer
 }
 
-function estimateTokens(buffer: string): number {
+function estimateTokens(buffer: string) {
   return Math.ceil(buffer.length / 4)
 }
 
-function emitPartial(buffer: string, onPartial: (partial: Partial<StructuredPreferencePatch>) => void): void {
+function emitPartial(buffer: string, onPartial: (partial: Partial<StructuredPreferencePatch>) => void) {
   const { value } = tryParsePartial<Partial<StructuredPreferencePatch>>(buffer)
 
   if (value && typeof value === 'object') {

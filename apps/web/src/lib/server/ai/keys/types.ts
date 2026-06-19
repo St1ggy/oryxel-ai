@@ -33,7 +33,7 @@ export const DEFAULT_LABEL_BY_PROVIDER: Record<ProviderId, string> = {
 
 export const ALL_PROVIDERS: ProviderId[] = ['openai', 'anthropic', 'gemini', 'qwen', 'perplexity', 'groq', 'deepseek']
 
-export function toKeyHint(rawKey: string): string {
+export function toKeyHint(rawKey: string) {
   const normalized = rawKey.trim()
 
   if (normalized.length <= 4) {

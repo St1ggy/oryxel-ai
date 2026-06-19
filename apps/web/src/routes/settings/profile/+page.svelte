@@ -6,6 +6,7 @@
   import Input from '$lib/components/ui/input.svelte'
   import Label from '$lib/components/ui/label.svelte'
   import Select from '$lib/components/ui/select.svelte'
+  import SwitchField from '$lib/components/ui/switch-field.svelte'
   import Textarea from '$lib/components/ui/textarea.svelte'
   import * as m from '$lib/paraglide/messages.js'
 
@@ -15,6 +16,8 @@
   let bio = $state('')
   let preferences = $state('')
   let gender = $state<string>('__none__')
+  let username = $state('')
+  let isDiscoverable = $state(false)
 
   const genderOptions = $derived([
     { value: '__none__', label: m.oryxel_gender_not_specified() },
@@ -32,12 +35,16 @@
           displayName: string | null
           bio: string | null
           preferences: string | null
+          username: string | null
+          isDiscoverable: boolean
         }
 
         gender = data.gender ?? '__none__'
         displayName = data.displayName ?? ''
         bio = data.bio ?? ''
         preferences = data.preferences ?? ''
+        username = data.username ?? ''
+        isDiscoverable = data.isDiscoverable
       }
     } catch {
       /* ignore */
@@ -53,6 +60,8 @@
         displayName,
         bio,
         preferences,
+        username,
+        isDiscoverable,
       }),
     })
   }
@@ -79,6 +88,13 @@
       <Label for="gender">{m.oryxel_profile_gender()}</Label>
       <Select id="gender" class="mt-1 w-full" bind:value={gender} options={genderOptions} />
     </div>
+    <div>
+      <Label for="username">{m.oryxel_profile_username()}</Label>
+      <p class="mt-1 text-sm text-foreground-muted">{m.oryxel_profile_username_hint()}</p>
+      <Input id="username" class="mt-2" bind:value={username} placeholder="ada" />
+    </div>
+    <SwitchField id="discoverable" bind:checked={isDiscoverable} label={m.oryxel_profile_discoverable()} />
+    <p class="text-sm text-foreground-muted">{m.oryxel_profile_discoverable_hint()}</p>
   </Card>
 
   <div class="flex flex-wrap gap-2">

@@ -25,7 +25,7 @@ const bodySchema = z.object({
 
 type PatchBody = z.infer<typeof bodySchema>
 
-function buildDisplayUpdates(body: PatchBody): Record<string, unknown> {
+function buildDisplayUpdates(body: PatchBody) {
   const displayUpdates: Record<string, unknown> = {}
 
   if (body.minPyramidNotes !== undefined) displayUpdates['minPyramidNotes'] = body.minPyramidNotes

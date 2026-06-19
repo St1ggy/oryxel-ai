@@ -65,7 +65,7 @@ describe('detectFamily', () => {
 // buildNoteGraph
 // ---------------------------------------------------------------------------
 
-function makeRow(fragranceId: number, options: { top?: string; mid?: string; base?: string } = {}): DiaryRow {
+function makeRow(fragranceId: number, options: { top?: string; mid?: string; base?: string } = {}) {
   return {
     id: fragranceId,
     fragranceId,

@@ -20,10 +20,12 @@
   const isDiary = $derived(path === '/diary')
   const showSecondaryHeader = $derived(!isDiary && path !== '/' && !path.startsWith('/login'))
 
-  const secondaryTitle = $derived.by((): string => {
+  const secondaryTitle = $derived.by(() => {
     if (path.startsWith('/login')) return m.oryxel_login_title_signin()
 
     if (path.startsWith('/settings/profile')) return m.oryxel_settings_nav_profile()
+
+    if (path.startsWith('/settings/social')) return m.oryxel_settings_nav_social()
 
     if (path.startsWith('/settings/appearance')) return m.oryxel_settings_nav_appearance()
 
@@ -36,6 +38,16 @@
     if (path.startsWith('/settings')) return m.oryxel_settings_title()
 
     if (path.startsWith('/profile')) return m.oryxel_nav_profile()
+
+    if (path.startsWith('/feed')) return m.oryxel_social_feed_title()
+
+    if (path.startsWith('/discover')) return m.oryxel_social_discover_title()
+
+    if (path.startsWith('/lists')) return m.oryxel_social_lists_title()
+
+    if (path.startsWith('/notifications')) return m.oryxel_social_notifications_title()
+
+    if (path.startsWith('/u/')) return m.oryxel_nav_profile()
 
     return ''
   })
