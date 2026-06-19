@@ -27,50 +27,80 @@
   let fragranceResults = $state<FragranceHit[]>([])
   let userResults = $state<UserHit[]>([])
   let searching = $state(false)
+  let searchFailed = $state(false)
 
-  async function runSearch(activeTab: Tab, searchQuery: string) {
+  async function runSearch(activeTab: Tab, searchQuery: string, signal: AbortSignal) {
     const q = searchQuery.trim()
 
     if (q.length < 2) {
       fragranceResults = []
       userResults = []
+      searchFailed = false
 
       return
     }
 
     searching = true
+    searchFailed = false
 
     try {
       if (activeTab === 'fragrances') {
-        const response = await fetch(`/api/search/fragrances?q=${encodeURIComponent(q)}&limit=24`)
+        const response = await fetch(`/api/search/fragrances?q=${encodeURIComponent(q)}&limit=24`, { signal })
 
-        if (response.ok) {
-          const data = (await response.json()) as { results: FragranceHit[] }
+        if (!response.ok) {
+          fragranceResults = []
+          searchFailed = true
 
-          fragranceResults = data.results
+          return
         }
+
+        const data = (await response.json()) as { results: FragranceHit[] }
+
+        fragranceResults = data.results
+        userResults = []
       } else {
-        const response = await fetch(`/api/search/users?q=${encodeURIComponent(q)}`)
+        const response = await fetch(`/api/search/users?q=${encodeURIComponent(q)}`, { signal })
 
-        if (response.ok) {
-          const data = (await response.json()) as { results: UserHit[] }
+        if (!response.ok) {
+          userResults = []
+          searchFailed = true
 
-          userResults = data.results
+          return
         }
+
+        const data = (await response.json()) as { results: UserHit[] }
+
+        userResults = data.results
+        fragranceResults = []
       }
+    } catch {
+      if (signal.aborted) return
+
+      fragranceResults = []
+      userResults = []
+      searchFailed = true
     } finally {
-      searching = false
+      if (!signal.aborted) {
+        searching = false
+      }
     }
   }
 
   $effect(() => {
+    const activeTab = tab
+    const searchQuery = query
+    const controller = new AbortController()
+
     const handle = globalThis.setTimeout(() => {
-      runSearch(tab, query).catch(() => {
-        /* ignore */
+      runSearch(activeTab, searchQuery, controller.signal).catch(() => {
+        /* handled in runSearch */
       })
     }, 300)
 
-    return () => globalThis.clearTimeout(handle)
+    return () => {
+      globalThis.clearTimeout(handle)
+      controller.abort()
+    }
   })
 </script>
 
@@ -109,8 +139,12 @@
       : m.oryxel_discover_search_placeholder_users()}
   />
 
-  {#if searching}
+  {#if query.trim().length > 0 && query.trim().length < 2}
+    <p class="text-sm text-foreground-muted">{m.oryxel_discover_min_chars()}</p>
+  {:else if searching}
     <p class="text-sm text-foreground-muted">{m.oryxel_loading()}</p>
+  {:else if searchFailed}
+    <p class="text-sm text-destructive">{m.oryxel_discover_search_error()}</p>
   {:else if tab === 'fragrances'}
     {#if query.trim().length >= 2 && fragranceResults.length === 0}
       <p class="text-sm text-foreground-muted">{m.oryxel_discover_no_results()}</p>

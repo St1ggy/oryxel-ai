@@ -1,6 +1,8 @@
 import { searchUsers } from '@oryxel/ai/server'
 import { error, json } from '@sveltejs/kit'
 
+import '$lib/server/db'
+
 import type { RequestHandler } from './$types'
 
 export const GET: RequestHandler = async ({ url, locals }) => {
