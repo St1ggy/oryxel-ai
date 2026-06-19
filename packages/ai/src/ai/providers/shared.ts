@@ -70,11 +70,32 @@ function buildUserDisplayHardLimits(request: AnalyzePreferencesRequest): string[
   ]
 }
 
+function buildChatModeBlock(mode: AnalyzePreferencesRequest['chatMode']): string[] {
+  switch (mode) {
+    case 'ask':
+      return [
+        'MODE: questions only — answer conversationally in reply. tableOps must be []. Do not change profile, suggestions, recommendations, or agentMemoryOps.',
+      ]
+    case 'add':
+      return [
+        'MODE: additions only — use op=add in tableOps and/or recommendations[]. Never remove, move, rate, or change status. Do not change profile or suggestions.',
+      ]
+    case 'recommend':
+      return [
+        'MODE: recommendations refresh only — return a full new recommendations[]; tableOps []; omit profile, suggestions, agentMemoryOps.',
+      ]
+    case 'agent':
+    default:
+      return []
+  }
+}
+
 function buildBaseInstructions(request: AnalyzePreferencesRequest): string[] {
   const language = languageForLocale(request.locale)
   const tableNames = tableNamesForLocale(request.locale)
   const allowAgentMemoryOps = request.allowAgentMemoryOps !== false
-  const recommendationsOnly = request.recommendationsOnly === true
+  const recommendationsOnly = request.recommendationsOnly === true || request.chatMode === 'recommend'
+  const chatMode = request.chatMode ?? 'agent'
 
   const toneInstruction = request.tone
     ? `Communication style: ${request.tone}.`
@@ -113,6 +134,7 @@ function buildBaseInstructions(request: AnalyzePreferencesRequest): string[] {
           'MODE: recommendations refresh only — return a full new recommendations[]; tableOps []; omit profile, suggestions, agentMemoryOps.',
         ]
       : []),
+    ...buildChatModeBlock(chatMode),
   ].filter(Boolean) as string[]
 }
 

@@ -70,6 +70,8 @@ const contextSchema = z.object({
   agentMemoryEntries: z.array(agentMemoryEntryContextSchema).max(20).optional(),
 })
 
+export const chatAgentModeSchema = z.enum(['ask', 'agent', 'add', 'recommend'])
+
 export const analyzePreferencesRequestSchema = z.object({
   userId: z.string().min(1),
   message: z.string().min(1),
@@ -78,6 +80,10 @@ export const analyzePreferencesRequestSchema = z.object({
     .enum(['analog', 'pyramid', 'recommendation', 'comparison', 'command', 'profile_sync'])
     .default('recommendation'),
   preferredProvider: z.enum(['openai', 'anthropic', 'gemini', 'qwen', 'perplexity', 'groq', 'deepseek']).optional(),
+  /** User-selected model id for the active provider. */
+  model: z.string().max(80).optional(),
+  /** Interaction mode — limits what patch fields may be applied. */
+  chatMode: chatAgentModeSchema.default('agent'),
   context: contextSchema.optional(),
   minRecommendations: z.number().int().min(1).max(30).optional(),
   maxRecommendations: z.number().int().min(1).max(30).optional(),

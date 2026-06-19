@@ -1,16 +1,15 @@
 import { streamAnthropic } from '../streaming/anthropic-stream'
+import { resolveModel } from '../../types/model-catalog'
 
 import { buildPrompt, parseStructuredPatch } from './shared'
 
 import type { AiProvider } from '../contracts'
 
-const MODEL = 'claude-3-5-haiku-latest'
-
 export const anthropicProvider: AiProvider = {
   name: 'anthropic',
   async analyze(request, signal, apiKey, options) {
     const startedAt = Date.now()
-    const model = process.env.ANTHROPIC_MODEL ?? MODEL
+    const model = resolveModel('anthropic', request.model)
     const text = await streamAnthropic({
       apiKey,
       signal,

@@ -16,6 +16,7 @@ export function createPromptPreviewSampleRequest(input: {
     message: '[sample user message]',
     locale: input.locale,
     scenario: input.scenario,
+    chatMode: 'agent',
     allowAgentMemoryOps: true,
     recommendationsOnly: false,
     minPyramidNotes: input.minPyramidNotes,
