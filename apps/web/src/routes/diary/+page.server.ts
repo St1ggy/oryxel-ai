@@ -1,3 +1,4 @@
+import { type AiProviderName, getModelsForProvider } from '@oryxel/ai'
 import { redirect } from '@sveltejs/kit'
 import { and, eq } from 'drizzle-orm'
 
@@ -68,7 +69,11 @@ export const load: PageServerLoad = async ({ locals, url, cookies }) => {
         listUserProviderKeys(userId),
         getUserDefaultProvider(userId),
         db
-          .select({ graphStyle: userAiPreferences.graphStyle })
+          .select({
+            graphStyle: userAiPreferences.graphStyle,
+            defaultChatMode: userAiPreferences.defaultChatMode,
+            defaultModelId: userAiPreferences.defaultModelId,
+          })
           .from(userAiPreferences)
           .where(eq(userAiPreferences.userId, userId))
           .limit(1),
@@ -80,6 +85,8 @@ export const load: PageServerLoad = async ({ locals, url, cookies }) => {
       ])
 
     const graphStyle = prefsRows[0]?.graphStyle ?? 'default'
+    const chatMode = (prefsRows[0]?.defaultChatMode as 'ask' | 'agent' | 'add' | 'recommend' | null) ?? 'agent'
+    const savedModelId = prefsRows[0]?.defaultModelId ?? null
     const onboardingCompleted = !!profileRows[0]?.onboardingCompletedAt
 
     const labelMap = new Map(providerRows.map((r) => [r.provider, r.label]))
@@ -89,6 +96,11 @@ export const load: PageServerLoad = async ({ locals, url, cookies }) => {
       active: defaultProvider ? p.id === defaultProvider : index === 0,
       source: p.source === 'env' ? ('user' as const) : p.source,
     }))
+
+    const activeProviderId = (defaultProvider ?? chatProviders[0]?.value ?? 'openai') as AiProviderName
+    const modelCatalog = Object.fromEntries(
+      configuredProviders.map((provider) => [provider.id, getModelsForProvider(provider.id as AiProviderName)]),
+    ) as Record<string, { id: string; label: string }[]>
 
     const hasChatAccess = await hasEffectiveProviderAccess(userId)
     const latestChatRows = await listLatestChatMessages(userId, 40)
@@ -100,6 +112,12 @@ export const load: PageServerLoad = async ({ locals, url, cookies }) => {
       pendingPatches,
       activeJobs,
       chatProviders,
+      chatPreferences: {
+        mode: chatMode,
+        provider: activeProviderId,
+        modelId: savedModelId,
+      },
+      modelCatalog,
       hasChatAccess,
       chatHistory,
       graphStyle,

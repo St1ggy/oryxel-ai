@@ -8,6 +8,7 @@ describe('buildPrompt', () => {
       message: 'Need recommendations for spring',
       locale: 'ru',
       scenario: 'recommendation',
+      chatMode: 'agent',
     })
 
     expect(prompt).toContain('Russian')
@@ -20,6 +21,7 @@ describe('buildPrompt', () => {
       message: 'Compare these two options',
       locale: 'en',
       scenario: 'comparison',
+      chatMode: 'agent',
       context: {
         diary: {
           liked: [{ id: 1, brand: 'Brand A', fragrance: 'Scent A' }],
