@@ -1,16 +1,13 @@
-import { Pool, neonConfig } from '@neondatabase/serverless'
-import { drizzle } from 'drizzle-orm/neon-serverless'
-import ws from 'ws'
+import { drizzle } from 'drizzle-orm/postgres-js'
+import postgres from 'postgres'
 
 import * as schema from './schema'
 
-import type { NeonDatabase } from 'drizzle-orm/neon-serverless'
-
-neonConfig.webSocketConstructor = ws
+import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 
 let configuredDatabaseUrl: string | undefined
-let pool: Pool | undefined
-let dbInstance: NeonDatabase<typeof schema> | undefined
+let client: ReturnType<typeof postgres> | undefined
+let dbInstance: PostgresJsDatabase<typeof schema> | undefined
 
 export function resolveDatabaseUrl(rawUrl: string | undefined) {
   if (!rawUrl) {
@@ -37,19 +34,35 @@ function readDatabaseUrl() {
   return resolveDatabaseUrl(configuredDatabaseUrl ?? process.env['DATABASE_URL'])
 }
 
-function getPool() {
-  pool ??= new Pool({ connectionString: readDatabaseUrl() })
+function isInternalHost(url: string) {
+  try {
+    return new URL(url).hostname.endsWith('.railway.internal')
+  } catch {
+    return false
+  }
+}
 
-  return pool
+function getClient() {
+  if (!client) {
+    const url = readDatabaseUrl()
+
+    client = postgres(url, {
+      max: 10,
+      prepare: false,
+      ssl: isInternalHost(url) ? false : 'require',
+    })
+  }
+
+  return client
 }
 
 function getDbInstance() {
-  dbInstance ??= drizzle(getPool(), { schema })
+  dbInstance ??= drizzle(getClient(), { schema })
 
   return dbInstance
 }
 
-export const db = new Proxy({} as NeonDatabase<typeof schema>, {
+export const db = new Proxy({} as PostgresJsDatabase<typeof schema>, {
   get(_target, prop, receiver) {
     const instance = getDbInstance()
     const value = Reflect.get(instance, prop, receiver)

@@ -20,7 +20,7 @@ export async function unfollowUser(followerId: string, followingId: string) {
     .delete(userFollow)
     .where(and(eq(userFollow.followerId, followerId), eq(userFollow.followingId, followingId)))
 
-  return (result.rowCount ?? 0) > 0
+  return (result.count ?? 0) > 0
 }
 
 export async function getFollowCounts(userId: string) {

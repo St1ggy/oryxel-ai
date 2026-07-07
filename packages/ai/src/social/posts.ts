@@ -68,7 +68,7 @@ export async function getPostById(postId: number) {
 export async function deletePost(postId: number, authorId: string) {
   const result = await db.delete(post).where(and(eq(post.id, postId), eq(post.authorId, authorId)))
 
-  return (result.rowCount ?? 0) > 0
+  return (result.count ?? 0) > 0
 }
 
 export async function listPostsForAuthor(authorId: string, viewerId: string | null, limit = 30) {

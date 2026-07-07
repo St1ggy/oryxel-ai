@@ -205,7 +205,7 @@ export async function updateList(
 export async function deleteList(listId: number, userId: string) {
   const result = await db.delete(userList).where(and(eq(userList.id, listId), eq(userList.userId, userId)))
 
-  return (result.rowCount ?? 0) > 0
+  return (result.count ?? 0) > 0
 }
 
 export async function addListItem(
@@ -260,7 +260,7 @@ export async function removeListItem(listId: number, userId: string, itemId: num
 
   const result = await db.delete(userListItem).where(and(eq(userListItem.id, itemId), eq(userListItem.listId, listId)))
 
-  if ((result.rowCount ?? 0) > 0) {
+  if ((result.count ?? 0) > 0) {
     await db.update(userList).set({ updatedAt: new Date() }).where(eq(userList.id, listId))
 
     return true

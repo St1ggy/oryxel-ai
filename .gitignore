@@ -29,3 +29,8 @@ project.inlang/cache/
 
 # Local agent tooling
 .claude/
+
+# Database dumps (never commit — contain user data)
+*.dump
+*.sql.gz
+neon-*.sql

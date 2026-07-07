@@ -30,6 +30,24 @@ if (!building && env.REDIS_URL) {
   })
 }
 
+const handleMaintenance: Handle = async ({ event, resolve }) => {
+  if (env.MAINTENANCE_MODE !== 'true') {
+    return resolve(event)
+  }
+
+  const path = event.url.pathname
+
+  // Let healthcheck and static assets through so Vercel/monitoring keep working.
+  if (path === '/healthz' || path.startsWith('/_app/') || path.startsWith('/favicon')) {
+    return resolve(event)
+  }
+
+  return new Response('Service temporarily unavailable — database migration in progress.', {
+    status: 503,
+    headers: { 'content-type': 'text/plain; charset=utf-8', 'retry-after': '300' },
+  })
+}
+
 const handleParaglide: Handle = ({ event, resolve }) =>
   paraglideMiddleware(event.request, ({ request, locale }) => {
     event.request = request
@@ -57,4 +75,4 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
   return svelteKitHandler({ event, resolve, auth, building })
 }
 
-export const handle: Handle = sequence(handleParaglide, handleBetterAuth)
+export const handle: Handle = sequence(handleMaintenance, handleParaglide, handleBetterAuth)

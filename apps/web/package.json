@@ -27,7 +27,6 @@
     "@eslint/compat": "^2.1.0",
     "@eslint/js": "^10.0.1",
     "@inlang/paraglide-js": "^2.18.0",
-    "@neondatabase/serverless": "^1.1.0",
     "@playwright/test": "^1.59.1",
     "@st1ggy/linter-config": "6.3.2",
     "@sveltejs/adapter-vercel": "^6.3.3",
@@ -39,7 +38,6 @@
     "@types/d3": "^7.4.3",
     "@types/node": "^25.6.2",
     "@types/sanitize-html": "^2.16.1",
-    "@types/ws": "^8.18.1",
     "@vitest/browser-playwright": "^4.1.5",
     "better-auth": "~1.6.9",
     "drizzle-kit": "^0.31.10",
@@ -83,7 +81,6 @@
     "sanitize-html": "^2.17.3",
     "svelte-sonner": "^1.1.1",
     "tailwind-merge": "^3.5.0",
-    "ws": "^8.20.0",
     "zod": "^4.4.3"
   }
 }

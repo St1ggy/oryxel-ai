@@ -14,7 +14,28 @@ import { Pool } from 'pg'
 const __dirname = nodePath.dirname(fileURLToPath(import.meta.url))
 const migrationsDirectory = nodePath.join(__dirname, '../drizzle')
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL })
+function isLocalHost(rawUrl: string | undefined) {
+  if (!rawUrl) {
+    return true
+  }
+
+  try {
+    const host = new URL(rawUrl).hostname
+
+    return host.endsWith('.railway.internal') || host === 'localhost' || host === '127.0.0.1'
+  } catch {
+    return true
+  }
+}
+
+// pg auto-enables SSL only from `?sslmode=require` in the connection string; managed Postgres
+// (Neon, Railway public TCP proxy) needs an explicit hint. Local/internal hosts skip SSL.
+const sslConfig = isLocalHost(process.env.DATABASE_URL) ? false : { rejectUnauthorized: false }
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: sslConfig,
+})
 
 async function run() {
   const client = await pool.connect()
