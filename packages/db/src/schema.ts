@@ -1,5 +1,17 @@
-import { relations } from 'drizzle-orm'
-import { boolean, index, integer, jsonb, pgTable, serial, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
+import { relations, sql } from 'drizzle-orm'
+import {
+  boolean,
+  check,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  serial,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from 'drizzle-orm/pg-core'
 
 export * from './auth.schema'
 
@@ -239,39 +251,56 @@ export const aiPatchAuditLogRelations = relations(aiPatchAuditLog, ({ one }) => 
   }),
 }))
 
-export const backgroundJob = pgTable('background_job', {
-  id: serial('id').primaryKey(),
-  userId: text('user_id').notNull(),
-  // 'profile_sync' | 'agent_chat'
-  type: text('type').notNull(),
-  // 'pending' | 'processing' | 'done' | 'failed' | 'cancelled'
-  status: text('status').notNull().default('pending'),
-  // Job parameters stored at creation time so the worker can execute without the HTTP request context
-  params: jsonb('params').$type<Record<string, unknown>>(),
-  progress: jsonb('progress')
-    .$type<
-      {
-        step: number
-        total: number
-        phase: string
-        meta?: {
-          provider?: string
-          model?: string
-          tokensIn?: number
-          tokensOut?: number
-          attempt?: number
-          durationMs?: number
-          scenario?: string
-          note?: string
-        }
-      }[]
-    >()
-    .default([]),
-  result: jsonb('result').$type<Record<string, unknown>>(),
-  errorMessage: text('error_message'),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  completedAt: timestamp('completed_at', { withTimezone: true }),
-})
+export const backgroundJob = pgTable(
+  'background_job',
+  {
+    id: serial('id').primaryKey(),
+    userId: text('user_id').notNull(),
+    // 'profile_sync' | 'agent_chat'
+    type: text('type').notNull(),
+    // 'pending' | 'processing' | 'done' | 'failed' | 'cancelled'
+    status: text('status').notNull().default('pending'),
+    // Job parameters stored at creation time so the worker can execute without the HTTP request context
+    params: jsonb('params').$type<Record<string, unknown>>(),
+    progress: jsonb('progress')
+      .$type<
+        {
+          step: number
+          total: number
+          phase: string
+          meta?: {
+            provider?: string
+            model?: string
+            tokensIn?: number
+            tokensOut?: number
+            attempt?: number
+            durationMs?: number
+            scenario?: string
+            note?: string
+          }
+        }[]
+      >()
+      .default([]),
+    result: jsonb('result').$type<Record<string, unknown>>(),
+    errorMessage: text('error_message'),
+    leaseToken: uuid('lease_token'),
+    leaseExpiresAt: timestamp('lease_expires_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+  },
+  (table) => [
+    check(
+      'background_job_processing_lease_check',
+      sql`(${table.status} = 'processing' AND ${table.leaseToken} IS NOT NULL AND ${table.leaseExpiresAt} IS NOT NULL) OR (${table.status} <> 'processing' AND ${table.leaseToken} IS NULL AND ${table.leaseExpiresAt} IS NULL)`,
+    ),
+    index('background_job_pending_claim_idx')
+      .on(table.createdAt, table.id)
+      .where(sql`${table.status} = 'pending'`),
+    index('background_job_processing_lease_idx')
+      .on(table.leaseExpiresAt, table.id)
+      .where(sql`${table.status} = 'processing'`),
+  ],
+)
 
 // Generic translation cache (content-addressable).
 // key    = canonical English text stored in the fragrance / profile tables

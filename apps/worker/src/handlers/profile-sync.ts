@@ -1,6 +1,8 @@
 import {
+  JobLeaseLostError,
   analyzePreferences,
   applyPatchToDatabase,
+  assertJobLease,
   completeJob,
   failJob,
   generateMissingTranslations,
@@ -14,7 +16,7 @@ import {
 import { db, userAiPreferences } from '@oryxel/db'
 import { eq } from 'drizzle-orm'
 
-import type { AnalyzePreferencesRequest, DiaryRow } from '@oryxel/ai/server'
+import type { AnalyzePreferencesRequest, DiaryRow, JobLease } from '@oryxel/ai/server'
 
 const BATCH_SIZE = 10
 
@@ -84,7 +86,7 @@ function toEntry({ id, brand, fragrance }: DiaryRow) {
 
 // eslint-disable-next-line sonarjs/cognitive-complexity -- chain of progress emits + try/catch hits the threshold; readability > splitting
 async function fillListBatches(
-  jobId: number,
+  job: JobLease,
   context: StepContext,
   entries: DiaryEntry[],
   phase: FillPhase,
@@ -96,7 +98,7 @@ async function fillListBatches(
   for (const [index, batch] of batches.entries()) {
     const startedAt = Date.now()
 
-    await pushJobProgress(jobId, {
+    await pushJobProgress(job, {
       step: startStep + index,
       total,
       phase,
@@ -126,9 +128,10 @@ async function fillListBatches(
         },
       })
 
+      await assertJobLease(job)
       await applyPatchToDatabase(context.userId, batchRouter.result.patch)
 
-      await pushJobProgress(jobId, {
+      await pushJobProgress(job, {
         step: startStep + index,
         total,
         phase,
@@ -140,6 +143,8 @@ async function fillListBatches(
         },
       })
     } catch (batchError) {
+      if (batchError instanceof JobLeaseLostError) throw batchError
+
       console.error(
         `[profile-sync] ${phase} batch ${index + 1}/${batches.length} failed:`,
         batchError instanceof Error ? batchError.message : batchError,
@@ -148,7 +153,7 @@ async function fillListBatches(
   }
 }
 
-async function runProfileStep(context: StepContext) {
+async function runProfileStep(job: JobLease, context: StepContext) {
   try {
     const profileRouter = await analyzePreferences({
       userId: context.userId,
@@ -170,13 +175,16 @@ async function runProfileStep(context: StepContext) {
       },
     })
 
+    await assertJobLease(job)
     await applyPatchToDatabase(context.userId, profileRouter.result.patch)
   } catch (error_) {
+    if (error_ instanceof JobLeaseLostError) throw error_
+
     console.error('[profile-sync] Profile update failed:', error_ instanceof Error ? error_.message : error_)
   }
 }
 
-async function runRecommendationsStep(context: StepContext) {
+async function runRecommendationsStep(job: JobLease, context: StepContext) {
   try {
     const updatedProfile = await loadProfileForUser(context.userId, context.userName, context.locale)
     const recRouter = await analyzePreferences({
@@ -213,8 +221,11 @@ async function runRecommendationsStep(context: StepContext) {
       },
     })
 
+    await assertJobLease(job)
     await applyPatchToDatabase(context.userId, recRouter.result.patch)
   } catch (error_) {
+    if (error_ instanceof JobLeaseLostError) throw error_
+
     console.error('[profile-sync] Recommendations failed:', error_ instanceof Error ? error_.message : error_)
   }
 }
@@ -222,7 +233,7 @@ async function runRecommendationsStep(context: StepContext) {
 type FillPhaseConfig = { phase: FillPhase; entries: DiaryEntry[] }
 
 async function runFillPhases(
-  jobId: number,
+  job: JobLease,
   context: StepContext,
   phases: FillPhaseConfig[],
   total: number,
@@ -233,16 +244,16 @@ async function runFillPhases(
   for (const { phase, entries } of phases) {
     if (entries.length === 0) continue
 
-    await fillListBatches(jobId, context, entries, phase, step, total)
+    await fillListBatches(job, context, entries, phase, step, total)
     step += chunk(entries, BATCH_SIZE).length
   }
 
   return step
 }
 
-async function runSync(jobId: number, context: StepContext, total: number, hasPreferences: boolean) {
+async function runSync(job: JobLease, context: StepContext, total: number, hasPreferences: boolean) {
   let step = await runFillPhases(
-    jobId,
+    job,
     context,
     [
       { phase: 'owned', entries: context.ownedPending },
@@ -257,9 +268,9 @@ async function runSync(jobId: number, context: StepContext, total: number, hasPr
 
   const profileStartedAt = Date.now()
 
-  await pushJobProgress(jobId, { step, total, phase: 'profile', meta: { provider: context.provider } })
-  await runProfileStep(context)
-  await pushJobProgress(jobId, {
+  await pushJobProgress(job, { step, total, phase: 'profile', meta: { provider: context.provider } })
+  await runProfileStep(job, context)
+  await pushJobProgress(job, {
     step,
     total,
     phase: 'profile',
@@ -270,9 +281,9 @@ async function runSync(jobId: number, context: StepContext, total: number, hasPr
   if (hasPreferences) {
     const recStartedAt = Date.now()
 
-    await pushJobProgress(jobId, { step, total, phase: 'recommendations', meta: { provider: context.provider } })
-    await runRecommendationsStep(context)
-    await pushJobProgress(jobId, {
+    await pushJobProgress(job, { step, total, phase: 'recommendations', meta: { provider: context.provider } })
+    await runRecommendationsStep(job, context)
+    await pushJobProgress(job, {
       step,
       total,
       phase: 'recommendations',
@@ -280,6 +291,7 @@ async function runSync(jobId: number, context: StepContext, total: number, hasPr
     })
   }
 
+  await assertJobLease(job)
   await generateMissingTranslations(context.userId, context.locale)
 
   void recordActivity({
@@ -290,11 +302,11 @@ async function runSync(jobId: number, context: StepContext, total: number, hasPr
     summary: `Profile synced (${context.ownedEntries.length + context.likedEntries.length + context.neutralEntries.length + context.dislikedEntries.length} entries)`,
   })
 
-  await completeJob(jobId, { triggerSync: true })
+  await completeJob(job, { triggerSync: true })
 }
 
 export async function handleProfileSync(
-  jobId: number,
+  job: JobLease,
   userId: string,
   userName: string,
   params: Record<string, unknown>,
@@ -325,7 +337,7 @@ export async function handleProfileSync(
       diary.owned.length + diary.liked.length + diary.neutral.length + diary.disliked.length + diary.to_try.length
 
     if (totalEntries === 0) {
-      await completeJob(jobId, { triggerSync: false })
+      await completeJob(job, { triggerSync: false })
 
       return
     }
@@ -393,8 +405,8 @@ export async function handleProfileSync(
       toTryPending,
     }
 
-    await runSync(jobId, syncContext, total, hasPreferences)
+    await runSync(job, syncContext, total, hasPreferences)
   } catch (error_) {
-    await failJob(jobId, error_ instanceof Error ? error_.message : 'Unknown error')
+    await failJob(job, error_ instanceof Error ? error_.message : 'Unknown error')
   }
 }

@@ -1,6 +1,8 @@
 import {
+  JobLeaseLostError,
   analyzePreferences,
   applyPendingPatch,
+  assertJobLease,
   completeJob,
   countStrippedPatchMutations,
   createChatMessage,
@@ -26,20 +28,22 @@ import {
 import { db, user, userAiPreferences } from '@oryxel/db'
 import { eq } from 'drizzle-orm'
 
-import type { ChatAgentMode, StructuredPreferencePatch } from '@oryxel/ai/server'
+import type { ChatAgentMode, JobLease, StructuredPreferencePatch } from '@oryxel/ai/server'
 
 const PRE_APPLY_STEP_COUNT = 5
 
-async function pushJobProgressBestEffort(jobId: number, event: Parameters<typeof pushJobProgress>[1]) {
+async function pushJobProgressBestEffort(job: JobLease, event: Parameters<typeof pushJobProgress>[1]) {
   try {
-    await pushJobProgress(jobId, event)
-  } catch {
+    await pushJobProgress(job, event)
+  } catch (error) {
+    if (error instanceof JobLeaseLostError) throw error
+
     // Progress telemetry must not change the outcome of an atomic patch apply.
   }
 }
 
 async function applyNonCriticalPatchFlow(
-  jobId: number,
+  job: JobLease,
   userId: string,
   patch: StructuredPreferencePatch,
   pendingPatchId: number,
@@ -50,7 +54,7 @@ async function applyNonCriticalPatchFlow(
 ) {
   const startedAt = Date.now()
 
-  await pushJobProgressBestEffort(jobId, {
+  await pushJobProgressBestEffort(job, {
     step: PRE_APPLY_STEP_COUNT + 1,
     total: totalSteps,
     phase: 'applying',
@@ -59,6 +63,7 @@ async function applyNonCriticalPatchFlow(
   let isOk = false
 
   try {
+    await assertJobLease(job)
     const result = await applyPendingPatch({ patchId: pendingPatchId, userId, expectedStatus: 'created' })
 
     isOk = result.status === 'applied'
@@ -67,12 +72,12 @@ async function applyNonCriticalPatchFlow(
   }
 
   if (!isOk) {
-    await failJob(jobId, 'Patch apply failed')
+    await failJob(job, 'Patch apply failed')
 
     return false
   }
 
-  await pushJobProgressBestEffort(jobId, {
+  await pushJobProgressBestEffort(job, {
     step: totalSteps,
     total: totalSteps,
     phase: 'applying',
@@ -189,7 +194,7 @@ function assistantFallbackMessage(patch: StructuredPreferencePatch, critical: bo
 }
 
 type AgentChatFinishInput = {
-  jobId: number
+  job: JobLease
   userId: string
   message: string
   locale: string
@@ -211,7 +216,7 @@ type AgentChatFinishInput = {
 
 async function finishAgentChatFromPatch(input: AgentChatFinishInput) {
   const {
-    jobId,
+    job,
     userId,
     message,
     locale,
@@ -246,6 +251,7 @@ async function finishAgentChatFromPatch(input: AgentChatFinishInput) {
       maxRecommendations: aiPrefs?.maxRecommendations,
     },
   })
+  await assertJobLease(job)
   const isCritical = isCriticalPatch(patch)
   const pendingPatch = await createPendingPatch({
     userId,
@@ -260,7 +266,7 @@ async function finishAgentChatFromPatch(input: AgentChatFinishInput) {
 
   if (!isSkipApply) {
     const isContinued = await applyNonCriticalPatchFlow(
-      jobId,
+      job,
       userId,
       patch,
       pendingPatch.id,
@@ -275,6 +281,7 @@ async function finishAgentChatFromPatch(input: AgentChatFinishInput) {
 
   const assistantMessage = patch.reply ?? assistantFallbackMessage(patch, isCritical, chatMode)
 
+  await assertJobLease(job)
   await createChatMessage({
     userId,
     role: 'assistant',
@@ -290,7 +297,7 @@ async function finishAgentChatFromPatch(input: AgentChatFinishInput) {
     chatMode !== 'recommend' &&
     (patch.tableOps.length >= 2 || patch.recommendations != null || scenario === 'command')
 
-  await completeJob(jobId, {
+  await completeJob(job, {
     requiresConfirmation: isCritical,
     pendingPatchId: pendingPatch.id,
     summary: patch.summary,
@@ -301,7 +308,7 @@ async function finishAgentChatFromPatch(input: AgentChatFinishInput) {
   })
 }
 
-export async function handleAgentChat(jobId: number, userId: string, params: Record<string, unknown>) {
+export async function handleAgentChat(job: JobLease, userId: string, params: Record<string, unknown>) {
   const message = params['message'] as string
   const locale = normalizeLocale((params['locale'] as string | undefined) ?? 'en')
   const scenario = (params['scenario'] as string | undefined) ?? 'recommendation'
@@ -313,7 +320,7 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
     (isRecommendationsOnly ? 'recommend' : 'agent')) as ChatAgentMode
 
   try {
-    await pushJobProgress(jobId, {
+    await pushJobProgress(job, {
       step: 1,
       total: PRE_APPLY_STEP_COUNT,
       phase: 'validate',
@@ -355,7 +362,7 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
       listListsForUser(userId),
     ])
 
-    await pushJobProgress(jobId, {
+    await pushJobProgress(job, {
       step: 2,
       total: PRE_APPLY_STEP_COUNT,
       phase: 'load_context',
@@ -377,13 +384,13 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
         ? (defaultProvider ?? undefined)
         : (explicitProvider as Parameters<typeof analyzePreferences>[0]['preferredProvider'])
 
-    await pushJobProgress(jobId, {
+    await pushJobProgress(job, {
       step: 3,
       total: PRE_APPLY_STEP_COUNT,
       phase: 'build_prompt',
       meta: { scenario },
     })
-    await pushJobProgress(jobId, {
+    await pushJobProgress(job, {
       step: 4,
       total: PRE_APPLY_STEP_COUNT,
       phase: 'model_call',
@@ -415,10 +422,10 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
       },
       {
         onPartial: (partial) => {
-          void pushPartialResult(jobId, partial)
+          void pushPartialResult(job, partial).catch(() => null)
         },
         onTokenProgress: ({ tokensOut, durationMs }) => {
-          void pushJobProgress(jobId, {
+          void pushJobProgress(job, {
             step: 4,
             total: PRE_APPLY_STEP_COUNT,
             phase: 'model_call',
@@ -427,12 +434,12 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
               tokensOut,
               durationMs,
             },
-          })
+          }).catch(() => null)
         },
       },
     )
 
-    await pushJobProgress(jobId, {
+    await pushJobProgress(job, {
       step: 5,
       total: PRE_APPLY_STEP_COUNT,
       phase: 'parse',
@@ -445,7 +452,7 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
     })
 
     await finishAgentChatFromPatch({
-      jobId,
+      job,
       userId,
       message,
       locale,
@@ -458,6 +465,6 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
       aiPrefs,
     })
   } catch (error_) {
-    await failJob(jobId, error_ instanceof Error ? error_.message : 'Unknown error')
+    await failJob(job, error_ instanceof Error ? error_.message : 'Unknown error')
   }
 }

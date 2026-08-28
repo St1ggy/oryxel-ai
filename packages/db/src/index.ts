@@ -75,4 +75,13 @@ export const db = new Proxy({} as PostgresJsDatabase<typeof schema>, {
   },
 })
 
+export async function closeDatabase() {
+  const activeClient = client
+
+  client = undefined
+  databaseInstance = undefined
+
+  await activeClient?.end({ timeout: 5 })
+}
+
 export * from './schema'

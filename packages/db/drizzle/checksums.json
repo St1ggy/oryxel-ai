@@ -6,5 +6,6 @@
   "0004_condemned_havok": "946db370d59da9f0dde182a0a5033ed16664cdbdfdfbdff1e2a6322a825db974",
   "0005_acoustic_blonde_phantom": "09647893172b45bf9cdca63e7740a8d00a5dc5babe143a2ccc2b46b6d827a170",
   "0006_social_layer": "0b1550059aac396311a3a8f867066330e1828b5b13549333da2112fcb961f45e",
-  "0007_reconcile_runtime_schema": "c944c2d4af78b12867742a3a5ca60b3e7b6d53541364c952fbfca7dcde444991"
+  "0007_reconcile_runtime_schema": "c944c2d4af78b12867742a3a5ca60b3e7b6d53541364c952fbfca7dcde444991",
+  "0008_background_job_leases": "3c76084851b395cf3ff13d73874f4ec06ee909d6d28fda5084a42082a03cff2a"
 }
