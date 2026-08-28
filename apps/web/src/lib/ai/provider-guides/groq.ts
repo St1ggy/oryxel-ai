@@ -30,7 +30,7 @@ export const groq: ProviderGuide = {
       'Copiez la clé — elle est affichée une seule fois.',
       'Ajoutez la clé dans Oryxel (fournisseur Groq).',
     ],
-    jp: [
+    ja: [
       'Groq Consoleを開いて登録します（無料）。',
       'API Keysに移動してCreate API Keyをクリック。',
       'キーをコピー（一度だけ表示されます）。',
@@ -64,7 +64,7 @@ export const groq: ProviderGuide = {
       'Groq utilise des accélérateurs LPU — réponses très rapides.',
       '429 signifie que la limite journalière du plan gratuit est dépassée.',
     ],
-    jp: [
+    ja: [
       '無料プラン：ほとんどのモデルで1日14,400リクエスト。',
       'GroqはLPUアクセラレーターを使用 — 応答が非常に速い。',
       '429は無料プランの1日制限を超えたことを意味します。',

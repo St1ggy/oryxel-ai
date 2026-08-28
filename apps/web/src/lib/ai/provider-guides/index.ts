@@ -1,3 +1,5 @@
+import { normalizeLocale } from '@oryxel/ai'
+
 import { anthropic } from './anthropic'
 import { deepseek } from './deepseek'
 import { gemini } from './gemini'
@@ -25,7 +27,8 @@ export function getProviderGuideLocalized(id: string, locale: string) {
 
   if (!guide) return { steps: [], notes: [] }
 
-  const lang = locale in guide.steps ? locale : 'en'
+  const normalizedLocale = normalizeLocale(locale)
+  const lang = normalizedLocale in guide.steps ? normalizedLocale : 'en'
 
   return { steps: guide.steps[lang] ?? guide.steps['en'], notes: guide.notes[lang] ?? guide.notes['en'] }
 }

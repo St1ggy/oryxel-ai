@@ -7,6 +7,7 @@ import {
   getUserDefaultProvider,
   loadDiaryForUser,
   loadProfileForUser,
+  normalizeLocale,
   pushJobProgress,
   recordActivity,
 } from '@oryxel/ai/server'
@@ -61,7 +62,9 @@ function chunk<T>(array: T[], size: number) {
   return result
 }
 
-/** Row needs an AI fill pass if any of the visible-in-UI metadata fields is empty. */
+//
+// Row needs an AI fill pass if any of the visible-in-UI metadata fields is empty.
+//
 function needsEnrichment(row: DiaryRow) {
   return (
     row.notes.length === 0 ||
@@ -296,7 +299,7 @@ export async function handleProfileSync(
   userName: string,
   params: Record<string, unknown>,
 ) {
-  const locale = (params['locale'] as string | undefined) ?? 'en'
+  const locale = normalizeLocale((params['locale'] as string | undefined) ?? 'en')
 
   try {
     const [profile, diary, defaultProvider, aiPrefs] = await Promise.all([

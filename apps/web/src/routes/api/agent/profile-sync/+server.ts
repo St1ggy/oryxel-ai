@@ -1,3 +1,4 @@
+import { normalizeLocale } from '@oryxel/ai/server'
 import { error, json } from '@sveltejs/kit'
 import { z } from 'zod'
 
@@ -15,7 +16,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   }
 
   const body = bodySchema.parse(await request.json())
-  const locale = body.locale ?? 'en'
+  const locale = normalizeLocale(body.locale ?? 'en')
   const userId = locals.user.id
 
   const jobId = await createJob(userId, 'profile_sync', { locale })

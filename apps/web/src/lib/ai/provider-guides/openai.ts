@@ -30,7 +30,7 @@ export const openai: ProviderGuide = {
       'Copiez la clé immédiatement après la création — elle est affichée complète une seule fois.',
       'Ajoutez la clé dans Oryxel et définissez-la comme fournisseur par défaut si nécessaire.',
     ],
-    jp: [
+    ja: [
       'OpenAI PlatformでAPI Keysを開きます。',
       'Create new secret keyをクリックして名前を付けます（例：Oryxel Prod）。',
       '作成直後にキーをコピー——完全なキーは一度だけ表示されます。',
@@ -64,7 +64,7 @@ export const openai: ProviderGuide = {
       '401 indique généralement une clé invalide ou révoquée.',
       '429 — limite RPM/TPM atteinte ou crédits épuisés.',
     ],
-    jp: [
+    ja: [
       'API呼び出しにはOpenAIアカウントの有効な課金/クレジットが必要です。',
       '401は通常、無効または取り消されたキーを意味します。',
       '429 — RPM/TPMレート制限またはクレジット枯渇。',

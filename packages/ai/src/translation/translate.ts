@@ -1,9 +1,12 @@
 import { listConfiguredProviderIds, listProviderApiKeyCandidates } from '../ai/keys/service'
 import { getAiRouterPolicy } from '../ai/policy'
+import { normalizeLocale } from '../i18n/locale.js'
 
 import type { AiProviderName } from '../ai/contracts'
 
-/** Phrase index → English phrase.  Input encoding for the translate prompt. */
+//
+// Phrase index → English phrase.  Input encoding for the translate prompt.
+//
 type IndexedPhrases = Record<string, string>
 
 const OPENAI_COMPAT_URLS: Partial<Record<AiProviderName, string>> = {
@@ -47,13 +50,15 @@ function modelForProvider(name: AiProviderName) {
 }
 
 function languageForLocale(locale: string) {
+  locale = normalizeLocale(locale)
+
   if (locale.startsWith('es')) return 'Spanish'
 
   if (locale.startsWith('fr')) return 'French'
 
   if (locale === 'ru') return 'Russian'
 
-  if (locale.startsWith('jp') || locale.startsWith('ja')) return 'Japanese'
+  if (locale.startsWith('ja')) return 'Japanese'
 
   if (locale.startsWith('zh')) return 'Chinese'
 
@@ -88,7 +93,7 @@ async function callOpenAICompat(url: string, model: string, prompt: string, apiK
     }),
   })
 
-  if (!response.ok) throw new Error(`${url.split('/')[2]} error ${response.status}`)
+  if (!response.ok) throw new Error(`${url.split('/', 3)[2]} error ${response.status}`)
 
   const json = (await response.json()) as { choices?: { message?: { content?: string } }[] }
 

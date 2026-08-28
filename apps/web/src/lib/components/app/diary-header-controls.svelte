@@ -57,7 +57,7 @@
         return 'Français'
       }
 
-      case 'jp': {
+      case 'ja': {
         return '日本語'
       }
 

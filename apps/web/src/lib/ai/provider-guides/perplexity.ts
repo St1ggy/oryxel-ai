@@ -30,7 +30,7 @@ export const perplexity: ProviderGuide = {
       'Ajoutez la clé dans Oryxel (fournisseur Perplexity).',
       "Vérifiez qu'un modèle pris en charge est sélectionné pour votre cas d'usage (ex. famille sonar).",
     ],
-    jp: [
+    ja: [
       'Perplexity API settingsを開いて新しいAPIキーを作成。',
       'キーをコピーして安全な場所に保管。',
       'OryxelにキーをPerplexityプロバイダーとして追加。',
@@ -64,7 +64,7 @@ export const perplexity: ProviderGuide = {
       '401 — clé invalide ou révoquée.',
       '429 — limite de requêtes ou quota de compte atteint.',
     ],
-    jp: [
+    ja: [
       'Perplexity APIの課金は通常のPerplexity Proサブスクリプションとは別です。',
       '401 — 無効または取り消されたキー。',
       '429 — リクエスト制限またはアカウントクォータに達しました。',

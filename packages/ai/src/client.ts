@@ -1,4 +1,5 @@
 export type { AiProviderName } from './ai/contracts.js'
+export * from './i18n/locale.js'
 export * from './types/chat-mode.js'
 export * from './ai/mode-inference.js'
 export type { DiaryData, DiaryRow, NoteRelationship, RadarAxes, RadarAxis } from './types/diary'

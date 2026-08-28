@@ -30,7 +30,7 @@ export const anthropic: ProviderGuide = {
       'Copiez la clé et enregistrez-la dans un gestionnaire de mots de passe.',
       'Collez la clé dans Oryxel et testez-la avec une requête de chat.',
     ],
-    jp: [
+    ja: [
       'Anthropic ConsoleでSettings → API Keysを開きます。',
       '新しいキーを作成して名前を付けます（例：Oryxel）。',
       'キーをコピーしてパスワードマネージャーに保存。',
@@ -64,7 +64,7 @@ export const anthropic: ProviderGuide = {
       '401 — clé invalide/supprimée ; 403 — restrictions workspace/organisation.',
       '429 — limites de requêtes ou quota de compte.',
     ],
-    jp: [
+    ja: [
       '必要なモデルがワークスペースで利用可能か確認してください。',
       '401 — 無効/削除済みキー；403 — ワークスペース/組織の制限。',
       '429 — リクエスト制限またはアカウントクォータ。',

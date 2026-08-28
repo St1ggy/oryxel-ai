@@ -3,9 +3,10 @@ import { sequence } from '@sveltejs/kit/hooks'
 import { svelteKitHandler } from 'better-auth/svelte-kit'
 import Redis from 'ioredis'
 
-import { getTextDirection } from '$lib/paraglide/runtime'
+import { cookieMaxAge, cookieName, getTextDirection } from '$lib/paraglide/runtime'
 import { paraglideMiddleware } from '$lib/paraglide/server'
 import { auth } from '$lib/server/auth'
+import { getLegacyLocaleRedirect, rewriteLegacyLocaleCookieHeader } from '$lib/server/i18n/compatibility'
 
 import type { Handle } from '@sveltejs/kit'
 
@@ -48,6 +49,26 @@ const handleMaintenance: Handle = async ({ event, resolve }) => {
   })
 }
 
+const handleLegacyLocaleCompatibility: Handle = ({ event, resolve }) => {
+  const redirectResponse = getLegacyLocaleRedirect(event.url)
+
+  if (redirectResponse) return redirectResponse
+
+  const cookieHeader = event.request.headers.get('cookie')
+  const normalizedCookieHeader = rewriteLegacyLocaleCookieHeader(cookieHeader, cookieName)
+
+  if (normalizedCookieHeader !== cookieHeader) {
+    event.cookies.set(cookieName, 'ja', { path: '/', maxAge: cookieMaxAge, httpOnly: false })
+
+    const headers = new Headers(event.request.headers)
+
+    headers.set('cookie', normalizedCookieHeader ?? '')
+    event.request = new Request(event.request, { headers })
+  }
+
+  return resolve(event)
+}
+
 const handleParaglide: Handle = ({ event, resolve }) =>
   paraglideMiddleware(event.request, ({ request, locale }) => {
     event.request = request
@@ -75,4 +96,9 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
   return svelteKitHandler({ event, resolve, auth, building })
 }
 
-export const handle: Handle = sequence(handleMaintenance, handleParaglide, handleBetterAuth)
+export const handle: Handle = sequence(
+  handleLegacyLocaleCompatibility,
+  handleMaintenance,
+  handleParaglide,
+  handleBetterAuth,
+)

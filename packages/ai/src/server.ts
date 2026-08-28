@@ -1,4 +1,5 @@
 export * from './ai/contracts'
+export * from './i18n/locale.js'
 export * from './ai/schemas'
 export * from './ai/decision.js'
 export * from './ai/jobs'

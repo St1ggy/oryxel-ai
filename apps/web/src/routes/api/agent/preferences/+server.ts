@@ -1,3 +1,4 @@
+import { normalizeLocale } from '@oryxel/ai/server'
 import { error, json } from '@sveltejs/kit'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
@@ -239,7 +240,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   }
 
   const body = bodySchema.parse(await request.json())
-  const locale = body.locale ?? 'en'
+  const locale = normalizeLocale(body.locale ?? 'en')
   const scenario = body.scenario ?? inferScenarioFromMessage(body.message)
 
   await createChatMessage({

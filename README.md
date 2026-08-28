@@ -15,7 +15,7 @@ To recreate this project with the same configuration:
 
 ```sh
 # recreate this project
-bun x sv@0.13.0 create --template minimal --types ts --add prettier eslint vitest="usages:unit,component" playwright tailwindcss="plugins:typography,forms" sveltekit-adapter="adapter:vercel" devtools-json drizzle="database:postgresql+postgresql:neon" better-auth="demo:password,github" mdsvex paraglide="languageTags:en,es,ru,jp,zh,fr+demo:no" mcp="ide:cursor,claude-code+setup:remote" --install bun oryxel-ai
+bun x sv@0.13.0 create --template minimal --types ts --add prettier eslint vitest="usages:unit,component" playwright tailwindcss="plugins:typography,forms" sveltekit-adapter="adapter:vercel" devtools-json drizzle="database:postgresql+postgresql:neon" better-auth="demo:password,github" mdsvex paraglide="languageTags:en,es,fr,ja,ru,zh+demo:no" mcp="ide:cursor,claude-code+setup:remote" --install bun oryxel-ai
 ```
 
 ## Developing

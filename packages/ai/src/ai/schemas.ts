@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { normalizeLocale } from '../i18n/locale.js'
+
 const radarSchema = z.record(z.string().min(1).max(40), z.number().int().min(0).max(100))
 
 const profileContextSchema = z.object({
@@ -47,7 +49,7 @@ const diaryContextSchema = z.object({
   neutral: z.array(diaryEntryContextSchema).optional(),
   disliked: z.array(diaryEntryContextSchema).optional(),
   owned: z.array(diaryEntryContextSchema).optional(),
-  /** Fragrances explicitly dismissed by user — never recommend again. */
+  // Fragrances explicitly dismissed by user — never recommend again.
   dismissed: z.array(dismissedEntryContextSchema).optional(),
 })
 
@@ -75,7 +77,7 @@ const contextSchema = z.object({
   lists: z.array(listsContextEntrySchema).max(30).optional(),
   budget: z.string().max(120).optional(),
   recentMessages: z.array(recentMessageSchema).max(10).optional(),
-  /** Long-term memory rows with stable ids (for agentMemoryOps update/remove). */
+  // Long-term memory rows with stable ids (for agentMemoryOps update/remove).
   agentMemoryEntries: z.array(agentMemoryEntryContextSchema).max(20).optional(),
 })
 
@@ -84,14 +86,14 @@ export const chatAgentModeSchema = z.enum(['ask', 'agent', 'add', 'recommend', '
 export const analyzePreferencesRequestSchema = z.object({
   userId: z.string().min(1),
   message: z.string().min(1),
-  locale: z.string().min(2).max(10).default('en'),
+  locale: z.string().min(2).max(10).default('en').transform(normalizeLocale),
   scenario: z
     .enum(['analog', 'pyramid', 'recommendation', 'comparison', 'command', 'profile_sync'])
     .default('recommendation'),
   preferredProvider: z.enum(['openai', 'anthropic', 'gemini', 'qwen', 'perplexity', 'groq', 'deepseek']).optional(),
-  /** User-selected model id for the active provider. */
+  // User-selected model id for the active provider.
   model: z.string().max(80).optional(),
-  /** Interaction mode — limits what patch fields may be applied. */
+  // Interaction mode — limits what patch fields may be applied.
   chatMode: chatAgentModeSchema.default('agent'),
   context: contextSchema.optional(),
   minRecommendations: z.number().int().min(1).max(30).optional(),
@@ -100,11 +102,11 @@ export const analyzePreferencesRequestSchema = z.object({
   maxPyramidNotes: z.number().int().min(1).max(10).optional(),
   tone: z.string().max(200).optional(),
   depth: z.string().max(200).optional(),
-  /** When false (e.g. async worker), prompts omit agentMemoryOps; callers should still drop any from the model output. */
+  // When false (e.g. async worker), prompts omit agentMemoryOps; callers should still drop any from the model output.
   allowAgentMemoryOps: z.boolean().optional(),
-  /** When true, prompt steers the model to only output recommendations[]; worker sanitizes the patch before apply. */
+  // When true, prompt steers the model to only output recommendations[]; worker sanitizes the patch before apply.
   recommendationsOnly: z.boolean().optional(),
-  /** Optional system prompt override (stored per user; applied when building the user message payload). */
+  // Optional system prompt override (stored per user; applied when building the user message payload).
   systemPromptMode: z.enum(['default', 'append', 'replace']).optional(),
   systemPromptAppend: z.string().max(16_000).optional().nullable(),
   systemPromptReplace: z.string().max(32_000).optional().nullable(),
@@ -209,8 +211,8 @@ export const structuredPreferencePatchSchema = z.object({
     .max(30)
     .nullish(),
   suggestions: z.array(z.string().max(200)).max(5).nullish(),
-  /** Agent-driven changes to long-term memory (applied after diary/profile/recs). */
+  // Agent-driven changes to long-term memory (applied after diary/profile/recs).
   agentMemoryOps: z.array(agentMemoryOpSchema).max(10).optional(),
-  /** Collection curation ops (curate mode). */
+  // Collection curation ops (curate mode).
   listOps: z.array(listOpSchema).max(50).optional(),
 })

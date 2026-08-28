@@ -1,6 +1,7 @@
 import {
   analyzePreferences,
   appendPatchAuditLog,
+  applyListOps,
   applyProfileAndSuggestions,
   applyRecommendations,
   applySingleTableOp,
@@ -8,15 +9,18 @@ import {
   countStrippedPatchMutations,
   createChatMessage,
   createPendingPatch,
+  enqueueListNotifyJob,
   failJob,
   generateMissingTranslations,
   getUserDefaultProvider,
   inferSuggestedChatMode,
   isCriticalPatch,
+  listListsForUser,
   loadDiaryForUser,
   loadDismissedForUser,
   loadProfileForUser,
   loadRecentChatMessages,
+  normalizeLocale,
   pushJobProgress,
   pushPartialResult,
   recordActivity,
@@ -24,11 +28,6 @@ import {
   sanitizePatchToRecommendationsOnly,
   updatePatchStatus,
   warnIfPatchViolatesDisplayLimits,
-} from '@oryxel/ai/server'
-import {
-  applyListOps,
-  enqueueListNotifyJob,
-  listListsForUser,
 } from '@oryxel/ai/server'
 import { db, user, userAiPreferences } from '@oryxel/db'
 import { eq } from 'drizzle-orm'
@@ -113,9 +112,9 @@ async function applyNonCriticalPatchFlow(
   explicitProvider: string | undefined,
   defaultProvider: string | null | undefined,
 ) {
-  const ok = await applyPatchWithProgress(jobId, userId, patch, PRE_APPLY_STEP_COUNT, totalSteps)
+  const isOk = await applyPatchWithProgress(jobId, userId, patch, PRE_APPLY_STEP_COUNT, totalSteps)
 
-  if (!ok) {
+  if (!isOk) {
     await updatePatchStatus({
       patchId: pendingPatchId,
       userId,
@@ -227,11 +226,7 @@ function sanitizeAgentChatPatch(
   return sanitized
 }
 
-function assistantFallbackMessage(
-  patch: StructuredPreferencePatch,
-  critical: boolean,
-  chatMode: ChatAgentMode,
-) {
+function assistantFallbackMessage(patch: StructuredPreferencePatch, critical: boolean, chatMode: ChatAgentMode) {
   if (critical) {
     return `CRITICAL_PENDING:${patch.summary}`
   }
@@ -305,11 +300,11 @@ async function finishAgentChatFromPatch(input: AgentChatFinishInput) {
       maxRecommendations: aiPrefs?.maxRecommendations,
     },
   })
-  const critical = isCriticalPatch(patch)
+  const isCritical = isCriticalPatch(patch)
   const pendingPatch = await createPendingPatch({
     userId,
     patch,
-    patchType: critical ? 'critical' : 'minor',
+    patchType: isCritical ? 'critical' : 'minor',
     attempts: router.attempts as unknown as Record<string, unknown>[],
   })
 
@@ -318,10 +313,10 @@ async function finishAgentChatFromPatch(input: AgentChatFinishInput) {
   const applyTotal = profileStep + recStep + patch.tableOps.length
   const totalSteps = PRE_APPLY_STEP_COUNT + applyTotal
 
-  const skipApply = chatMode === 'ask' || chatMode === 'curate' || critical
+  const isSkipApply = chatMode === 'ask' || chatMode === 'curate' || isCritical
 
-  if (!skipApply) {
-    const continued = await applyNonCriticalPatchFlow(
+  if (!isSkipApply) {
+    const isContinued = await applyNonCriticalPatchFlow(
       jobId,
       userId,
       patch,
@@ -333,7 +328,7 @@ async function finishAgentChatFromPatch(input: AgentChatFinishInput) {
       defaultProvider,
     )
 
-    if (!continued) return
+    if (!isContinued) return
   }
 
   if (chatMode === 'curate' && patch.listOps && patch.listOps.length > 0) {
@@ -344,7 +339,7 @@ async function finishAgentChatFromPatch(input: AgentChatFinishInput) {
     }
   }
 
-  const assistantMessage = patch.reply ?? assistantFallbackMessage(patch, critical, chatMode)
+  const assistantMessage = patch.reply ?? assistantFallbackMessage(patch, isCritical, chatMode)
 
   await createChatMessage({
     userId,
@@ -354,19 +349,19 @@ async function finishAgentChatFromPatch(input: AgentChatFinishInput) {
     scenario: scenario as 'analog' | 'pyramid' | 'recommendation' | 'comparison' | 'command',
   })
 
-  const triggerSync =
-    !critical &&
+  const isTriggerSync =
+    !isCritical &&
     chatMode !== 'ask' &&
     !recommendationsOnly &&
     chatMode !== 'recommend' &&
     (patch.tableOps.length >= 2 || patch.recommendations != null || scenario === 'command')
 
   await completeJob(jobId, {
-    requiresConfirmation: critical,
+    requiresConfirmation: isCritical,
     pendingPatchId: pendingPatch.id,
     summary: patch.summary,
     reply: patch.reply,
-    triggerSync,
+    triggerSync: isTriggerSync,
     modeMismatch,
     appliedPatch: structuredClone(patch) as Record<string, unknown>,
   })
@@ -374,14 +369,14 @@ async function finishAgentChatFromPatch(input: AgentChatFinishInput) {
 
 export async function handleAgentChat(jobId: number, userId: string, params: Record<string, unknown>) {
   const message = params['message'] as string
-  const locale = (params['locale'] as string | undefined) ?? 'en'
+  const locale = normalizeLocale((params['locale'] as string | undefined) ?? 'en')
   const scenario = (params['scenario'] as string | undefined) ?? 'recommendation'
   const explicitProvider = params['provider'] as string | undefined
   const explicitModel = params['model'] as string | undefined
   const budget = params['budget'] as string | undefined
-  const recommendationsOnly = params['recommendationsOnly'] === true
+  const isRecommendationsOnly = params['recommendationsOnly'] === true
   const chatMode = ((params['chatMode'] as string | undefined) ??
-    (recommendationsOnly ? 'recommend' : 'agent')) as ChatAgentMode
+    (isRecommendationsOnly ? 'recommend' : 'agent')) as ChatAgentMode
 
   try {
     await pushJobProgress(jobId, {
@@ -480,7 +475,7 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
         systemPromptAppend: aiPrefs?.systemPromptAppend ?? undefined,
         systemPromptReplace: aiPrefs?.systemPromptReplace ?? undefined,
         allowAgentMemoryOps: false,
-        recommendationsOnly: recommendationsOnly || chatMode === 'recommend' || undefined,
+        recommendationsOnly: isRecommendationsOnly || chatMode === 'recommend' || undefined,
         chatMode,
         model: explicitModel,
       },
@@ -522,7 +517,7 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
       locale,
       scenario,
       chatMode,
-      recommendationsOnly,
+      recommendationsOnly: isRecommendationsOnly,
       router,
       explicitProvider,
       defaultProvider,

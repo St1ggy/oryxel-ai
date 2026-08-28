@@ -1,17 +1,20 @@
 import { z } from 'zod'
 
+import { normalizeLocale } from '../../i18n/locale.js'
 import { structuredPreferencePatchSchema } from '../schemas.js'
 
-import type { AnalyzePreferencesRequest, StructuredPreferencePatch } from '../contracts.js'
+import type { AnalyzePreferencesRequest } from '../contracts.js'
 
 function languageForLocale(locale: string) {
+  locale = normalizeLocale(locale)
+
   if (locale.startsWith('es')) return 'Spanish'
 
   if (locale.startsWith('fr')) return 'French'
 
   if (locale.startsWith('ru')) return 'Russian'
 
-  if (locale.startsWith('jp') || locale.startsWith('ja')) return 'Japanese'
+  if (locale.startsWith('ja')) return 'Japanese'
 
   if (locale.startsWith('zh')) return 'Chinese'
 
@@ -19,9 +22,9 @@ function languageForLocale(locale: string) {
 }
 
 /* eslint-disable camelcase */
-type TableNames = { to_try: string; liked: string; neutral: string; disliked: string; owned: string }
-
 function tableNamesForLocale(locale: string) {
+  locale = normalizeLocale(locale)
+
   if (locale === 'ru')
     return {
       to_try: 'Хочу попробовать',
@@ -43,7 +46,7 @@ function tableNamesForLocale(locale: string) {
   if (locale.startsWith('fr'))
     return { to_try: 'À essayer', liked: 'Aimé', neutral: 'Neutre', disliked: 'Pas aimé', owned: 'Possédé' }
 
-  if (locale.startsWith('jp') || locale.startsWith('ja'))
+  if (locale.startsWith('ja'))
     return { to_try: '試したい', liked: '好き', neutral: 'ニュートラル', disliked: '好きじゃない', owned: '所有' }
 
   if (locale.startsWith('zh'))
@@ -96,7 +99,7 @@ function buildChatModeBlock(mode: AnalyzePreferencesRequest['chatMode']) {
       ]
     }
 
-    default: {
+    case 'agent': {
       return []
     }
   }
@@ -105,8 +108,8 @@ function buildChatModeBlock(mode: AnalyzePreferencesRequest['chatMode']) {
 function buildBaseInstructions(request: AnalyzePreferencesRequest) {
   const language = languageForLocale(request.locale)
   const tableNames = tableNamesForLocale(request.locale)
-  const allowAgentMemoryOps = request.allowAgentMemoryOps !== false
-  const recommendationsOnly = request.recommendationsOnly === true || request.chatMode === 'recommend'
+  const isAllowAgentMemoryOps = request.allowAgentMemoryOps !== false
+  const isRecommendationsOnly = request.recommendationsOnly === true || request.chatMode === 'recommend'
   const chatMode = request.chatMode ?? 'agent'
 
   const toneInstruction = request.tone
@@ -123,7 +126,9 @@ function buildBaseInstructions(request: AnalyzePreferencesRequest) {
     'Output: one JSON object only — no markdown, fences, or extra text. The shape is defined by the JSON Schema below.',
     `Languages — reply & summary: ${language}; notesSummary, pyramidTop/Mid/Base: English lowercase (e.g. "bergamot, lavender, musk"); archetype, favoriteNote, agentComment, recommendations[].tag: ${language} (shown as-is).`,
     'reply: conversational answer. summary: 1–2 sentences on what changed.',
-    allowAgentMemoryOps ? null : 'Memory is not editable here — omit agentMemoryOps even though the schema allows it.',
+    isAllowAgentMemoryOps
+      ? null
+      : 'Memory is not editable here — omit agentMemoryOps even though the schema allows it.',
     'Flag mapping: not tried yet → isTried=false,isLiked=false,isDisliked=false,isOwned=false; liked → isTried=true,isLiked=true,isDisliked=false; disliked → isTried=true,isLiked=false,isDisliked=true; neutral (tried, no opinion) → isTried=true,isLiked=false,isDisliked=false,isOwned=false; collection → isOwned=true (may combine with liked/disliked).',
     `UI list names in reply — to_try="${tableNames.to_try}"; liked="${tableNames.liked}"; neutral="${tableNames.neutral}"; disliked="${tableNames.disliked}"; owned="${tableNames.owned}".`,
     'op=add: brandName + fragranceName + flags; no fragranceId for new rows.',
@@ -136,12 +141,12 @@ function buildBaseInstructions(request: AnalyzePreferencesRequest) {
     'season: CSV from spring,summer,autumn,winter. timeOfDay: CSV from day,evening,night.',
     `gender: female | male | unisex inferred from character/notes (not marketing only); unisex when truly fitting.`,
     'Bulk import (many rows): omit suggestions.',
-    ...(allowAgentMemoryOps
+    ...(isAllowAgentMemoryOps
       ? [
           'agentMemoryOps: only when the user asks to remember/forget/fix memory. Use add for new facts, update with id (from "Long-term memory" in context) to revise, remove with id to delete. Never invent ids.',
         ]
       : []),
-    ...(recommendationsOnly
+    ...(isRecommendationsOnly
       ? [
           'MODE: recommendations refresh only — return a full new recommendations[]; tableOps []; omit profile, suggestions, agentMemoryOps.',
         ]
@@ -166,13 +171,13 @@ const SCENARIOS_NEEDING_FULL_PYRAMID = new Set(['pyramid', 'analog', 'comparison
 function formatDiaryList(entries: DiaryContextEntry[], scenario: string) {
   if (entries.length === 0) return '[]'
 
-  const includePyramidAndNotes = SCENARIOS_NEEDING_FULL_PYRAMID.has(scenario)
+  const isIncludePyramidAndNotes = SCENARIOS_NEEDING_FULL_PYRAMID.has(scenario)
 
   return entries
     .map((entry) => {
-      const notes = includePyramidAndNotes && entry.notes ? `,notes:"${entry.notes}"` : ''
+      const notes = isIncludePyramidAndNotes && entry.notes ? `,notes:"${entry.notes}"` : ''
       const pyramid =
-        includePyramidAndNotes && (entry.pyramidTop || entry.pyramidMid || entry.pyramidBase)
+        isIncludePyramidAndNotes && (entry.pyramidTop || entry.pyramidMid || entry.pyramidBase)
           ? `,top:"${entry.pyramidTop ?? ''}",mid:"${entry.pyramidMid ?? ''}",base:"${entry.pyramidBase ?? ''}"`
           : ''
       const rating = entry.rating ? `,rating:${entry.rating}` : ''
@@ -233,7 +238,7 @@ function buildContextBlock(request: AnalyzePreferencesRequest) {
   }
 
   const scenario = request.scenario
-  const includeRelationships = SCENARIOS_NEEDING_NOTE_RELATIONSHIPS.has(scenario)
+  const isIncludeRelationships = SCENARIOS_NEEDING_NOTE_RELATIONSHIPS.has(scenario)
   const profile = context.profile ?? {}
   const lines = [
     'Context:',
@@ -242,7 +247,7 @@ function buildContextBlock(request: AnalyzePreferencesRequest) {
       ? `- gender: ${profile.gender} (pronouns: gendered langs e.g. Russian)`
       : '- gender: not specified',
     profile.preferences ? `- preferences (verbatim, for recs): ${profile.preferences}` : '',
-    includeRelationships && profile.noteRelationships && profile.noteRelationships.length > 0
+    isIncludeRelationships && profile.noteRelationships && profile.noteRelationships.length > 0
       ? `- noteRelationships (recs + profile): ${JSON.stringify(profile.noteRelationships)}`
       : '',
     `- budget: ${context.budget ?? 'not provided'}`,
@@ -251,8 +256,8 @@ function buildContextBlock(request: AnalyzePreferencesRequest) {
   const diary = context.diary
 
   if (diary) {
-    const fullPyramid = SCENARIOS_NEEDING_FULL_PYRAMID.has(scenario)
-    const header = fullPyramid
+    const isFullPyramid = SCENARIOS_NEEDING_FULL_PYRAMID.has(scenario)
+    const header = isFullPyramid
       ? 'Diary — rowId for move/rate/status/remove: exact id below; never invent; missing row → op=add. Fields notes/top/mid/base = current:'
       : 'Diary — rowId for move/rate/status/remove: exact id below; never invent; missing row → op=add. Compact list (id+brand+frag only):'
 
@@ -345,14 +350,18 @@ function buildScenarioBlock(request: AnalyzePreferencesRequest) {
   return [`Scenario: ${scenario}`, scenarioInstructions[scenario]]
 }
 
-/** Rough token estimate (Latin + Cyrillic mixed; ~4 chars/token). Not a billing count. */
+//
+// Rough token estimate (Latin + Cyrillic mixed; ~4 chars/token). Not a billing count.
+//
 export function estimatePromptTokensApprox(text: string) {
   return Math.ceil(text.length / 4)
 }
 
 let cachedOutputSchemaJson: string | undefined
 
-/** JSON Schema for the patch the model must emit. Cached — schema is static across requests. */
+//
+// JSON Schema for the patch the model must emit. Cached — schema is static across requests.
+//
 function getOutputSchemaJson() {
   if (cachedOutputSchemaJson) return cachedOutputSchemaJson
 
@@ -372,7 +381,9 @@ function buildOutputSchemaSection() {
   ]
 }
 
-/** Instruction blocks only (no trailing `User message:` line). */
+//
+// Instruction blocks only (no trailing `User message:` line).
+//
 export function buildPromptInstructionBlock(request: AnalyzePreferencesRequest) {
   return [
     ...buildBaseInstructions(request),
@@ -385,7 +396,9 @@ export function buildPromptInstructionBlock(request: AnalyzePreferencesRequest) 
 
 export type PromptSection = { key: string; label: string; content: string }
 
-/** Structured breakdown for UI (token map). */
+//
+// Structured breakdown for UI (token map).
+//
 export function buildPromptSections(request: AnalyzePreferencesRequest) {
   const sections: PromptSection[] = [
     { key: 'base', label: 'Base instructions', content: buildBaseInstructions(request).join('\n') },
@@ -446,7 +459,7 @@ export function parseStructuredPatch(raw: unknown) {
   if (typeof raw === 'string') {
     payload = JSON.parse(raw)
   } else if (raw && typeof raw === 'object' && 'output_text' in raw) {
-    payload = JSON.parse(String((raw as { output_text: string }).output_text))
+    payload = JSON.parse((raw as { output_text: string }).output_text)
   }
 
   return structuredPreferencePatchSchema.parse(payload)
