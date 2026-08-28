@@ -12,7 +12,7 @@ const bodySchema = z.object({
       z.object({
         kind: z.string(),
         entityId: z.number().int().optional(),
-        url: z.string().url().optional(),
+        url: z.url().optional(),
       }),
     )
     .optional(),

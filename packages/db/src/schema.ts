@@ -26,31 +26,33 @@ export const fragrance = pgTable('fragrance', {
   notesSummary: text('notes_summary'),
 })
 
-export const userProfile = pgTable('user_profile', {
-  id: serial('id').primaryKey(),
-  userId: text('user_id').notNull().unique(),
-  displayName: text('display_name'),
-  bio: text('bio'),
-  preferences: text('preferences'),
-  avatarUrl: text('avatar_url'),
-  archetype: text('archetype'),
-  favoriteNote: text('favorite_note'),
-  radar: jsonb('radar').$type<Record<string, number>>(),
-  radarLabels: jsonb('radar_labels').$type<Record<string, string>>(),
-  suggestions: jsonb('suggestions').$type<string[]>(),
-  /** 'male' | 'female' | null — user gender for AI pronoun selection */
-  gender: text('gender'),
-  noteRelationships: jsonb('note_relationships').$type<{ note: string; sentiment: string; label: string }[]>(),
-  onboardingCompletedAt: timestamp('onboarding_completed_at', { withTimezone: true }),
-  /** Public handle @username — unique, lowercase */
-  username: text('username'),
-  /** When false, hidden from user search */
-  isDiscoverable: boolean('is_discoverable').notNull().default(false),
-  defaultListVisibility: text('default_list_visibility').notNull().default('private'),
-  defaultPostVisibility: text('default_post_visibility').notNull().default('followers'),
-  showDiaryStats: boolean('show_diary_stats').notNull().default(false),
-},
-(table) => [uniqueIndex('user_profile_username_idx').on(table.username)],
+export const userProfile = pgTable(
+  'user_profile',
+  {
+    id: serial('id').primaryKey(),
+    userId: text('user_id').notNull().unique(),
+    displayName: text('display_name'),
+    bio: text('bio'),
+    preferences: text('preferences'),
+    avatarUrl: text('avatar_url'),
+    archetype: text('archetype'),
+    favoriteNote: text('favorite_note'),
+    radar: jsonb('radar').$type<Record<string, number>>(),
+    radarLabels: jsonb('radar_labels').$type<Record<string, string>>(),
+    suggestions: jsonb('suggestions').$type<string[]>(),
+    // 'male' | 'female' | null — user gender for AI pronoun selection
+    gender: text('gender'),
+    noteRelationships: jsonb('note_relationships').$type<{ note: string; sentiment: string; label: string }[]>(),
+    onboardingCompletedAt: timestamp('onboarding_completed_at', { withTimezone: true }),
+    // Public handle @username — unique, lowercase
+    username: text('username'),
+    // When false, hidden from user search
+    isDiscoverable: boolean('is_discoverable').notNull().default(false),
+    defaultListVisibility: text('default_list_visibility').notNull().default('private'),
+    defaultPostVisibility: text('default_post_visibility').notNull().default('followers'),
+    showDiaryStats: boolean('show_diary_stats').notNull().default(false),
+  },
+  (table) => [uniqueIndex('user_profile_username_idx').on(table.username)],
 )
 
 export const userAiPreferences = pgTable('user_ai_preferences', {
@@ -61,9 +63,9 @@ export const userAiPreferences = pgTable('user_ai_preferences', {
   rememberContext: boolean('remember_context').notNull().default(false),
   defaultProvider: text('default_provider'),
   defaultModelLabel: text('default_model_label'),
-  /** ask | agent | add | recommend — last selected chat interaction mode. */
+  // ask | agent | add | recommend — last selected chat interaction mode.
   defaultChatMode: text('default_chat_mode').notNull().default('agent'),
-  /** Model id for the active provider (e.g. gpt-5-mini). */
+  // Model id for the active provider (e.g. gpt-5-mini).
   defaultModelId: text('default_model_id'),
   platformAccess: boolean('platform_access').notNull().default(false),
   minPyramidNotes: integer('min_pyramid_notes').notNull().default(1),
@@ -71,7 +73,7 @@ export const userAiPreferences = pgTable('user_ai_preferences', {
   minRecommendations: integer('min_recommendations').notNull().default(5),
   maxRecommendations: integer('max_recommendations').notNull().default(20),
   graphStyle: text('graph_style').notNull().default('default'),
-  /** default | append (after built-in block) | replace (full system text; user message still appended). */
+  // default | append (after built-in block) | replace (full system text; user message still appended).
   systemPromptMode: text('system_prompt_mode').notNull().default('default'),
   systemPromptAppend: text('system_prompt_append'),
   systemPromptReplace: text('system_prompt_replace'),
@@ -121,7 +123,9 @@ export const userFragrance = pgTable(
   (table) => [uniqueIndex('user_fragrance_user_fragrance_idx').on(table.userId, table.fragranceId)],
 )
 
-/** Per-user list of fragrances the user has explicitly dismissed from AI recommendations. */
+//
+// Per-user list of fragrances the user has explicitly dismissed from AI recommendations.
+//
 export const aiRecommendationDismissed = pgTable(
   'ai_recommendation_dismissed',
   {
@@ -177,25 +181,27 @@ export const aiPatchAuditLog = pgTable('ai_patch_audit_log', {
 export const userActivityLog = pgTable('user_activity_log', {
   id: serial('id').primaryKey(),
   userId: text('user_id').notNull(),
-  /** 'patch_applied' | 'profile_synced' | 'entry_updated' | 'entry_deleted' */
+  // 'patch_applied' | 'profile_synced' | 'entry_updated' | 'entry_deleted'
   action: text('action').notNull(),
-  /** 'user' or 'agent' */
+  // 'user' or 'agent'
   actor: text('actor').notNull().default('user'),
-  /** AI provider id when actor='agent', e.g. 'openai', 'groq' */
+  // AI provider id when actor='agent', e.g. 'openai', 'groq'
   provider: text('provider'),
-  /** Human-readable description in the user's locale */
+  // Human-readable description in the user's locale
   summary: text('summary').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
-/** User-managed long-term lines injected into the AI agent context. */
+//
+// User-managed long-term lines injected into the AI agent context.
+//
 export const userAgentMemory = pgTable(
   'user_agent_memory',
   {
     id: serial('id').primaryKey(),
     userId: text('user_id').notNull(),
     content: text('content').notNull(),
-    /** 'user' | 'agent' — reserved for future auto-capture */
+    // 'user' | 'agent' — reserved for future auto-capture
     source: text('source').notNull().default('user'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -236,11 +242,11 @@ export const aiPatchAuditLogRelations = relations(aiPatchAuditLog, ({ one }) => 
 export const backgroundJob = pgTable('background_job', {
   id: serial('id').primaryKey(),
   userId: text('user_id').notNull(),
-  /** 'profile_sync' | 'agent_chat' */
+  // 'profile_sync' | 'agent_chat'
   type: text('type').notNull(),
-  /** 'pending' | 'processing' | 'done' | 'failed' | 'cancelled' */
+  // 'pending' | 'processing' | 'done' | 'failed' | 'cancelled'
   status: text('status').notNull().default('pending'),
-  /** Job parameters stored at creation time so the worker can execute without the HTTP request context */
+  // Job parameters stored at creation time so the worker can execute without the HTTP request context
   params: jsonb('params').$type<Record<string, unknown>>(),
   progress: jsonb('progress')
     .$type<
@@ -269,20 +275,22 @@ export const backgroundJob = pgTable('background_job', {
 
 // Generic translation cache (content-addressable).
 // key    = canonical English text stored in the fragrance / profile tables
-// locale = target locale code (es, fr, jp, ru, zh)
+// locale = target locale code (es, fr, ja, ru, zh)
 // value  = translated text
-/** Note olfactive family — defines detection keywords, color, and display name translations. */
+//
+// Note olfactive family — defines detection keywords, color, and display name translations.
+//
 export const noteFamily = pgTable('note_family', {
   id: serial('id').primaryKey(),
-  /** Stable machine key, e.g. 'citrus', 'floral', 'woody' */
+  // Stable machine key, e.g. 'citrus', 'floral', 'woody'
   name: text('name').notNull().unique(),
-  /** Hex display color for graph nodes, e.g. '#FFB347' */
+  // Hex display color for graph nodes, e.g. '#FFB347'
   color: text('color').notNull(),
-  /** List of lowercase keywords used for detection (substring match) */
+  // List of lowercase keywords used for detection (substring match)
   keywords: jsonb('keywords').$type<string[]>().notNull().default([]),
-  /** Per-locale display names, e.g. {"en": "Citrus", "ru": "Цитрус"} */
+  // Per-locale display names, e.g. {"en": "Citrus", "ru": "Цитрус"}
   translations: jsonb('translations').$type<Record<string, string>>().notNull().default({}),
-  /** Display order in the UI */
+  // Display order in the UI
   sortOrder: integer('sort_order').notNull().default(0),
 })
 
@@ -297,7 +305,9 @@ export const translations = pgTable(
   (table) => [uniqueIndex('translations_key_locale_idx').on(table.key, table.locale)],
 )
 
-/** User-curated fragrance collections (custom catalog picks or diary slices). */
+//
+// User-curated fragrance collections (custom catalog picks or diary slices).
+//
 export const userList = pgTable(
   'user_list',
   {
@@ -306,10 +316,10 @@ export const userList = pgTable(
     slug: text('slug').notNull(),
     title: text('title').notNull(),
     description: text('description'),
-    /** custom | diary_slice */
+    // custom | diary_slice
     kind: text('kind').notNull().default('custom'),
     diaryFilter: jsonb('diary_filter').$type<{ listType: string }>(),
-    /** private | followers | public | unlisted */
+    // private | followers | public | unlisted
     visibility: text('visibility').notNull().default('private'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

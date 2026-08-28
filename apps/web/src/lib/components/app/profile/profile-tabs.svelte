@@ -29,7 +29,7 @@
       class={cn(
         'shrink-0 rounded-t-lg px-4 py-2.5 text-sm font-medium transition-colors',
         activeTab === tab.id
-          ? 'border-b-2 border-primary text-foreground'
+          ? 'border-primary border-b-2 text-foreground'
           : 'text-foreground-muted hover:text-foreground',
       )}
       aria-current={activeTab === tab.id ? 'page' : undefined}

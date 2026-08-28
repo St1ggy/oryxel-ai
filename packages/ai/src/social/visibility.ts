@@ -49,12 +49,11 @@ export function visibilityAtLeast(visibility: Visibility, minimum: Visibility) {
 }
 
 export function slugifyTitle(title: string) {
-  const base = title
+  const normalized = title
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 48)
+    .replaceAll(/[^a-z0-9]+/g, '-')
+  const base = normalized.replaceAll(/^-|-$/g, '').slice(0, 48)
 
   return base.length > 0 ? base : 'list'
 }

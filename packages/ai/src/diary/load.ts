@@ -3,7 +3,7 @@ import { asc, desc, eq } from 'drizzle-orm'
 
 import { extractEnglishKey, lookupTranslations, resolveCommaSeparated } from '../translation/service'
 
-import type { DiaryData, DiaryRow } from '../types/diary'
+import type { DiaryData } from '../types/diary'
 
 function parseNotes(raw: string | null) {
   if (!raw) return []
@@ -14,7 +14,9 @@ function parseNotes(raw: string | null) {
     .filter(Boolean)
 }
 
-/** Collects all individual term keys (split by comma) from a raw DB row for batch translation lookup. */
+//
+// Collects all individual term keys (split by comma) from a raw DB row for batch translation lookup.
+//
 function collectKeys(r: {
   notesSummary: string | null
   pyramidTop: string | null

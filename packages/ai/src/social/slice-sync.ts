@@ -1,4 +1,4 @@
-import { db, userFragrance, userList, userListItem } from '@oryxel/db'
+import { db, userList, userListItem } from '@oryxel/db'
 import { and, eq } from 'drizzle-orm'
 
 import { loadDiaryForUser } from '../diary/load.js'
@@ -16,16 +16,25 @@ function matchesDiaryList(
   listType: DiaryListType,
 ) {
   switch (listType) {
-    case 'owned':
+    case 'owned': {
       return row.isOwned
-    case 'liked':
+    }
+
+    case 'liked': {
       return row.isTried && row.isLiked
-    case 'disliked':
+    }
+
+    case 'disliked': {
       return row.isTried && row.isDisliked
-    case 'neutral':
+    }
+
+    case 'neutral': {
       return row.isTried && !row.isLiked && !row.isDisliked
-    case 'to_try':
+    }
+
+    case 'to_try': {
       return !row.isTried && !row.isOwned
+    }
   }
 }
 
@@ -78,19 +87,17 @@ export async function syncDiarySliceList(listId: number, userId: string) {
 
     const fragranceId = row.fragranceId
 
-    if (existingByFragrance.has(fragranceId)) {
-      await db
-        .update(userListItem)
-        .set({ sortOrder: order, userFragranceId: row.id })
-        .where(eq(userListItem.id, existingByFragrance.get(fragranceId)!.id))
-    } else {
-      await db.insert(userListItem).values({
-        listId,
-        fragranceId,
-        userFragranceId: row.id,
-        sortOrder: order,
-      })
-    }
+    await (existingByFragrance.has(fragranceId)
+      ? db
+          .update(userListItem)
+          .set({ sortOrder: order, userFragranceId: row.id })
+          .where(eq(userListItem.id, existingByFragrance.get(fragranceId)!.id))
+      : db.insert(userListItem).values({
+          listId,
+          fragranceId,
+          userFragranceId: row.id,
+          sortOrder: order,
+        }))
 
     order += 1
     upserted += 1

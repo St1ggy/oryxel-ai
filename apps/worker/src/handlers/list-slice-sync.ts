@@ -6,6 +6,7 @@ export async function handleListSliceSync(jobId: number, userId: string, params:
 
     if (listId) {
       const count = await syncDiarySliceList(listId, userId)
+
       await completeJob(jobId, { synced: count })
     } else {
       await syncAllDiarySliceListsForUser(userId)

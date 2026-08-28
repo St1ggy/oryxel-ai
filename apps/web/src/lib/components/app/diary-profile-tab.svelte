@@ -111,7 +111,11 @@
           </Button>
         </div>
         {#if username}
-          <Button variant="secondary" class="h-9 w-full rounded-full text-sm font-semibold" href={resolve(`/u/${username}`)}>
+          <Button
+            variant="secondary"
+            class="h-9 w-full rounded-full text-sm font-semibold"
+            href={resolve(`/u/${username}`)}
+          >
             {m.oryxel_profile_view_public()}
           </Button>
         {:else}
@@ -165,7 +169,11 @@
           </Button>
         </div>
         {#if username}
-          <Button variant="secondary" class="h-[42px] rounded-full px-5 text-sm font-semibold" href={resolve(`/u/${username}`)}>
+          <Button
+            variant="secondary"
+            class="h-[42px] rounded-full px-5 text-sm font-semibold"
+            href={resolve(`/u/${username}`)}
+          >
             {m.oryxel_profile_view_public()}
           </Button>
         {:else}

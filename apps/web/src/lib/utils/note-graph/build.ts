@@ -2,7 +2,7 @@ import { detectFamily } from './families'
 
 import type { DiaryData, DiaryRow, NoteRelationship, NoteRelationshipSentiment } from '$lib/types/diary'
 import type { FamilyDefinition } from './families'
-import type { NoteGraph, NoteLink, NoteNode } from './types'
+import type { NoteLink, NoteNode } from './types'
 
 export function parseNotes(string_: string | null) {
   if (!string_) return []

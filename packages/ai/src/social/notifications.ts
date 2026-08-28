@@ -1,7 +1,7 @@
 import { db, notification, notificationPreference, userProfile } from '@oryxel/db'
 import { and, count, desc, eq, inArray, isNull } from 'drizzle-orm'
 
-import type { NotificationRow, NotificationType } from './types.js'
+import type { NotificationType } from './types.js'
 
 export async function isNotificationEnabled(userId: string, type: NotificationType) {
   const [pref] = await db

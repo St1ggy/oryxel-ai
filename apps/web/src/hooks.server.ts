@@ -16,7 +16,7 @@ import { env } from '$env/dynamic/private'
 const NEW_JOBS_CHANNEL = 'jobs:new'
 
 if (!building && env.REDIS_URL) {
-  const redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: 3, lazyConnect: true })
+  const redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: 3, lazyConnect: true, protocol: 2 })
 
   redis.on('error', (error) => {
     console.error('[web] redis error:', error instanceof Error ? error.message : error)

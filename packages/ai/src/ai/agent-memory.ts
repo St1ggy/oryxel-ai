@@ -1,7 +1,9 @@
 import { db, userAgentMemory } from '@oryxel/db'
 import { desc, eq } from 'drizzle-orm'
 
-/** Matches API / Zod caps for agent memory rows per user. */
+//
+// Matches API / Zod caps for agent memory rows per user.
+//
 export const AGENT_MEMORY_MAX_ROWS = 20
 
 export type AgentMemoryEntryRow = { id: number; content: string }

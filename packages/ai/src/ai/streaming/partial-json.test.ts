@@ -16,7 +16,7 @@ describe('tryParsePartial', () => {
 
   it('returns undefined for empty buffer', () => {
     expect(tryParsePartial('')).toEqual({ value: undefined, complete: false })
-    expect(tryParsePartial('   ')).toEqual({ value: undefined, complete: false })
+    expect(tryParsePartial(' '.repeat(3))).toEqual({ value: undefined, complete: false })
   })
 
   it('closes unbalanced object', () => {
@@ -111,9 +111,9 @@ describe('tryParsePartial', () => {
   })
 
   it('parses recommendations-shaped partial', () => {
-    const buf =
+    const buffer =
       '{"reply":"hi","confidence":0.9,"summary":"ok","tableOps":[],"recommendations":[{"id":"a","brand":"X","name":"Y","tag":"test"},{"id":"b","brand":"Z'
-    const result = tryParsePartial<{ recommendations: { id: string; brand: string }[] }>(buf)
+    const result = tryParsePartial<{ recommendations: { id: string; brand: string }[] }>(buffer)
 
     expect(result.complete).toBe(false)
     expect(result.value?.recommendations?.length ?? 0).toBeGreaterThanOrEqual(1)

@@ -88,27 +88,29 @@ export async function listPostsForAuthor(authorId: string, viewerId: string | nu
     .limit(1)
 
   for (const row of rows) {
-    if (await canView(viewerId, authorId, row.visibility as Visibility)) {
-      const attachments = await db
-        .select({
-          kind: postAttachment.kind,
-          entityId: postAttachment.entityId,
-          url: postAttachment.url,
-        })
-        .from(postAttachment)
-        .where(eq(postAttachment.postId, row.id))
-
-      visible.push({
-        id: row.id,
-        authorId: row.authorId,
-        authorUsername: author?.username ?? null,
-        authorDisplayName: author?.displayName ?? null,
-        body: row.body,
-        visibility: row.visibility as Visibility,
-        createdAt: row.createdAt,
-        attachments,
-      })
+    if (!(await canView(viewerId, authorId, row.visibility as Visibility))) {
+      continue
     }
+
+    const attachments = await db
+      .select({
+        kind: postAttachment.kind,
+        entityId: postAttachment.entityId,
+        url: postAttachment.url,
+      })
+      .from(postAttachment)
+      .where(eq(postAttachment.postId, row.id))
+
+    visible.push({
+      id: row.id,
+      authorId: row.authorId,
+      authorUsername: author?.username ?? null,
+      authorDisplayName: author?.displayName ?? null,
+      body: row.body,
+      visibility: row.visibility as Visibility,
+      createdAt: row.createdAt,
+      attachments,
+    })
   }
 
   return visible

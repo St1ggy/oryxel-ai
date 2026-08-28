@@ -4,12 +4,16 @@ export type JobCreatedHandler = (jobId: number) => void | Promise<void>
 let updatedHandler: JobUpdatedHandler | undefined
 let createdHandler: JobCreatedHandler | undefined
 
-/** Worker (or tests) registers a Redis publish / side effect after job row updates. */
+//
+// Worker (or tests) registers a Redis publish / side effect after job row updates.
+//
 export function setJobUpdatedHandler(next: JobUpdatedHandler | undefined) {
   updatedHandler = next
 }
 
-/** Caller registers a publish hook fired when a new pending job is enqueued (for worker wake-up). */
+//
+// Caller registers a publish hook fired when a new pending job is enqueued (for worker wake-up).
+//
 export function setJobCreatedHandler(next: JobCreatedHandler | undefined) {
   createdHandler = next
 }

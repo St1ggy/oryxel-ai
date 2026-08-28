@@ -29,13 +29,15 @@ async function mergeNoteRelationships(userId: string, incoming: NoteRelationship
 
   // Append locked notes not present in agent output.
   for (const [key, locked] of lockedMap) {
-    if (!merged.some((n) => n.note === key)) merged.push(locked)
+    if (merged.every((n) => n.note !== key)) merged.push(locked)
   }
 
   return merged
 }
 
-/** Lowercase a string field; passes through null/undefined unchanged. */
+//
+// Lowercase a string field; passes through null/undefined unchanged.
+//
 function lc(s: string | null | undefined) {
   return s ? s.toLowerCase() : s
 }
@@ -334,7 +336,9 @@ export async function applyPatchToDatabase(userId: string, patch: StructuredPref
   })
 }
 
-/** Apply only the profile/suggestions part of a patch (no transaction needed — simple upsert). */
+//
+// Apply only the profile/suggestions part of a patch (no transaction needed — simple upsert).
+//
 export async function applyProfileAndSuggestions(userId: string, patch: StructuredPreferencePatch) {
   if (patch.profile == null && patch.suggestions == null) return
 
@@ -369,7 +373,9 @@ export async function applyProfileAndSuggestions(userId: string, patch: Structur
     })
 }
 
-/** Apply only the recommendations part of a patch (clears old unreached recs, inserts new). */
+//
+// Apply only the recommendations part of a patch (clears old unreached recs, inserts new).
+//
 export async function applyRecommendations(userId: string, patch: StructuredPreferencePatch) {
   const recommendations = patch.recommendations
 
@@ -423,7 +429,9 @@ export async function applyRecommendations(userId: string, patch: StructuredPref
   })
 }
 
-/** Apply a single table operation (no wrapping transaction). */
+//
+// Apply a single table operation (no wrapping transaction).
+//
 export async function applySingleTableOp(userId: string, op: TableOperation) {
   await applyTableOp(db, userId, op)
 }

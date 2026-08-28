@@ -136,7 +136,7 @@ async function handleStream(request: IncomingMessage, serverResponse: ServerResp
     return
   }
 
-  const redisSub = new Redis(REDIS_URL, { maxRetriesPerRequest: 3 })
+  const redisSub = new Redis(REDIS_URL, { maxRetriesPerRequest: 3, protocol: 2 })
   const channel = `job:${jobId}`
 
   const cleanup = async () => {

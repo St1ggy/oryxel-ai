@@ -45,7 +45,9 @@ export async function saveTranslations(entries: { key: string; locale: string; v
   await db.insert(translations).values(entries).onConflictDoNothing()
 }
 
-/** Extracts canonical English text from a stored value (plain text or legacy locale-map JSON). */
+//
+// Extracts canonical English text from a stored value (plain text or legacy locale-map JSON).
+//
 export function extractEnglishKey(raw: string | null) {
   if (!raw) return null
 

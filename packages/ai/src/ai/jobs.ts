@@ -6,18 +6,17 @@ import { emitJobCreated, emitJobUpdated } from './job-notify'
 import type { AiProviderName, StructuredPreferencePatch } from './contracts'
 
 export type JobType =
-  | 'profile_sync'
-  | 'agent_chat'
-  | 'notify_post'
-  | 'notify_follow'
-  | 'notify_list'
-  | 'list_slice_sync'
+  'profile_sync' | 'agent_chat' | 'notify_post' | 'notify_follow' | 'notify_list' | 'list_slice_sync'
 export type JobStatus = 'pending' | 'processing' | 'done' | 'failed' | 'cancelled'
 
-/** Sync-pipeline phases (profile_sync handler). */
+//
+// Sync-pipeline phases (profile_sync handler).
+//
 export type SyncPhase = 'owned' | 'liked' | 'disliked' | 'neutral' | 'profile' | 'recommendations' | 'to_try'
 
-/** Detailed agent-chat / per-call phases. */
+//
+// Detailed agent-chat / per-call phases.
+//
 export type AgentPhase =
   | 'validate'
   | 'load_context'
@@ -30,7 +29,9 @@ export type AgentPhase =
   | 'translate'
   | 'done'
 
-/** Legacy coarse phases — kept so older clients/UI keep rendering. */
+//
+// Legacy coarse phases — kept so older clients/UI keep rendering.
+//
 export type LegacyPhase = 'analyzing' | 'applying'
 
 export type JobPhase = SyncPhase | AgentPhase | LegacyPhase
@@ -53,7 +54,9 @@ export type JobProgress = {
   meta?: JobProgressMeta
 }
 
-/** Most recent N progress events kept on a job — older ones drop on append. */
+//
+// Most recent N progress events kept on a job — older ones drop on append.
+//
 export const MAX_PROGRESS_EVENTS = 50
 
 export async function createJob(userId: string, type: JobType, params?: Record<string, unknown>) {
@@ -97,7 +100,9 @@ export async function pushJobProgress(jobId: number, event: JobProgress) {
   emitJobUpdated(jobId)
 }
 
-/** Stream-time partial result from an in-flight provider call. UI may render preview. */
+//
+// Stream-time partial result from an in-flight provider call. UI may render preview.
+//
 export async function pushPartialResult(jobId: number, partial: Partial<StructuredPreferencePatch>) {
   await db
     .update(backgroundJob)
@@ -125,7 +130,9 @@ export async function failJob(jobId: number, errorMessage: string) {
   emitJobUpdated(jobId)
 }
 
-/** Jobs in 'processing' older than this are considered stale and auto-failed. */
+//
+// Jobs in 'processing' older than this are considered stale and auto-failed.
+//
 const STALE_PROCESSING_MS = 15 * 60 * 1000 // 15 minutes
 
 export async function getActiveJobsForUser(userId: string) {
@@ -150,7 +157,7 @@ export async function getActiveJobsForUser(userId: string) {
   }
 
   return rows
-    .filter((row) => !stale.some((s) => s.id === row.id))
+    .filter((row) => stale.every((s) => s.id !== row.id))
     .map((row) => ({
       id: row.id,
       type: row.type as JobType,

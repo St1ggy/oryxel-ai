@@ -18,10 +18,7 @@
 
 <a
   href={resolve(`/u/${username}/lists/${list.slug}`)}
-  class={cn(
-    'block rounded-xl border border-border bg-surface hover:bg-muted/40',
-    compact ? 'p-3' : 'p-4',
-  )}
+  class={cn('block rounded-xl border border-border bg-surface hover:bg-muted/40', compact ? 'p-3' : 'p-4')}
 >
   <div class="flex flex-wrap items-start justify-between gap-2">
     <p class="font-medium">{list.title}</p>

@@ -4,8 +4,6 @@ import { count, eq } from 'drizzle-orm'
 import { getFollowCounts } from './follow.js'
 import { isFollowing } from './visibility.js'
 
-import type { PublicProfile } from './types.js'
-
 export async function getProfileByUsername(username: string) {
   const [row] = await db
     .select({

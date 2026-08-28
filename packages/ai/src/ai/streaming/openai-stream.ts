@@ -16,7 +16,9 @@ export type OpenAiCompatStreamInput = {
   extraHeaders?: Record<string, string>
 }
 
-/** Streams an OpenAI-compatible chat completion (openai, groq, deepseek). Returns the full content text. */
+//
+// Streams an OpenAI-compatible chat completion (openai, groq, deepseek). Returns the full content text.
+//
 export async function streamOpenAiCompatible(input: OpenAiCompatStreamInput) {
   const response = await fetch(input.url, {
     method: 'POST',

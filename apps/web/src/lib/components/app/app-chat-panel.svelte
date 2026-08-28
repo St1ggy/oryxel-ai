@@ -2,11 +2,9 @@
   import { Send } from '@lucide/svelte'
   import { type ChatAgentMode, type ModeSwitchSuggestion, nextChatMode, shouldSuggestModeSwitch } from '@oryxel/ai'
   import { createVirtualizer } from '@tanstack/svelte-virtual'
-  /* eslint-disable import-x/no-duplicates -- svelte/store and svelte/transition resolve to the same .d.ts but are distinct runtime modules */
   import { SvelteSet } from 'svelte/reactivity'
   import { get } from 'svelte/store'
   import { fade, fly } from 'svelte/transition'
-  /* eslint-enable import-x/no-duplicates */
 
   import AiModelHeader from '$lib/components/app/ai-model-header.svelte'
   import ChatBubble from '$lib/components/app/chat-bubble.svelte'
@@ -404,8 +402,7 @@
             style="max-height: {MAX_TEXTAREA_HEIGHT}px"
             onkeydown={onDraftKeydown}
             oninput={resizeDraft}
-            data-tour="chat-input"
-          ></textarea>
+            data-tour="chat-input"></textarea>
           <div class="flex shrink-0 items-end gap-1.5 pb-0.5">
             <button
               type="button"

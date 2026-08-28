@@ -5,17 +5,19 @@ import Redis from 'ioredis'
 
 import { handleAgentChat } from './handlers/agent-chat'
 import { handleListSliceSync } from './handlers/list-slice-sync'
-import { handleNotifyFollow, handleNotifyList, handleNotifyPost } from './handlers/social-notify'
 import { handleProfileSync } from './handlers/profile-sync'
+import { handleNotifyFollow, handleNotifyList, handleNotifyPost } from './handlers/social-notify'
 
-/** Background poll cadence (ms). Lower than before so the worker picks up new jobs quickly without a publisher. */
+//
+// Background poll cadence (ms). Lower than before so the worker picks up new jobs quickly without a publisher.
+//
 const POLL_INTERVAL_MS = 1000
 const NEW_JOBS_CHANNEL = 'jobs:new'
 
 const redisUrl = process.env.REDIS_URL?.trim()
 
 if (redisUrl) {
-  const redis = new Redis(redisUrl, { maxRetriesPerRequest: 3 })
+  const redis = new Redis(redisUrl, { maxRetriesPerRequest: 3, protocol: 2 })
 
   redis.on('error', (error) => {
     console.error('[worker] redis error:', error instanceof Error ? error.message : error)
@@ -25,7 +27,7 @@ if (redisUrl) {
     await redis.publish(`job:${jobId}`, JSON.stringify({ jobId }))
   })
 
-  const subscriber = new Redis(redisUrl, { maxRetriesPerRequest: 3 })
+  const subscriber = new Redis(redisUrl, { maxRetriesPerRequest: 3, protocol: 2 })
 
   subscriber.on('error', (error) => {
     console.error('[worker] subscriber redis error:', error instanceof Error ? error.message : error)
@@ -78,12 +80,7 @@ async function claimNextJob() {
   return job
 }
 
-async function processJob(job: {
-  id: number
-  userId: string
-  type: string
-  params: Record<string, unknown> | null
-}) {
+async function processJob(job: { id: number; userId: string; type: string; params: Record<string, unknown> | null }) {
   const params = job.params ?? {}
 
   const [userRow] = await db.select({ name: user.name }).from(user).where(eq(user.id, job.userId)).limit(1)
@@ -94,29 +91,54 @@ async function processJob(job: {
 
   emitJobUpdated(job.id)
 
-  if (job.type === 'agent_chat') {
-    await handleAgentChat(job.id, job.userId, params)
-  } else if (job.type === 'profile_sync') {
-    await handleProfileSync(job.id, job.userId, userName, params)
-  } else if (job.type === 'notify_post') {
-    await handleNotifyPost(job.id, params)
-  } else if (job.type === 'notify_follow') {
-    await handleNotifyFollow(job.id, params)
-  } else if (job.type === 'notify_list') {
-    await handleNotifyList(job.id, job.userId, params)
-  } else if (job.type === 'list_slice_sync') {
-    await handleListSliceSync(job.id, job.userId, params)
-  } else {
-    await failJob(job.id, `Unknown job type: ${job.type}`)
+  switch (job.type) {
+    case 'agent_chat': {
+      await handleAgentChat(job.id, job.userId, params)
+
+      break
+    }
+
+    case 'profile_sync': {
+      await handleProfileSync(job.id, job.userId, userName, params)
+
+      break
+    }
+
+    case 'notify_post': {
+      await handleNotifyPost(job.id, params)
+
+      break
+    }
+
+    case 'notify_follow': {
+      await handleNotifyFollow(job.id, params)
+
+      break
+    }
+
+    case 'notify_list': {
+      await handleNotifyList(job.id, job.userId, params)
+
+      break
+    }
+
+    case 'list_slice_sync': {
+      await handleListSliceSync(job.id, job.userId, params)
+
+      break
+    }
+    default: {
+      await failJob(job.id, `Unknown job type: ${job.type}`)
+    }
   }
 }
 
-let polling = false
+let isPolling = false
 
 async function poll() {
-  if (polling) return
+  if (isPolling) return
 
-  polling = true
+  isPolling = true
 
   try {
     let job = await claimNextJob()
@@ -128,7 +150,7 @@ async function poll() {
   } catch (error) {
     console.error('[worker] poll error:', error instanceof Error ? error.message : error)
   } finally {
-    polling = false
+    isPolling = false
   }
 }
 

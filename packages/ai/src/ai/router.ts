@@ -145,7 +145,7 @@ export async function analyzePreferences(rawInput: unknown, options?: AiCallOpti
 
           return { result, attempts }
         } catch (error) {
-          const rotate = shouldRotateKey(error) && keyIndex < keyPool.length - 1
+          const isRotate = shouldRotateKey(error) && keyIndex < keyPool.length - 1
 
           attempts.push({
             provider: providerName,
@@ -156,7 +156,7 @@ export async function analyzePreferences(rawInput: unknown, options?: AiCallOpti
             error: error instanceof Error ? error.message : 'Unknown router error',
           })
 
-          if (rotate) {
+          if (isRotate) {
             continue
           }
 

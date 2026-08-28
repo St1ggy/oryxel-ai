@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { buildNoteGraph, detectFamily, parseNotes } from './note-graph/index'
 
-import type { DiaryData, DiaryRow } from '$lib/types/diary'
+import type { DiaryData } from '$lib/types/diary'
 
 // ---------------------------------------------------------------------------
 // parseNotes

@@ -1,10 +1,8 @@
 import { brand, db, fragrance, userProfile } from '@oryxel/db'
 import { and, eq, ilike, isNotNull, or } from 'drizzle-orm'
 
-import type { FragranceSearchHit, UserSearchHit } from './types.js'
-
 function escapeIlikePattern(input: string) {
-  return input.replace(/[%_\\]/g, '\\$&')
+  return input.replaceAll(/[%_\\]/g, String.raw`\$&`)
 }
 
 export async function searchFragrances(query: string, limit = 20) {

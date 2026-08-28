@@ -24,9 +24,9 @@ export type AiProviderResult = {
 }
 
 export type AiCallOptions = {
-  /** Called repeatedly with partial parsed JSON during streaming. Providers without streaming may ignore. */
+  // Called repeatedly with partial parsed JSON during streaming. Providers without streaming may ignore.
   onPartial?: (partial: Partial<StructuredPreferencePatch>) => void
-  /** Called periodically while streaming with an approx tokens-emitted count and elapsed time. */
+  // Called periodically while streaming with an approx tokens-emitted count and elapsed time.
   onTokenProgress?: (info: { tokensOut: number; durationMs: number }) => void
 }
 

@@ -1,6 +1,8 @@
 import type { AnalyzePreferencesRequest } from './contracts.js'
 
-/** Fixed sample for settings UI — same structure as live prompts; not sent to providers. */
+//
+// Fixed sample for settings UI — same structure as live prompts; not sent to providers.
+//
 export function createPromptPreviewSampleRequest(input: {
   locale: string
   scenario: AnalyzePreferencesRequest['scenario']

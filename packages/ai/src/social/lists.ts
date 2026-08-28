@@ -3,7 +3,7 @@ import { and, count, desc, eq, sql } from 'drizzle-orm'
 
 import { slugifyTitle } from './visibility.js'
 
-import type { ListKind, UserListItemRow, UserListRow, Visibility } from './types.js'
+import type { ListKind, UserListRow, Visibility } from './types.js'
 
 export async function listListsForUser(userId: string) {
   const rows = await db

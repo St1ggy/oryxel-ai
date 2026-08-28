@@ -1,4 +1,4 @@
-import { canView, getListBySlug, listItemsForList, listPublicListsForUser, loadPublicProfile } from '@oryxel/ai/server'
+import { loadPublicProfile } from '@oryxel/ai/server'
 import { error, json } from '@sveltejs/kit'
 
 import type { RequestHandler } from './$types'

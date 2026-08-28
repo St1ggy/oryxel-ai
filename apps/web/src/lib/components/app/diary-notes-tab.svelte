@@ -81,7 +81,6 @@
     return labels[s]()
   }
 
-   
   function sentimentIcon(s: NoteRelationshipSentiment) {
     const icons = { love: Heart, like: ThumbsUp, neutral: Minus, dislike: ThumbsDown, redflag: AlertTriangle }
 

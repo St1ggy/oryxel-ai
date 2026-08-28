@@ -12,6 +12,7 @@ export default defineConfig([
       // Worker is a Node.js background service — console logging is expected.
       'no-console': 'off',
       // Fire-and-forget void calls are intentional in background processing.
+      'sonarjs/function-return-type': 'off',
       'sonarjs/void-use': 'off',
     },
   },

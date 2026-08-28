@@ -60,7 +60,7 @@ export async function listFollowProfiles(
   cursor?: number,
 ) {
   const pageSize = Math.min(Math.max(limit, 1), 50)
-  const cursorFilter = cursor != null ? lt(userFollow.id, cursor) : undefined
+  const cursorFilter = cursor == null ? undefined : lt(userFollow.id, cursor)
 
   const rows =
     direction === 'followers'

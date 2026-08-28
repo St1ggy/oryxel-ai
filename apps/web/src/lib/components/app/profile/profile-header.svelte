@@ -18,15 +18,7 @@
     onNewPost?: () => void
   }
 
-  const {
-    profile,
-    isSelf,
-    viewerId,
-    onFollowToggle,
-    onOpenFollowers,
-    onOpenFollowing,
-    onNewPost,
-  }: Props = $props()
+  const { profile, isSelf, viewerId, onFollowToggle, onOpenFollowers, onOpenFollowing, onNewPost }: Props = $props()
 </script>
 
 <header class="space-y-4">
@@ -47,10 +39,7 @@
           <p class="text-sm text-foreground-muted">@{profile.username}</p>
         </div>
         {#if viewerId && !isSelf}
-          <Button
-            variant={profile.isFollowing ? 'secondary' : 'primary'}
-            onclick={() => void onFollowToggle?.()}
-          >
+          <Button variant={profile.isFollowing ? 'secondary' : 'primary'} onclick={() => void onFollowToggle?.()}>
             {profile.isFollowing ? m.oryxel_public_profile_unfollow() : m.oryxel_public_profile_follow()}
           </Button>
         {/if}

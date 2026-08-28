@@ -3,7 +3,7 @@ import { type Selection, select } from 'd3-selection'
 import 'd3-transition'
 import { type ZoomBehavior, zoom, zoomIdentity } from 'd3-zoom'
 
-import type { GraphControls, NoteLink, NoteNode } from './types'
+import type { NoteLink, NoteNode } from './types'
 import type { Simulation } from 'd3-force'
 
 // ── Color utilities ──────────────────────────────────────────────────────────

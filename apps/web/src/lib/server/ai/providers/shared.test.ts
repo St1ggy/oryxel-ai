@@ -32,7 +32,7 @@ describe('buildPrompt', () => {
     })
 
     expect(prompt).toContain('Scenario: comparison')
-    expect(prompt).toContain('"$150"')
+    expect(prompt).toContain('budget: $150')
     expect(prompt).toContain('liked')
     expect(prompt).toContain('disliked')
   })

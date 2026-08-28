@@ -1,24 +1,39 @@
-import { createColumnHelper, createTable, getCoreRowModel, getSortedRowModel } from '@tanstack/table-core'
+import {
+  columnVisibilityFeature,
+  constructTable,
+  createColumnHelper,
+  createSortedRowModel,
+  rowSortingFeature,
+  tableFeatures,
+} from '@tanstack/table-core'
+import { storeReactivityBindings } from '@tanstack/table-core/store-reactivity-bindings'
 
 import type { DiaryRow } from '$lib/types/diary'
-import type { ColumnDef, OnChangeFn, SortingState, Table, TableOptionsResolved } from '@tanstack/table-core'
+import type { ColumnDef, OnChangeFn, SortingState } from '@tanstack/table-core'
 
-const diaryCol = createColumnHelper<DiaryRow>()
+const diaryTableFeatures = tableFeatures({
+  coreReactivityFeature: storeReactivityBindings(),
+  columnVisibilityFeature,
+  rowSortingFeature,
+  sortedRowModel: createSortedRowModel(),
+})
+
+const diaryCol = createColumnHelper<typeof diaryTableFeatures, DiaryRow>()
 
 /** Owned tab — sortable brand, fragrance, rating; notes column is display-only. */
-export const ownedDiaryColumns = [
+export const ownedDiaryColumns = diaryCol.columns([
   diaryCol.accessor('brand', { id: 'brand' }),
   diaryCol.accessor('fragrance', { id: 'fragrance' }),
   diaryCol.display({ id: 'notes', enableSorting: false }),
   diaryCol.accessor('rating', { id: 'rating' }),
-] as ColumnDef<DiaryRow>[]
+])
 
-export const toTryDiaryColumns = [
+export const toTryDiaryColumns = diaryCol.columns([
   diaryCol.accessor('brand', { id: 'brand' }),
   diaryCol.accessor('fragrance', { id: 'fragrance' }),
   diaryCol.display({ id: 'notes', enableSorting: false }),
   diaryCol.display({ id: 'actions', enableSorting: false }),
-] as ColumnDef<DiaryRow>[]
+])
 
 export type RecommendationRow = {
   id: string
@@ -28,41 +43,30 @@ export type RecommendationRow = {
   notes?: string[]
 }
 
-const recCol = createColumnHelper<RecommendationRow>()
+const recCol = createColumnHelper<typeof diaryTableFeatures, RecommendationRow>()
 
-export const recommendationColumns = [
+export const recommendationColumns = recCol.columns([
   recCol.accessor('brand', { id: 'brand', enableSorting: true }),
   recCol.accessor('name', { id: 'name', enableSorting: true }),
   recCol.display({ id: 'notes', enableSorting: false }),
   recCol.display({ id: 'actions', enableSorting: false }),
-] as ColumnDef<RecommendationRow>[]
+])
 
 export function createDiaryDataTable<T extends DiaryRow | RecommendationRow>(
   data: T[],
-  columns: ColumnDef<T>[],
+  columns: readonly ColumnDef<typeof diaryTableFeatures, T>[],
   sorting: SortingState,
   onSortingChange: OnChangeFn<SortingState>,
   getRowId: (row: T) => string,
 ) {
-  return createTable<T>({
+  return constructTable({
+    features: diaryTableFeatures,
     data,
     columns,
-    // Partial controlled `state` replaces the whole slice; without `columnPinning`,
-    // `getHeaderGroups` reads `getState().columnPinning.left` and throws.
-    state: {
-      sorting,
-      columnPinning: { left: [], right: [] },
-    },
+    state: { sorting },
     onSortingChange,
-    // Controlled sorting via `onSortingChange`; full table state is not mirrored here.
-    onStateChange: () => {
-      /* no-op — sorting is the only controlled slice */
-    },
-    renderFallbackValue: null,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
     getRowId,
-  } as TableOptionsResolved<T>)
+  })
 }
 
 export { functionalUpdate } from '@tanstack/table-core'

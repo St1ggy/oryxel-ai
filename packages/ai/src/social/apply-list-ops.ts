@@ -1,9 +1,9 @@
-import { addListItem, createList, listItemsForList, removeListItem, updateList } from './lists.js'
-import { searchFragrancesByQuery } from './search.js'
 import { createJob } from '../ai/jobs.js'
 
-import type { ListOp } from './types.js'
-import type { Visibility } from './types.js'
+import { addListItem, createList, listItemsForList, removeListItem, updateList } from './lists.js'
+import { searchFragrancesByQuery } from './search.js'
+
+import type { ListOp, Visibility } from './types.js'
 
 export type ApplyListOpsResult = {
   createdListIds: number[]
@@ -12,7 +12,7 @@ export type ApplyListOpsResult = {
 
 export async function applyListOps(userId: string, ops: ListOp[]) {
   const createdListIds: number[] = []
-  let notifyList = false
+  let isNotifyList = false
   let lastListId: number | undefined
 
   for (const op of ops) {
@@ -29,7 +29,8 @@ export async function applyListOps(userId: string, ops: ListOp[]) {
         createdListIds.push(list.id)
         lastListId = list.id
 
-        if (op.visibility && op.visibility !== 'private') notifyList = true
+        if (op.visibility && op.visibility !== 'private') isNotifyList = true
+
         break
       }
 
@@ -60,9 +61,10 @@ export async function applyListOps(userId: string, ops: ListOp[]) {
         if (!op.listId || !op.fragranceId) break
 
         const items = await listItemsForList(op.listId)
-        const item = items.find((i) => i.fragranceId === op.fragranceId)
+        const item = items.find((index) => index.fragranceId === op.fragranceId)
 
         if (item) await removeListItem(op.listId, userId, item.id)
+
         break
       }
 
@@ -71,13 +73,14 @@ export async function applyListOps(userId: string, ops: ListOp[]) {
 
         const updated = await updateList(op.listId, userId, { visibility: op.visibility as Visibility })
 
-        if (updated && op.visibility !== 'private') notifyList = true
+        if (updated && op.visibility !== 'private') isNotifyList = true
+
         break
       }
     }
   }
 
-  return { createdListIds, notifyList }
+  return { createdListIds, notifyList: isNotifyList }
 }
 
 export async function enqueueListNotifyJob(ownerId: string, listId: number) {
