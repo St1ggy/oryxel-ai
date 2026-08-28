@@ -1,7 +1,9 @@
 import type { StructuredPreferencePatch, TableOperation } from './contracts.js'
 import type { ChatAgentMode } from '../types/chat-mode.js'
 
-/** Strip everything except reply/summary/confidence/recommendations — used when the user only asked to refresh AI picks. */
+//
+// Strip everything except reply/summary/confidence/recommendations — used when the user only asked to refresh AI picks.
+//
 export function sanitizePatchToRecommendationsOnly(patch: StructuredPreferencePatch) {
   return {
     confidence: patch.confidence,
@@ -15,15 +17,12 @@ export function sanitizePatchToRecommendationsOnly(patch: StructuredPreferencePa
   }
 }
 
-// A patch is critical only when the agent proposes to delete 3 or more entries at once.
-// Anything else (profile updates, moves, single removes, adds, ratings) applies automatically.
-//
-// Rationale: the diary is easily corrected, so we only gate bulk destructive operations that
-// the user likely did not intend (e.g. "clear my disliked list" removing 10 items at once).
 export function isCriticalPatch(patch: StructuredPreferencePatch) {
-  const removeCount = patch.tableOps.filter((op: TableOperation) => op.op === 'remove').length
-
-  return removeCount >= 3
+  return (
+    patch.tableOps.some((op: TableOperation) => op.op === 'remove') ||
+    patch.agentMemoryOps?.some((op) => op.op === 'remove') === true ||
+    patch.listOps?.some((op) => op.op === 'remove') === true
+  )
 }
 
 function countPatchMutations(patch: StructuredPreferencePatch) {

@@ -2,7 +2,7 @@ import { error, json } from '@sveltejs/kit'
 import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 
-import { applyPatchToDatabase } from '$lib/server/ai/apply'
+import { applyListOps, applyPatchToDatabase, enqueueListNotifyJob } from '$lib/server/ai/apply'
 import { updatePatchStatus } from '$lib/server/ai/storage'
 import { db } from '$lib/server/db'
 import { aiPendingPatch } from '$lib/server/db/schema'
@@ -48,7 +48,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   })
 
   try {
-    await applyPatchToDatabase(locals.user.id, patch.payload as never)
+    const payload = patch.payload as Parameters<typeof applyPatchToDatabase>[1]
+
+    await applyPatchToDatabase(locals.user.id, payload)
+
+    if (payload.listOps && payload.listOps.length > 0) {
+      const listResult = await applyListOps(locals.user.id, payload.listOps)
+
+      if (listResult.notifyList && listResult.createdListIds[0]) {
+        await enqueueListNotifyJob(locals.user.id, listResult.createdListIds[0])
+      }
+    }
+
     await updatePatchStatus({
       patchId: patch.id,
       userId: locals.user.id,

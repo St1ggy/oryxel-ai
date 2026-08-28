@@ -19,7 +19,7 @@ describe('ai pipeline integration', () => {
         archetype: 'Explorer',
         favoriteNote: 'iris',
       },
-      tableOps: [{ op: 'move', rowId: 5, isTried: true, isLiked: true, isDisliked: false, isOwned: false }],
+      tableOps: [{ op: 'remove', rowId: 5 }],
     })
 
     expect(request.userId).toBe('u1')

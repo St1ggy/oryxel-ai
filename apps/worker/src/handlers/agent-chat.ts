@@ -331,7 +331,7 @@ async function finishAgentChatFromPatch(input: AgentChatFinishInput) {
     if (!isContinued) return
   }
 
-  if (chatMode === 'curate' && patch.listOps && patch.listOps.length > 0) {
+  if (chatMode === 'curate' && !isCritical && patch.listOps && patch.listOps.length > 0) {
     const listResult = await applyListOps(userId, patch.listOps)
 
     if (listResult.notifyList && listResult.createdListIds[0]) {
