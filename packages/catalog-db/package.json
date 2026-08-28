@@ -1,0 +1,29 @@
+{
+  "name": "@oryxel/catalog-db",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema.ts"
+  },
+  "scripts": {
+    "generate": "bun --env-file=../../.env.development drizzle-kit generate",
+    "migrate": "bun --env-file=../../.env.development src/migrate.ts",
+    "studio": "bun --env-file=../../.env.development drizzle-kit studio",
+    "typecheck": "tsc --noEmit",
+    "db:check": "drizzle-kit check --dialect postgresql --out drizzle",
+    "db:check-history": "bun src/check-migrations.ts",
+    "lint": "prettier --check . && eslint .",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.2",
+    "postgres": "^3.4.9"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.0",
+    "drizzle-kit": "^0.31.10",
+    "typescript": "^5.9.3"
+  }
+}
