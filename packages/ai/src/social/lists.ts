@@ -5,6 +5,8 @@ import { slugifyTitle } from './visibility.js'
 
 import type { ListKind, UserListRow, Visibility } from './types.js'
 
+type DatabaseExecutor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0]
+
 export async function listListsForUser(userId: string) {
   const rows = await db
     .select({
@@ -35,8 +37,8 @@ export async function listListsForUser(userId: string) {
   }))
 }
 
-export async function getListById(listId: number, userId: string) {
-  const [row] = await db
+export async function getListById(listId: number, userId: string, executor: DatabaseExecutor = db) {
+  const [row] = await executor
     .select({
       id: userList.id,
       userId: userList.userId,
@@ -99,8 +101,8 @@ export async function getListBySlug(ownerUserId: string, slug: string) {
   }
 }
 
-export async function listItemsForList(listId: number) {
-  const rows = await db
+export async function listItemsForList(listId: number, executor: DatabaseExecutor = db) {
+  const rows = await executor
     .select({
       id: userListItem.id,
       listId: userListItem.listId,
@@ -120,12 +122,12 @@ export async function listItemsForList(listId: number) {
   return rows
 }
 
-async function uniqueSlug(userId: string, base: string) {
+async function uniqueSlug(executor: DatabaseExecutor, userId: string, base: string) {
   let slug = base
   let n = 2
 
   while (true) {
-    const [existing] = await db
+    const [existing] = await executor
       .select({ id: userList.id })
       .from(userList)
       .where(and(eq(userList.userId, userId), eq(userList.slug, slug)))
@@ -147,11 +149,12 @@ export async function createList(
     diaryFilter?: UserListRow['diaryFilter']
     visibility?: Visibility
   },
+  executor: DatabaseExecutor = db,
 ) {
-  const slug = await uniqueSlug(userId, slugifyTitle(input.title))
+  const slug = await uniqueSlug(executor, userId, slugifyTitle(input.title))
   const now = new Date()
 
-  const [row] = await db
+  const [row] = await executor
     .insert(userList)
     .values({
       userId,
@@ -182,6 +185,7 @@ export async function updateList(
     description?: string | null
     visibility?: Visibility
   },
+  executor: DatabaseExecutor = db,
 ) {
   const updates: Record<string, unknown> = { updatedAt: new Date() }
 
@@ -191,7 +195,7 @@ export async function updateList(
 
   if (input.visibility !== undefined) updates['visibility'] = input.visibility
 
-  const [row] = await db
+  const [row] = await executor
     .update(userList)
     .set(updates)
     .where(and(eq(userList.id, listId), eq(userList.userId, userId)))
@@ -199,7 +203,7 @@ export async function updateList(
 
   if (!row) return null
 
-  return getListById(listId, userId)
+  return getListById(listId, userId, executor)
 }
 
 export async function deleteList(listId: number, userId: string) {
@@ -212,19 +216,20 @@ export async function addListItem(
   listId: number,
   userId: string,
   input: { fragranceId: number; userFragranceId?: number | null; note?: string | null },
+  executor: DatabaseExecutor = db,
 ) {
-  const list = await getListById(listId, userId)
+  const list = await getListById(listId, userId, executor)
 
   if (!list || list.kind === 'diary_slice') return null
 
-  const [maxOrder] = await db
+  const [maxOrder] = await executor
     .select({ max: sql<number>`coalesce(max(${userListItem.sortOrder}), -1)` })
     .from(userListItem)
     .where(eq(userListItem.listId, listId))
 
   const sortOrder = (maxOrder?.max ?? -1) + 1
 
-  const [inserted] = await db
+  const [inserted] = await executor
     .insert(userListItem)
     .values({
       listId,
@@ -237,7 +242,7 @@ export async function addListItem(
     .returning()
 
   if (!inserted) {
-    const [existing] = await db
+    const [existing] = await executor
       .select({ id: userListItem.id })
       .from(userListItem)
       .where(and(eq(userListItem.listId, listId), eq(userListItem.fragranceId, input.fragranceId)))
@@ -246,22 +251,24 @@ export async function addListItem(
     if (!existing) return null
   }
 
-  await db.update(userList).set({ updatedAt: new Date() }).where(eq(userList.id, listId))
+  await executor.update(userList).set({ updatedAt: new Date() }).where(eq(userList.id, listId))
 
-  const items = await listItemsForList(listId)
+  const items = await listItemsForList(listId, executor)
 
   return items.find((item) => item.fragranceId === input.fragranceId) ?? null
 }
 
-export async function removeListItem(listId: number, userId: string, itemId: number) {
-  const list = await getListById(listId, userId)
+export async function removeListItem(listId: number, userId: string, itemId: number, executor: DatabaseExecutor = db) {
+  const list = await getListById(listId, userId, executor)
 
   if (!list || list.kind === 'diary_slice') return false
 
-  const result = await db.delete(userListItem).where(and(eq(userListItem.id, itemId), eq(userListItem.listId, listId)))
+  const result = await executor
+    .delete(userListItem)
+    .where(and(eq(userListItem.id, itemId), eq(userListItem.listId, listId)))
 
   if ((result.count ?? 0) > 0) {
-    await db.update(userList).set({ updatedAt: new Date() }).where(eq(userList.id, listId))
+    await executor.update(userList).set({ updatedAt: new Date() }).where(eq(userList.id, listId))
 
     return true
   }

@@ -1,18 +1,20 @@
 import { brand, db, fragrance, userProfile } from '@oryxel/db'
 import { and, eq, ilike, isNotNull, or } from 'drizzle-orm'
 
+type DatabaseExecutor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0]
+
 function escapeIlikePattern(input: string) {
   return input.replaceAll(/[%_\\]/g, String.raw`\$&`)
 }
 
-export async function searchFragrances(query: string, limit = 20) {
+export async function searchFragrances(query: string, limit = 20, executor: DatabaseExecutor = db) {
   const q = query.trim()
 
   if (q.length < 2) return []
 
   const pattern = `%${escapeIlikePattern(q)}%`
 
-  const rows = await db
+  const rows = await executor
     .select({
       fragranceId: fragrance.id,
       brandName: brand.name,
@@ -28,8 +30,8 @@ export async function searchFragrances(query: string, limit = 20) {
   return rows
 }
 
-export async function searchFragrancesByQuery(query: string, limit = 5) {
-  return searchFragrances(query, limit)
+export async function searchFragrancesByQuery(query: string, limit = 5, executor: DatabaseExecutor = db) {
+  return searchFragrances(query, limit, executor)
 }
 
 export async function searchUsers(query: string, limit = 20) {

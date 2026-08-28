@@ -5,6 +5,8 @@ import { emitJobCreated, emitJobUpdated } from './job-notify'
 
 import type { AiProviderName, StructuredPreferencePatch } from './contracts'
 
+type DatabaseExecutor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0]
+
 export type JobType =
   'profile_sync' | 'agent_chat' | 'notify_post' | 'notify_follow' | 'notify_list' | 'list_slice_sync'
 export type JobStatus = 'pending' | 'processing' | 'done' | 'failed' | 'cancelled'
@@ -59,22 +61,27 @@ export type JobProgress = {
 //
 export const MAX_PROGRESS_EVENTS = 50
 
-export async function createJob(userId: string, type: JobType, params?: Record<string, unknown>) {
+export async function createJob(
+  userId: string,
+  type: JobType,
+  params?: Record<string, unknown>,
+  executor: DatabaseExecutor = db,
+) {
   // For non-chat types, cancel any pending jobs of the same type so the
   // user always gets a fresh run without queue buildup.
   if (type !== 'agent_chat') {
-    await db
+    await executor
       .update(backgroundJob)
       .set({ status: 'cancelled', completedAt: new Date() })
       .where(and(eq(backgroundJob.userId, userId), eq(backgroundJob.type, type), eq(backgroundJob.status, 'pending')))
   }
 
-  const [row] = await db
+  const [row] = await executor
     .insert(backgroundJob)
     .values({ userId, type, status: 'pending', params })
     .returning({ id: backgroundJob.id })
 
-  emitJobCreated(row.id)
+  if (executor === db) emitJobCreated(row.id)
 
   return row.id
 }

@@ -12,8 +12,8 @@ type DatabaseExecutor = typeof db | Parameters<Parameters<typeof db.transaction>
 
 // Merges incoming agent noteRelationships with the currently stored ones,
 // preserving any entry the user has manually locked (`lockedByUser: true`).
-async function mergeNoteRelationships(userId: string, incoming: NoteRelationship[]) {
-  const [row] = await db
+async function mergeNoteRelationships(executor: DatabaseExecutor, userId: string, incoming: NoteRelationship[]) {
+  const [row] = await executor
     .select({ noteRelationships: userProfile.noteRelationships })
     .from(userProfile)
     .where(eq(userProfile.userId, userId))
@@ -252,88 +252,112 @@ export async function applyAgentMemoryOps(
   }
 }
 
-export async function applyPatchToDatabase(userId: string, patch: StructuredPreferencePatch) {
-  await db.transaction(async (tx) => {
-    if (patch.profile != null || patch.suggestions != null) {
-      const mergedNoteRels =
-        patch.profile?.noteRelationships == null
-          ? undefined
-          : ((await mergeNoteRelationships(userId, patch.profile.noteRelationships)) as never[])
+async function replaceRecommendations(
+  executor: DatabaseExecutor,
+  userId: string,
+  recommendations: NonNullable<StructuredPreferencePatch['recommendations']>,
+) {
+  const dismissedRows = await executor
+    .select({ fragranceId: aiRecommendationDismissed.fragranceId })
+    .from(aiRecommendationDismissed)
+    .where(eq(aiRecommendationDismissed.userId, userId))
+  const dismissed = new Set(dismissedRows.map((row) => row.fragranceId))
 
-      await tx
-        .insert(userProfile)
-        .values({
-          userId,
-          archetype: patch.profile?.archetype,
-          favoriteNote: patch.profile?.favoriteNote,
-          radar: patch.profile?.radar,
-          radarLabels: patch.profile?.radarLabels,
-          preferences: patch.profile?.preferences,
-          noteRelationships: mergedNoteRels,
-          suggestions: patch.suggestions ?? undefined,
-        })
-        .onConflictDoUpdate({
-          target: userProfile.userId,
-          set: {
-            ...(patch.profile?.archetype != null && { archetype: patch.profile.archetype }),
-            ...(patch.profile?.favoriteNote != null && { favoriteNote: patch.profile.favoriteNote }),
-            ...(patch.profile?.radar != null && { radar: patch.profile.radar }),
-            ...(patch.profile?.radarLabels != null && { radarLabels: patch.profile.radarLabels }),
-            ...(patch.profile?.preferences != null && { preferences: patch.profile.preferences }),
-            ...(mergedNoteRels != null && { noteRelationships: mergedNoteRels }),
-            ...(patch.suggestions != null && { suggestions: patch.suggestions }),
-          },
-        })
-    }
+  await executor
+    .delete(userFragrance)
+    .where(
+      and(eq(userFragrance.userId, userId), eq(userFragrance.isRecommendation, true), eq(userFragrance.isTried, false)),
+    )
 
-    // Apply tableOps FIRST so that user interactions with recommendations
-    // (e.g. op=move marking a rec as disliked) are committed before the
-    // recommendations block deletes isRecommendation=true,isTried=false rows.
-    for (const op of patch.tableOps) {
-      await applyTableOp(tx, userId, op)
-    }
+  for (const rec of recommendations) {
+    const brandId = await findOrCreateBrand(executor, rec.brand)
+    const fragranceId = await findOrCreateFragrance(executor, brandId, rec.name, lc(rec.notesSummary), {
+      pyramidTop: lc(rec.pyramidTop) ?? null,
+      pyramidMid: lc(rec.pyramidMid) ?? null,
+      pyramidBase: lc(rec.pyramidBase) ?? null,
+    })
 
-    if (patch.recommendations != null) {
-      await tx
-        .delete(userFragrance)
-        .where(
-          and(
-            eq(userFragrance.userId, userId),
-            eq(userFragrance.isRecommendation, true),
-            eq(userFragrance.isTried, false),
-          ),
-        )
+    if (dismissed.has(fragranceId)) continue
 
-      for (const rec of patch.recommendations) {
-        const brandId = await findOrCreateBrand(tx, rec.brand)
-        const fragranceId = await findOrCreateFragrance(tx, brandId, rec.name, lc(rec.notesSummary), {
-          pyramidTop: lc(rec.pyramidTop) ?? null,
-          pyramidMid: lc(rec.pyramidMid) ?? null,
-          pyramidBase: lc(rec.pyramidBase) ?? null,
-        })
+    await executor
+      .insert(userFragrance)
+      .values({
+        userId,
+        fragranceId,
+        rating: 0,
+        isOwned: false,
+        isTried: false,
+        isLiked: false,
+        isDisliked: false,
+        isRecommendation: true,
+        agentComment: rec.tag || null,
+        gender: rec.gender ?? null,
+        timeOfDay: rec.timeOfDay ?? null,
+        season: rec.season ?? null,
+      })
+      .onConflictDoNothing()
+  }
+}
 
-        await tx
-          .insert(userFragrance)
-          .values({
-            userId,
-            fragranceId,
-            rating: 0,
-            isOwned: false,
-            isTried: false,
-            isLiked: false,
-            isDisliked: false,
-            isRecommendation: true,
-            agentComment: rec.tag || null,
-            gender: rec.gender ?? null,
-            timeOfDay: rec.timeOfDay ?? null,
-            season: rec.season ?? null,
-          })
-          .onConflictDoNothing()
-      }
-    }
+async function applyPatchWithExecutor(executor: DatabaseExecutor, userId: string, patch: StructuredPreferencePatch) {
+  if (patch.profile != null || patch.suggestions != null) {
+    const mergedNoteRels =
+      patch.profile?.noteRelationships == null
+        ? undefined
+        : ((await mergeNoteRelationships(executor, userId, patch.profile.noteRelationships)) as never[])
 
-    await applyAgentMemoryOps(tx, userId, patch.agentMemoryOps)
-  })
+    await executor
+      .insert(userProfile)
+      .values({
+        userId,
+        archetype: patch.profile?.archetype,
+        favoriteNote: patch.profile?.favoriteNote,
+        radar: patch.profile?.radar,
+        radarLabels: patch.profile?.radarLabels,
+        preferences: patch.profile?.preferences,
+        noteRelationships: mergedNoteRels,
+        suggestions: patch.suggestions ?? undefined,
+      })
+      .onConflictDoUpdate({
+        target: userProfile.userId,
+        set: {
+          ...(patch.profile?.archetype != null && { archetype: patch.profile.archetype }),
+          ...(patch.profile?.favoriteNote != null && { favoriteNote: patch.profile.favoriteNote }),
+          ...(patch.profile?.radar != null && { radar: patch.profile.radar }),
+          ...(patch.profile?.radarLabels != null && { radarLabels: patch.profile.radarLabels }),
+          ...(patch.profile?.preferences != null && { preferences: patch.profile.preferences }),
+          ...(mergedNoteRels != null && { noteRelationships: mergedNoteRels }),
+          ...(patch.suggestions != null && { suggestions: patch.suggestions }),
+        },
+      })
+  }
+
+  // Apply tableOps FIRST so that user interactions with recommendations
+  // (e.g. op=move marking a rec as disliked) are committed before the
+  // recommendations block deletes isRecommendation=true,isTried=false rows.
+  for (const op of patch.tableOps) {
+    await applyTableOp(executor, userId, op)
+  }
+
+  if (patch.recommendations != null) {
+    await replaceRecommendations(executor, userId, patch.recommendations)
+  }
+
+  await applyAgentMemoryOps(executor, userId, patch.agentMemoryOps)
+}
+
+export async function applyPatchToDatabase(
+  userId: string,
+  patch: StructuredPreferencePatch,
+  executor?: DatabaseExecutor,
+) {
+  if (executor) {
+    await applyPatchWithExecutor(executor, userId, patch)
+
+    return
+  }
+
+  await db.transaction((tx) => applyPatchWithExecutor(tx, userId, patch))
 }
 
 //
@@ -345,7 +369,7 @@ export async function applyProfileAndSuggestions(userId: string, patch: Structur
   const mergedNoteRels =
     patch.profile?.noteRelationships == null
       ? undefined
-      : ((await mergeNoteRelationships(userId, patch.profile.noteRelationships)) as never[])
+      : ((await mergeNoteRelationships(db, userId, patch.profile.noteRelationships)) as never[])
 
   await db
     .insert(userProfile)
@@ -381,52 +405,7 @@ export async function applyRecommendations(userId: string, patch: StructuredPref
 
   if (recommendations == null) return
 
-  const dismissedRows = await db
-    .select({ fragranceId: aiRecommendationDismissed.fragranceId })
-    .from(aiRecommendationDismissed)
-    .where(eq(aiRecommendationDismissed.userId, userId))
-  const dismissed = new Set(dismissedRows.map((row) => row.fragranceId))
-
-  await db.transaction(async (tx) => {
-    await tx
-      .delete(userFragrance)
-      .where(
-        and(
-          eq(userFragrance.userId, userId),
-          eq(userFragrance.isRecommendation, true),
-          eq(userFragrance.isTried, false),
-        ),
-      )
-
-    for (const rec of recommendations) {
-      const brandId = await findOrCreateBrand(tx, rec.brand)
-      const fragranceId = await findOrCreateFragrance(tx, brandId, rec.name, lc(rec.notesSummary), {
-        pyramidTop: lc(rec.pyramidTop) ?? null,
-        pyramidMid: lc(rec.pyramidMid) ?? null,
-        pyramidBase: lc(rec.pyramidBase) ?? null,
-      })
-
-      if (dismissed.has(fragranceId)) continue
-
-      await tx
-        .insert(userFragrance)
-        .values({
-          userId,
-          fragranceId,
-          rating: 0,
-          isOwned: false,
-          isTried: false,
-          isLiked: false,
-          isDisliked: false,
-          isRecommendation: true,
-          agentComment: rec.tag || null,
-          gender: rec.gender ?? null,
-          timeOfDay: rec.timeOfDay ?? null,
-          season: rec.season ?? null,
-        })
-        .onConflictDoNothing()
-    }
-  })
+  await db.transaction((tx) => replaceRecommendations(tx, userId, recommendations))
 }
 
 //

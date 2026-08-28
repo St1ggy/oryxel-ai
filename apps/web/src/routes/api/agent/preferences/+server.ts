@@ -3,16 +3,15 @@ import { error, json } from '@sveltejs/kit'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
-import { applyPatchToDatabase, listAgentMemoryEntriesForUser } from '$lib/server/ai/apply'
+import { listAgentMemoryEntriesForUser } from '$lib/server/ai/apply'
 import { isCriticalPatch } from '$lib/server/ai/decision'
 import { getUserDefaultProvider } from '$lib/server/ai/keys/service'
 import { analyzePreferences } from '$lib/server/ai/router'
 import {
-  appendPatchAuditLog,
+  applyPendingPatch,
   createChatMessage,
   createPendingPatch,
   loadRecentChatMessages,
-  updatePatchStatus,
 } from '$lib/server/ai/storage'
 import { db } from '$lib/server/db'
 import { userAiPreferences } from '$lib/server/db/schema'
@@ -361,29 +360,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
   if (!critical) {
     try {
-      await applyPatchToDatabase(locals.user.id, patch)
-      void generateMissingTranslations(locals.user.id, locale)
-      await updatePatchStatus({
+      const result = await applyPendingPatch({
         patchId: pendingPatch.id,
         userId: locals.user.id,
-        action: 'applied',
-      })
-    } catch (error_) {
-      await updatePatchStatus({
-        patchId: pendingPatch.id,
-        userId: locals.user.id,
-        action: 'failed',
-        failureReason: error_ instanceof Error ? error_.message : 'Patch apply failed',
-      })
-      await appendPatchAuditLog({
-        userId: locals.user.id,
-        patchId: pendingPatch.id,
-        action: 'apply_failed',
-        details: {
-          attempts: router.attempts,
-        },
+        expectedStatus: 'created',
       })
 
+      if (result.status !== 'applied') throw new Error(`Unexpected patch status: ${result.status}`)
+
+      void generateMissingTranslations(locals.user.id, locale)
+    } catch {
       throw error(500, 'PATCH_APPLY_FAILED')
     }
   }

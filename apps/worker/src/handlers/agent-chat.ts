@@ -1,15 +1,10 @@
 import {
   analyzePreferences,
-  appendPatchAuditLog,
-  applyListOps,
-  applyProfileAndSuggestions,
-  applyRecommendations,
-  applySingleTableOp,
+  applyPendingPatch,
   completeJob,
   countStrippedPatchMutations,
   createChatMessage,
   createPendingPatch,
-  enqueueListNotifyJob,
   failJob,
   generateMissingTranslations,
   getUserDefaultProvider,
@@ -26,7 +21,6 @@ import {
   recordActivity,
   sanitizePatchForChatMode,
   sanitizePatchToRecommendationsOnly,
-  updatePatchStatus,
   warnIfPatchViolatesDisplayLimits,
 } from '@oryxel/ai/server'
 import { db, user, userAiPreferences } from '@oryxel/db'
@@ -34,72 +28,15 @@ import { eq } from 'drizzle-orm'
 
 import type { ChatAgentMode, StructuredPreferencePatch } from '@oryxel/ai/server'
 
-async function applyPatchWithProgress(
-  jobId: number,
-  userId: string,
-  patch: StructuredPreferencePatch,
-  baseStep: number,
-  total: number,
-) {
-  const profileStep = patch.profile != null || patch.suggestions != null ? 1 : 0
-  const recStep = patch.recommendations == null ? 0 : 1
-  let step = baseStep
+const PRE_APPLY_STEP_COUNT = 5
 
+async function pushJobProgressBestEffort(jobId: number, event: Parameters<typeof pushJobProgress>[1]) {
   try {
-    if (profileStep) {
-      const startedAt = Date.now()
-
-      await pushJobProgress(jobId, { step: ++step, total, phase: 'apply_profile' })
-      await applyProfileAndSuggestions(userId, patch)
-      await pushJobProgress(jobId, {
-        step,
-        total,
-        phase: 'apply_profile',
-        meta: { durationMs: Date.now() - startedAt, note: 'done' },
-      })
-    }
-
-    // Apply tableOps FIRST so that user interactions with recommendations
-    // (e.g. op=move marking a rec as disliked) are committed before
-    // applyRecommendations deletes isRecommendation=true,isTried=false rows.
-    for (const op of patch.tableOps) {
-      const startedAt = Date.now()
-
-      await pushJobProgress(jobId, {
-        step: ++step,
-        total,
-        phase: 'apply_ops',
-        meta: { note: op.op },
-      })
-      await applySingleTableOp(userId, op)
-      await pushJobProgress(jobId, {
-        step,
-        total,
-        phase: 'apply_ops',
-        meta: { durationMs: Date.now() - startedAt, note: `${op.op}:done` },
-      })
-    }
-
-    if (recStep) {
-      const startedAt = Date.now()
-
-      await pushJobProgress(jobId, { step: ++step, total, phase: 'apply_recs' })
-      await applyRecommendations(userId, patch)
-      await pushJobProgress(jobId, {
-        step,
-        total,
-        phase: 'apply_recs',
-        meta: { durationMs: Date.now() - startedAt, note: 'done' },
-      })
-    }
-
-    return true
+    await pushJobProgress(jobId, event)
   } catch {
-    return false
+    // Progress telemetry must not change the outcome of an atomic patch apply.
   }
 }
-
-const PRE_APPLY_STEP_COUNT = 5
 
 async function applyNonCriticalPatchFlow(
   jobId: number,
@@ -108,32 +45,41 @@ async function applyNonCriticalPatchFlow(
   pendingPatchId: number,
   totalSteps: number,
   locale: string,
-  routerAttempts: unknown,
   explicitProvider: string | undefined,
   defaultProvider: string | null | undefined,
 ) {
-  const isOk = await applyPatchWithProgress(jobId, userId, patch, PRE_APPLY_STEP_COUNT, totalSteps)
+  const startedAt = Date.now()
+
+  await pushJobProgressBestEffort(jobId, {
+    step: PRE_APPLY_STEP_COUNT + 1,
+    total: totalSteps,
+    phase: 'applying',
+  })
+
+  let isOk = false
+
+  try {
+    const result = await applyPendingPatch({ patchId: pendingPatchId, userId, expectedStatus: 'created' })
+
+    isOk = result.status === 'applied'
+  } catch {
+    isOk = false
+  }
 
   if (!isOk) {
-    await updatePatchStatus({
-      patchId: pendingPatchId,
-      userId,
-      action: 'failed',
-      failureReason: 'Patch apply failed',
-    })
-    await appendPatchAuditLog({
-      userId,
-      patchId: pendingPatchId,
-      action: 'apply_failed',
-      details: { attempts: routerAttempts },
-    })
     await failJob(jobId, 'Patch apply failed')
 
     return false
   }
 
+  await pushJobProgressBestEffort(jobId, {
+    step: totalSteps,
+    total: totalSteps,
+    phase: 'applying',
+    meta: { durationMs: Date.now() - startedAt, note: 'done' },
+  })
+
   void generateMissingTranslations(userId, locale)
-  await updatePatchStatus({ patchId: pendingPatchId, userId, action: 'applied' })
   void recordActivity({
     userId,
     action: 'patch_applied',
@@ -308,12 +254,9 @@ async function finishAgentChatFromPatch(input: AgentChatFinishInput) {
     attempts: router.attempts as unknown as Record<string, unknown>[],
   })
 
-  const profileStep = patch.profile != null || patch.suggestions != null ? 1 : 0
-  const recStep = patch.recommendations == null ? 0 : 1
-  const applyTotal = profileStep + recStep + patch.tableOps.length
-  const totalSteps = PRE_APPLY_STEP_COUNT + applyTotal
+  const totalSteps = PRE_APPLY_STEP_COUNT + 1
 
-  const isSkipApply = chatMode === 'ask' || chatMode === 'curate' || isCritical
+  const isSkipApply = chatMode === 'ask' || isCritical
 
   if (!isSkipApply) {
     const isContinued = await applyNonCriticalPatchFlow(
@@ -323,20 +266,11 @@ async function finishAgentChatFromPatch(input: AgentChatFinishInput) {
       pendingPatch.id,
       totalSteps,
       locale,
-      router.attempts,
       explicitProvider,
       defaultProvider,
     )
 
     if (!isContinued) return
-  }
-
-  if (chatMode === 'curate' && !isCritical && patch.listOps && patch.listOps.length > 0) {
-    const listResult = await applyListOps(userId, patch.listOps)
-
-    if (listResult.notifyList && listResult.createdListIds[0]) {
-      await enqueueListNotifyJob(userId, listResult.createdListIds[0])
-    }
   }
 
   const assistantMessage = patch.reply ?? assistantFallbackMessage(patch, isCritical, chatMode)
