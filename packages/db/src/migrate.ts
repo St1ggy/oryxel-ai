@@ -6,130 +6,196 @@
 // Usage:
 //    bun --env-file=../../.env.development src/migrate.ts
 //    bun --env-file=../../.env.production  src/migrate.ts
-import { readFileSync, readdirSync } from 'node:fs'
-import nodePath from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { Pool } from 'pg'
+import { Pool, type PoolClient } from 'pg'
 
-const __dirname = nodePath.dirname(fileURLToPath(import.meta.url))
-const migrationsDirectory = nodePath.join(__dirname, '../drizzle')
+import { type MigrationFile, loadMigrations } from './migrations'
 
-function isLocalHost(rawUrl: string | undefined) {
-  if (!rawUrl) {
-    return true
+const MIGRATION_LOCK = 'oryxel:db:migrate'
+const migrations = loadMigrations()
+const migrationByTag = new Map(migrations.map((migration) => [migration.tag, migration]))
+
+function resolveMigrationDatabaseUrl(rawUrl: string | undefined) {
+  if (!rawUrl) throw new Error('DATABASE_URL is not set')
+
+  const parsed = new URL(rawUrl)
+
+  if (parsed.protocol !== 'postgres:' && parsed.protocol !== 'postgresql:') {
+    throw new Error('DATABASE_URL must use postgres protocol')
   }
 
-  try {
-    const host = new URL(rawUrl).hostname
+  if (
+    parsed.hostname.endsWith('.railway.internal') ||
+    parsed.hostname === 'localhost' ||
+    parsed.hostname === '127.0.0.1' ||
+    parsed.hostname === '[::1]'
+  ) {
+    parsed.searchParams.set('sslmode', 'disable')
+  } else {
+    parsed.searchParams.set('sslmode', 'verify-full')
+  }
 
-    return host.endsWith('.railway.internal') || host === 'localhost' || host === '127.0.0.1'
-  } catch {
-    return true
+  return parsed.href
+}
+
+const pool = new Pool({
+  connectionString: resolveMigrationDatabaseUrl(process.env.DATABASE_URL),
+})
+
+async function prepareMigrationTable(client: PoolClient) {
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS "__drizzle_migrations" (
+      id SERIAL PRIMARY KEY,
+      hash TEXT NOT NULL,
+      checksum TEXT,
+      created_at BIGINT
+    )
+  `)
+  await client.query('ALTER TABLE "__drizzle_migrations" ADD COLUMN IF NOT EXISTS checksum TEXT')
+  await client.query(
+    'CREATE UNIQUE INDEX IF NOT EXISTS "__drizzle_migrations_hash_idx" ON "__drizzle_migrations" (hash)',
+  )
+
+  const { rows: applied } = await client.query<{ checksum: string | null; hash: string }>(
+    'SELECT hash, checksum FROM "__drizzle_migrations"',
+  )
+  const appliedChecksums = new Map(applied.map((row) => [row.hash, row.checksum]))
+
+  for (const tag of appliedChecksums.keys()) {
+    if (!migrationByTag.has(tag)) {
+      throw new Error(`Database contains an unknown migration: ${tag}`)
+    }
+  }
+
+  for (const migration of migrations) {
+    const appliedChecksum = appliedChecksums.get(migration.tag)
+
+    if (appliedChecksum === undefined) continue
+
+    if (appliedChecksum === null) {
+      await client.query('UPDATE "__drizzle_migrations" SET checksum = $1 WHERE hash = $2', [
+        migration.checksum,
+        migration.tag,
+      ])
+    } else if (appliedChecksum !== migration.checksum) {
+      throw new Error(`Applied migration was modified: ${migration.file}`)
+    }
+  }
+
+  const appliedSet = new Set(appliedChecksums.keys())
+  let foundGap = false
+
+  for (const migration of migrations) {
+    if (!appliedSet.has(migration.tag)) {
+      foundGap = true
+    } else if (foundGap) {
+      throw new Error(`Database migration history is not a contiguous prefix at ${migration.tag}`)
+    }
+  }
+
+  return appliedSet
+}
+
+async function recordMigration(client: PoolClient, migration: MigrationFile) {
+  await client.query('INSERT INTO "__drizzle_migrations" (hash, checksum, created_at) VALUES ($1, $2, $3)', [
+    migration.tag,
+    migration.checksum,
+    Date.now(),
+  ])
+}
+
+async function markApplied(client: PoolClient, appliedSet: Set<string>, tag: string, reason: string) {
+  const migration = migrationByTag.get(tag)
+
+  if (!migration) throw new Error(`Migration file not found: ${tag}.sql`)
+
+  await recordMigration(client, migration)
+  appliedSet.add(tag)
+  console.log(`mark  ${migration.file} (${reason})`)
+}
+
+async function markExplicitBaseline(client: PoolClient, appliedSet: Set<string>) {
+  if (appliedSet.size > 0) return
+
+  const { rows } = await client.query<{ exists: boolean }>(`
+    SELECT EXISTS (
+      SELECT FROM information_schema.tables
+      WHERE table_schema = 'public' AND table_name <> '__drizzle_migrations'
+    ) AS exists
+  `)
+
+  if (!rows[0]?.exists) return
+
+  const baselineTag = process.env.DATABASE_MIGRATION_BASELINE
+  const baselineIndex = migrations.findIndex((migration) => migration.tag === baselineTag)
+
+  if (baselineIndex === -1) {
+    throw new Error(
+      'Database has an existing schema but no migration history. Set DATABASE_MIGRATION_BASELINE to the last migration already represented by that schema.',
+    )
+  }
+
+  for (const migration of migrations.slice(0, baselineIndex + 1)) {
+    await markApplied(client, appliedSet, migration.tag, 'explicit db:push baseline')
   }
 }
 
-// pg auto-enables SSL only from `?sslmode=require` in the connection string; managed Postgres
-// (Neon, Railway public TCP proxy) needs an explicit hint. Local/internal hosts skip SSL.
-const sslConfig = isLocalHost(process.env.DATABASE_URL) ? false : { rejectUnauthorized: false }
+async function applyMigration(client: PoolClient, migration: MigrationFile) {
+  const statements = migration.sql
+    .split('--> statement-breakpoint')
+    .map((statement) => statement.trim())
+    .filter(Boolean)
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: sslConfig,
-})
+  await client.query('BEGIN')
+
+  try {
+    for (const statement of statements) {
+      await client.query(statement)
+    }
+
+    await recordMigration(client, migration)
+    await client.query('COMMIT')
+  } catch (error) {
+    await client.query('ROLLBACK')
+    throw error
+  }
+}
+
+async function applyPendingMigrations(client: PoolClient, appliedSet: Set<string>) {
+  for (const migration of migrations) {
+    if (appliedSet.has(migration.tag)) {
+      console.log(`skip  ${migration.file}`)
+      continue
+    }
+
+    console.log(`apply ${migration.file}`)
+    await applyMigration(client, migration)
+    console.log(`done  ${migration.file}`)
+  }
+}
 
 async function run() {
   const client = await pool.connect()
+  let lockHeld = false
 
   try {
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS "__drizzle_migrations" (
-        id SERIAL PRIMARY KEY,
-        hash TEXT NOT NULL,
-        created_at BIGINT
-      )
-    `)
+    await client.query('SELECT pg_advisory_lock(hashtext($1))', [MIGRATION_LOCK])
+    lockHeld = true
 
-    const { rows: applied } = await client.query<{ hash: string }>('SELECT hash FROM "__drizzle_migrations"')
-    const appliedSet = new Set(applied.map((r) => r.hash))
+    const appliedSet = await prepareMigrationTable(client)
 
-    // If the baseline migration (0000) is not recorded but tables already exist
-    // (deployed via db:push), mark it as applied so we don't re-run CREATE TABLE.
-    if (!appliedSet.has('0000_dapper_scarlet_witch')) {
-      const { rows } = await client.query<{ exists: boolean }>(`
-        SELECT EXISTS (
-          SELECT FROM information_schema.tables
-          WHERE table_schema = 'public' AND table_name = 'user_fragrance'
-        ) AS exists
-      `)
-
-      if (rows[0]?.exists) {
-        await client.query('INSERT INTO "__drizzle_migrations" (hash, created_at) VALUES ($1, $2)', [
-          '0000_dapper_scarlet_witch',
-          Date.now(),
-        ])
-        appliedSet.add('0000_dapper_scarlet_witch')
-        console.log('mark  0000_dapper_scarlet_witch.sql (tables already exist via db:push)')
-      }
-    }
-
-    if (!appliedSet.has('0002_careful_marvel_zombies')) {
-      const { rows } = await client.query<{ exists: boolean }>(`
-        SELECT EXISTS (
-          SELECT FROM information_schema.tables
-          WHERE table_schema = 'public' AND table_name = 'note_family'
-        ) AS exists
-      `)
-
-      if (rows[0]?.exists) {
-        await client.query('INSERT INTO "__drizzle_migrations" (hash, created_at) VALUES ($1, $2)', [
-          '0002_careful_marvel_zombies',
-          Date.now(),
-        ])
-        appliedSet.add('0002_careful_marvel_zombies')
-        console.log('mark  0002_careful_marvel_zombies.sql (note_family already exists via db:push)')
-      }
-    }
-
-    const files = readdirSync(migrationsDirectory)
-      .filter((f) => f.endsWith('.sql'))
-      .toSorted((a, b) => a.localeCompare(b))
-
-    for (const file of files) {
-      const tag = file.replace('.sql', '')
-
-      if (appliedSet.has(tag)) {
-        console.log(`skip  ${file}`)
-        continue
-      }
-
-      console.log(`apply ${file}`)
-      const sql = readFileSync(nodePath.join(migrationsDirectory, file), 'utf8')
-      const statements = sql
-        .split('--> statement-breakpoint')
-        .map((s) => s.trim())
-        .filter(Boolean)
-
-      await client.query('BEGIN')
-
-      try {
-        for (const stmt of statements) {
-          await client.query(stmt)
-        }
-
-        await client.query('INSERT INTO "__drizzle_migrations" (hash, created_at) VALUES ($1, $2)', [tag, Date.now()])
-
-        await client.query('COMMIT')
-        console.log(`done  ${file}`)
-      } catch (error) {
-        await client.query('ROLLBACK')
-        throw error
-      }
-    }
+    await markExplicitBaseline(client, appliedSet)
+    await applyPendingMigrations(client, appliedSet)
 
     console.log('All migrations applied.')
   } finally {
-    client.release()
-    await pool.end()
+    try {
+      if (lockHeld) {
+        await client.query('SELECT pg_advisory_unlock(hashtext($1))', [MIGRATION_LOCK])
+      }
+    } finally {
+      client.release()
+      await pool.end()
+    }
   }
 }
 

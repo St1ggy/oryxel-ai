@@ -7,7 +7,7 @@ import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 
 let configuredDatabaseUrl: string | undefined
 let client: ReturnType<typeof postgres> | undefined
-let dbInstance: PostgresJsDatabase<typeof schema> | undefined
+let databaseInstance: PostgresJsDatabase<typeof schema> | undefined
 
 export function resolveDatabaseUrl(rawUrl: string | undefined) {
   if (!rawUrl) {
@@ -23,7 +23,9 @@ export function resolveDatabaseUrl(rawUrl: string | undefined) {
   return rawUrl
 }
 
-/** Web (SvelteKit) should call this early with `$env/dynamic/private`. Worker/scripts use `process.env`. */
+//
+// Web (SvelteKit) should call this early with `$env/dynamic/private`. Worker/scripts use `process.env`.
+//
 export function configureDatabase(databaseUrl: string | undefined) {
   if (databaseUrl) {
     configuredDatabaseUrl = databaseUrl
@@ -34,9 +36,11 @@ function readDatabaseUrl() {
   return resolveDatabaseUrl(configuredDatabaseUrl ?? process.env['DATABASE_URL'])
 }
 
-function isInternalHost(url: string) {
+function isPrivateDatabaseHost(url: string) {
   try {
-    return new URL(url).hostname.endsWith('.railway.internal')
+    const hostname = new URL(url).hostname
+
+    return hostname.endsWith('.railway.internal') || ['localhost', '127.0.0.1', '[::1]'].includes(hostname)
   } catch {
     return false
   }
@@ -49,23 +53,23 @@ function getClient() {
     client = postgres(url, {
       max: 10,
       prepare: false,
-      ssl: isInternalHost(url) ? false : 'require',
+      ssl: isPrivateDatabaseHost(url) ? false : 'verify-full',
     })
   }
 
   return client
 }
 
-function getDbInstance() {
-  dbInstance ??= drizzle(getClient(), { schema })
+function getDatabaseInstance() {
+  databaseInstance ??= drizzle(getClient(), { schema })
 
-  return dbInstance
+  return databaseInstance
 }
 
 export const db = new Proxy({} as PostgresJsDatabase<typeof schema>, {
-  get(_target, prop, receiver) {
-    const instance = getDbInstance()
-    const value = Reflect.get(instance, prop, receiver)
+  get(_target, property, receiver) {
+    const instance = getDatabaseInstance()
+    const value = Reflect.get(instance, property, receiver)
 
     return typeof value === 'function' ? value.bind(instance) : value
   },

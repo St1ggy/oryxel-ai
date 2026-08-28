@@ -50,6 +50,13 @@
       "when": 1782000000000,
       "tag": "0006_social_layer",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787944169780,
+      "tag": "0007_reconcile_runtime_schema",
+      "breakpoints": true
     }
   ]
 }
