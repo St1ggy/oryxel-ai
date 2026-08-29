@@ -9,7 +9,7 @@ import {
   renewJobLease,
   setJobUpdatedHandler,
 } from '@oryxel/ai/server'
-import { closeDatabase, db, user } from '@oryxel/db'
+import { closeDatabase, db, user, withUserDataLock } from '@oryxel/db'
 import { eq } from 'drizzle-orm'
 import Redis from 'ioredis'
 
@@ -73,7 +73,13 @@ async function processJob(job: ClaimedJob) {
 
   const [userRow] = await db.select({ name: user.name }).from(user).where(eq(user.id, job.userId)).limit(1)
 
-  const userName = userRow?.name ?? 'User'
+  if (!userRow) {
+    await failJob(job, 'User no longer exists')
+
+    return
+  }
+
+  const userName = userRow.name
 
   console.log(`[worker] processing job ${job.id} type=${job.type} userId=${job.userId}`)
 
@@ -141,7 +147,7 @@ async function processClaimedJob(job: ClaimedJob) {
   }, HEARTBEAT_INTERVAL_MS)
 
   try {
-    await processJob(job)
+    await withUserDataLock(job.userId, () => processJob(job))
   } catch (error) {
     if (error instanceof JobLeaseLostError || leaseLost) {
       console.warn(`[worker] stopped reporting job ${job.id} after losing its lease`)

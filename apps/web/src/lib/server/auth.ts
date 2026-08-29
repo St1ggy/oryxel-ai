@@ -3,6 +3,7 @@ import { betterAuth } from 'better-auth/minimal'
 import { genericOAuth } from 'better-auth/plugins'
 import { sveltekitCookies } from 'better-auth/svelte-kit'
 
+import { SENSITIVE_ACTION_FRESH_AGE_SECONDS } from '$lib/server/auth/fresh-session'
 import { db } from '$lib/server/db'
 import * as schema from '$lib/server/db/schema'
 
@@ -36,7 +37,9 @@ export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
   database: drizzleAdapter(db, { provider: 'pg', schema }),
   emailAndPassword: { enabled: false },
+  session: { freshAge: SENSITIVE_ACTION_FRESH_AGE_SECONDS },
   account: {
+    storeStateStrategy: 'cookie',
     accountLinking: {
       enabled: true,
       allowDifferentEmails: true,

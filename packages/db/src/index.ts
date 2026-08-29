@@ -7,7 +7,10 @@ import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 
 let configuredDatabaseUrl: string | undefined
 let client: ReturnType<typeof postgres> | undefined
+let advisoryLockClient: ReturnType<typeof postgres> | undefined
 let databaseInstance: PostgresJsDatabase<typeof schema> | undefined
+const USER_DATA_LOCK_NAMESPACE = 'oryxel:user-data'
+const USER_DATA_LOCK_RETRY_MS = 100
 
 export function resolveDatabaseUrl(rawUrl: string | undefined) {
   if (!rawUrl) {
@@ -46,18 +49,26 @@ function isPrivateDatabaseHost(url: string) {
   }
 }
 
-function getClient() {
-  if (!client) {
-    const url = readDatabaseUrl()
+function createClient(max: number) {
+  const url = readDatabaseUrl()
 
-    client = postgres(url, {
-      max: 10,
-      prepare: false,
-      ssl: isPrivateDatabaseHost(url) ? false : 'verify-full',
-    })
-  }
+  return postgres(url, {
+    max,
+    prepare: false,
+    ssl: isPrivateDatabaseHost(url) ? false : 'verify-full',
+  })
+}
+
+function getClient() {
+  client ??= createClient(10)
 
   return client
+}
+
+function getAdvisoryLockClient() {
+  advisoryLockClient ??= createClient(4)
+
+  return advisoryLockClient
 }
 
 function getDatabaseInstance() {
@@ -77,11 +88,48 @@ export const db = new Proxy({} as PostgresJsDatabase<typeof schema>, {
 
 export async function closeDatabase() {
   const activeClient = client
+  const activeAdvisoryLockClient = advisoryLockClient
 
   client = undefined
+  advisoryLockClient = undefined
   databaseInstance = undefined
 
-  await activeClient?.end({ timeout: 5 })
+  await Promise.all([activeClient?.end({ timeout: 5 }), activeAdvisoryLockClient?.end({ timeout: 5 })])
+}
+
+export async function withUserDataLock<T>(userId: string, callback: () => Promise<T>): Promise<T> {
+  let reservedClient: Awaited<ReturnType<ReturnType<typeof postgres>['reserve']>>
+
+  while (true) {
+    reservedClient = await getAdvisoryLockClient().reserve()
+
+    try {
+      const [result] = await reservedClient<{ acquired: boolean }[]>`
+        SELECT pg_try_advisory_lock(
+          hashtext(${USER_DATA_LOCK_NAMESPACE}),
+          hashtext(${userId})
+        ) AS acquired
+      `
+
+      if (result?.acquired) break
+    } catch (error) {
+      reservedClient.release()
+      throw error
+    }
+
+    reservedClient.release()
+    await new Promise((resolve) => setTimeout(resolve, USER_DATA_LOCK_RETRY_MS))
+  }
+
+  try {
+    return await callback()
+  } finally {
+    try {
+      await reservedClient`SELECT pg_advisory_unlock(hashtext(${USER_DATA_LOCK_NAMESPACE}), hashtext(${userId}))`
+    } finally {
+      reservedClient.release()
+    }
+  }
 }
 
 export * from './schema'

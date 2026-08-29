@@ -300,7 +300,7 @@ async function runSync(job: JobLease, context: StepContext, total: number, hasPr
     actor: 'agent',
     provider: context.provider,
     summary: `Profile synced (${context.ownedEntries.length + context.likedEntries.length + context.neutralEntries.length + context.dislikedEntries.length} entries)`,
-  })
+  }).catch(() => null)
 
   await completeJob(job, { triggerSync: true })
 }

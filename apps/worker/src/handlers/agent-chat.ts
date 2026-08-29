@@ -84,14 +84,14 @@ async function applyNonCriticalPatchFlow(
     meta: { durationMs: Date.now() - startedAt, note: 'done' },
   })
 
-  void generateMissingTranslations(userId, locale)
+  await generateMissingTranslations(userId, locale)
   void recordActivity({
     userId,
     action: 'patch_applied',
     actor: 'agent',
     provider: explicitProvider ?? defaultProvider ?? undefined,
     summary: patch.summary ?? '',
-  })
+  }).catch(() => null)
 
   return true
 }

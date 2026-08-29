@@ -384,6 +384,7 @@
   "oryxel_settings_error_export_json": "Could not export JSON data.",
   "oryxel_settings_error_export_md": "Could not export Markdown data.",
   "oryxel_settings_error_delete_all": "Could not delete account data.",
+  "oryxel_settings_account_fresh_session": "Please sign out and sign in again before exporting or deleting account data.",
   "oryxel_delete_confirm": "Delete all account data permanently? This action cannot be undone.",
   "oryxel_provider_guide_step_1": "Sign in to {provider} and open API key settings.",
   "oryxel_provider_guide_step_2": "Create a new key for Oryxel in {provider}.",

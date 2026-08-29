@@ -384,6 +384,7 @@
   "oryxel_settings_error_export_json": "No se pudieron exportar los datos en JSON.",
   "oryxel_settings_error_export_md": "No se pudieron exportar los datos en Markdown.",
   "oryxel_settings_error_delete_all": "No se pudieron eliminar los datos de la cuenta.",
+  "oryxel_settings_account_fresh_session": "Cierra sesión y vuelve a entrar antes de exportar o eliminar los datos de la cuenta.",
   "oryxel_delete_confirm": "¿Eliminar permanentemente todos los datos de la cuenta? Esta acción no se puede deshacer.",
   "oryxel_provider_guide_step_1": "Inicia sesión en {provider} y abre la configuración de claves API.",
   "oryxel_provider_guide_step_2": "Crea una nueva clave para Oryxel en {provider}.",

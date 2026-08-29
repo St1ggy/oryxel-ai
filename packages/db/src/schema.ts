@@ -13,6 +13,8 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core'
 
+import { user } from './auth.schema'
+
 export * from './auth.schema'
 
 export const task = pgTable('task', {
@@ -42,7 +44,10 @@ export const userProfile = pgTable(
   'user_profile',
   {
     id: serial('id').primaryKey(),
-    userId: text('user_id').notNull().unique(),
+    userId: text('user_id')
+      .references(() => user.id, { onDelete: 'cascade' })
+      .notNull()
+      .unique(),
     displayName: text('display_name'),
     bio: text('bio'),
     preferences: text('preferences'),
@@ -69,7 +74,10 @@ export const userProfile = pgTable(
 
 export const userAiPreferences = pgTable('user_ai_preferences', {
   id: serial('id').primaryKey(),
-  userId: text('user_id').notNull().unique(),
+  userId: text('user_id')
+    .references(() => user.id, { onDelete: 'cascade' })
+    .notNull()
+    .unique(),
   tone: text('tone'),
   depth: text('depth'),
   rememberContext: boolean('remember_context').notNull().default(false),
@@ -95,7 +103,9 @@ export const userAiProviderKey = pgTable(
   'user_ai_provider_key',
   {
     id: serial('id').primaryKey(),
-    userId: text('user_id').notNull(),
+    userId: text('user_id')
+      .references(() => user.id, { onDelete: 'cascade' })
+      .notNull(),
     provider: text('provider').notNull(),
     label: text('label').notNull(),
     encryptedKey: text('encrypted_key').notNull(),
@@ -115,7 +125,9 @@ export const userFragrance = pgTable(
   'user_fragrance',
   {
     id: serial('id').primaryKey(),
-    userId: text('user_id').notNull(),
+    userId: text('user_id')
+      .references(() => user.id, { onDelete: 'cascade' })
+      .notNull(),
     fragranceId: integer('fragrance_id')
       .references(() => fragrance.id)
       .notNull(),
@@ -142,7 +154,9 @@ export const aiRecommendationDismissed = pgTable(
   'ai_recommendation_dismissed',
   {
     id: serial('id').primaryKey(),
-    userId: text('user_id').notNull(),
+    userId: text('user_id')
+      .references(() => user.id, { onDelete: 'cascade' })
+      .notNull(),
     fragranceId: integer('fragrance_id')
       .references(() => fragrance.id)
       .notNull(),
@@ -152,57 +166,84 @@ export const aiRecommendationDismissed = pgTable(
   (table) => [uniqueIndex('ai_rec_dismissed_user_frag').on(table.userId, table.fragranceId)],
 )
 
-export const userChatMessage = pgTable('user_chat_message', {
-  id: serial('id').primaryKey(),
-  userId: text('user_id').notNull(),
-  role: text('role').notNull(),
-  encryptedContent: text('encrypted_content').notNull(),
-  contentIv: text('content_iv').notNull(),
-  contentAuthTag: text('content_auth_tag').notNull(),
-  contentVersion: text('content_version').notNull().default('v1'),
-  scenario: text('scenario'),
-  locale: text('locale').notNull().default('en'),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-})
+export const userChatMessage = pgTable(
+  'user_chat_message',
+  {
+    id: serial('id').primaryKey(),
+    userId: text('user_id')
+      .references(() => user.id, { onDelete: 'cascade' })
+      .notNull(),
+    role: text('role').notNull(),
+    encryptedContent: text('encrypted_content').notNull(),
+    contentIv: text('content_iv').notNull(),
+    contentAuthTag: text('content_auth_tag').notNull(),
+    contentVersion: text('content_version').notNull().default('v1'),
+    scenario: text('scenario'),
+    locale: text('locale').notNull().default('en'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('user_chat_message_user_id_idx').on(table.userId)],
+)
 
-export const aiPendingPatch = pgTable('ai_pending_patch', {
-  id: serial('id').primaryKey(),
-  userId: text('user_id').notNull(),
-  patchType: text('patch_type').notNull(),
-  payload: jsonb('payload').$type<Record<string, unknown>>().notNull(),
-  summary: text('summary'),
-  confidence: integer('confidence'),
-  status: text('status').notNull().default('created'),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  confirmedAt: timestamp('confirmed_at', { withTimezone: true }),
-  rejectedAt: timestamp('rejected_at', { withTimezone: true }),
-  appliedAt: timestamp('applied_at', { withTimezone: true }),
-  failedAt: timestamp('failed_at', { withTimezone: true }),
-  failureReason: text('failure_reason'),
-})
+export const aiPendingPatch = pgTable(
+  'ai_pending_patch',
+  {
+    id: serial('id').primaryKey(),
+    userId: text('user_id')
+      .references(() => user.id, { onDelete: 'cascade' })
+      .notNull(),
+    patchType: text('patch_type').notNull(),
+    payload: jsonb('payload').$type<Record<string, unknown>>().notNull(),
+    summary: text('summary'),
+    confidence: integer('confidence'),
+    status: text('status').notNull().default('created'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    confirmedAt: timestamp('confirmed_at', { withTimezone: true }),
+    rejectedAt: timestamp('rejected_at', { withTimezone: true }),
+    appliedAt: timestamp('applied_at', { withTimezone: true }),
+    failedAt: timestamp('failed_at', { withTimezone: true }),
+    failureReason: text('failure_reason'),
+  },
+  (table) => [index('ai_pending_patch_user_id_idx').on(table.userId)],
+)
 
-export const aiPatchAuditLog = pgTable('ai_patch_audit_log', {
-  id: serial('id').primaryKey(),
-  userId: text('user_id').notNull(),
-  patchId: integer('patch_id').references(() => aiPendingPatch.id),
-  action: text('action').notNull(),
-  details: jsonb('details').$type<Record<string, unknown>>(),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-})
+export const aiPatchAuditLog = pgTable(
+  'ai_patch_audit_log',
+  {
+    id: serial('id').primaryKey(),
+    userId: text('user_id')
+      .references(() => user.id, { onDelete: 'cascade' })
+      .notNull(),
+    patchId: integer('patch_id').references(() => aiPendingPatch.id, { onDelete: 'cascade' }),
+    action: text('action').notNull(),
+    details: jsonb('details').$type<Record<string, unknown>>(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('ai_patch_audit_log_user_id_idx').on(table.userId),
+    index('ai_patch_audit_log_patch_id_idx').on(table.patchId),
+  ],
+)
 
-export const userActivityLog = pgTable('user_activity_log', {
-  id: serial('id').primaryKey(),
-  userId: text('user_id').notNull(),
-  // 'patch_applied' | 'profile_synced' | 'entry_updated' | 'entry_deleted'
-  action: text('action').notNull(),
-  // 'user' or 'agent'
-  actor: text('actor').notNull().default('user'),
-  // AI provider id when actor='agent', e.g. 'openai', 'groq'
-  provider: text('provider'),
-  // Human-readable description in the user's locale
-  summary: text('summary').notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-})
+export const userActivityLog = pgTable(
+  'user_activity_log',
+  {
+    id: serial('id').primaryKey(),
+    userId: text('user_id')
+      .references(() => user.id, { onDelete: 'cascade' })
+      .notNull(),
+    // 'patch_applied' | 'profile_synced' | 'entry_updated' | 'entry_deleted'
+    action: text('action').notNull(),
+    // 'user' or 'agent'
+    actor: text('actor').notNull().default('user'),
+    // AI provider id when actor='agent', e.g. 'openai', 'groq'
+    provider: text('provider'),
+    // Human-readable description in the user's locale
+    summary: text('summary').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('user_activity_log_user_id_idx').on(table.userId)],
+)
 
 //
 // User-managed long-term lines injected into the AI agent context.
@@ -211,7 +252,9 @@ export const userAgentMemory = pgTable(
   'user_agent_memory',
   {
     id: serial('id').primaryKey(),
-    userId: text('user_id').notNull(),
+    userId: text('user_id')
+      .references(() => user.id, { onDelete: 'cascade' })
+      .notNull(),
     content: text('content').notNull(),
     // 'user' | 'agent' — reserved for future auto-capture
     source: text('source').notNull().default('user'),
@@ -255,7 +298,9 @@ export const backgroundJob = pgTable(
   'background_job',
   {
     id: serial('id').primaryKey(),
-    userId: text('user_id').notNull(),
+    userId: text('user_id')
+      .references(() => user.id, { onDelete: 'cascade' })
+      .notNull(),
     // 'profile_sync' | 'agent_chat'
     type: text('type').notNull(),
     // 'pending' | 'processing' | 'done' | 'failed' | 'cancelled'
@@ -299,6 +344,7 @@ export const backgroundJob = pgTable(
     index('background_job_processing_lease_idx')
       .on(table.leaseExpiresAt, table.id)
       .where(sql`${table.status} = 'processing'`),
+    index('background_job_user_id_idx').on(table.userId),
   ],
 )
 
@@ -341,7 +387,9 @@ export const userList = pgTable(
   'user_list',
   {
     id: serial('id').primaryKey(),
-    userId: text('user_id').notNull(),
+    userId: text('user_id')
+      .references(() => user.id, { onDelete: 'cascade' })
+      .notNull(),
     slug: text('slug').notNull(),
     title: text('title').notNull(),
     description: text('description'),
@@ -369,7 +417,7 @@ export const userListItem = pgTable(
     fragranceId: integer('fragrance_id')
       .references(() => fragrance.id)
       .notNull(),
-    userFragranceId: integer('user_fragrance_id').references(() => userFragrance.id),
+    userFragranceId: integer('user_fragrance_id').references(() => userFragrance.id, { onDelete: 'set null' }),
     sortOrder: integer('sort_order').notNull().default(0),
     note: text('note'),
     addedAt: timestamp('added_at', { withTimezone: true }).notNull().defaultNow(),
@@ -377,6 +425,7 @@ export const userListItem = pgTable(
   (table) => [
     uniqueIndex('user_list_item_list_fragrance_idx').on(table.listId, table.fragranceId),
     index('user_list_item_list_id_idx').on(table.listId),
+    index('user_list_item_user_fragrance_id_idx').on(table.userFragranceId),
   ],
 )
 
@@ -384,8 +433,12 @@ export const userFollow = pgTable(
   'user_follow',
   {
     id: serial('id').primaryKey(),
-    followerId: text('follower_id').notNull(),
-    followingId: text('following_id').notNull(),
+    followerId: text('follower_id')
+      .references(() => user.id, { onDelete: 'cascade' })
+      .notNull(),
+    followingId: text('following_id')
+      .references(() => user.id, { onDelete: 'cascade' })
+      .notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
@@ -398,7 +451,9 @@ export const post = pgTable(
   'post',
   {
     id: serial('id').primaryKey(),
-    authorId: text('author_id').notNull(),
+    authorId: text('author_id')
+      .references(() => user.id, { onDelete: 'cascade' })
+      .notNull(),
     body: text('body').notNull(),
     visibility: text('visibility').notNull().default('followers'),
     status: text('status').notNull().default('published'),
@@ -408,23 +463,29 @@ export const post = pgTable(
   (table) => [index('post_author_id_created_idx').on(table.authorId, table.createdAt)],
 )
 
-export const postAttachment = pgTable('post_attachment', {
-  id: serial('id').primaryKey(),
-  postId: integer('post_id')
-    .references(() => post.id, { onDelete: 'cascade' })
-    .notNull(),
-  kind: text('kind').notNull(),
-  entityId: integer('entity_id'),
-  url: text('url'),
-  meta: jsonb('meta').$type<Record<string, unknown>>(),
-})
+export const postAttachment = pgTable(
+  'post_attachment',
+  {
+    id: serial('id').primaryKey(),
+    postId: integer('post_id')
+      .references(() => post.id, { onDelete: 'cascade' })
+      .notNull(),
+    kind: text('kind').notNull(),
+    entityId: integer('entity_id'),
+    url: text('url'),
+    meta: jsonb('meta').$type<Record<string, unknown>>(),
+  },
+  (table) => [index('post_attachment_post_id_idx').on(table.postId)],
+)
 
 export const notification = pgTable(
   'notification',
   {
     id: serial('id').primaryKey(),
-    recipientId: text('recipient_id').notNull(),
-    actorId: text('actor_id'),
+    recipientId: text('recipient_id')
+      .references(() => user.id, { onDelete: 'cascade' })
+      .notNull(),
+    actorId: text('actor_id').references(() => user.id, { onDelete: 'cascade' }),
     type: text('type').notNull(),
     entityType: text('entity_type'),
     entityId: integer('entity_id'),
@@ -435,6 +496,7 @@ export const notification = pgTable(
   (table) => [
     index('notification_recipient_created_idx').on(table.recipientId, table.createdAt),
     index('notification_recipient_unread_idx').on(table.recipientId, table.readAt),
+    index('notification_actor_id_idx').on(table.actorId),
   ],
 )
 
@@ -442,7 +504,9 @@ export const notificationPreference = pgTable(
   'notification_preference',
   {
     id: serial('id').primaryKey(),
-    userId: text('user_id').notNull(),
+    userId: text('user_id')
+      .references(() => user.id, { onDelete: 'cascade' })
+      .notNull(),
     type: text('type').notNull(),
     enabled: boolean('enabled').notNull().default(true),
   },

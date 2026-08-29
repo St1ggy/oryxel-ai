@@ -11,7 +11,7 @@ Use this runbook to move the application database between PostgreSQL providers. 
 
 ## Apply Migrations
 
-Run the append-only migration history against the destination:
+After writes are stopped and the final copy is complete, run the append-only migration history against the destination:
 
 ```bash
 DATABASE_URL="postgresql://..." bun run --cwd packages/db db:migrate
@@ -29,6 +29,15 @@ bun run --cwd packages/db db:migrate
 
 Remove `DATABASE_MIGRATION_BASELINE` immediately after the one-time adoption. Never use it to skip an unapplied migration.
 
+## Apply Locking Migrations
+
+Migrations that add foreign keys or build regular indexes, including `0009_account_data_cascades`, require a maintenance window. The migration transaction holds table locks until commit; the migration advisory lock only serializes other migration runners and does not stop application writes.
+
+- Put the web application into maintenance mode before running the migration.
+- Stop the worker and wait for the current job to finish.
+- Run `DATABASE_URL="postgresql://..." bun run --cwd packages/db db:migrate` against the destination.
+- Treat a lock-timeout or deadlock error as an aborted migration, keep writes disabled, and rerun it after confirming no application connections are writing.
+
 ## Verify Cutover
 
 After the final data copy and before restoring writes, compare schemas and order-independent content fingerprints:
@@ -41,6 +50,8 @@ bun packages/db/src/verify-migration.ts
 ```
 
 Treat any failure as a rollback condition. Review warnings manually, especially worker inactivity and expected post-cutover drift in volatile authentication tables.
+
+Restore web and worker traffic only after the migration and verification both succeed.
 
 ## Safety Window
 

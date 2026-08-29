@@ -4,4 +4,4 @@ import { env } from '$env/dynamic/private'
 
 configureDatabase(env.DATABASE_URL)
 
-export { db } from '@oryxel/db'
+export { db, withUserDataLock } from '@oryxel/db'

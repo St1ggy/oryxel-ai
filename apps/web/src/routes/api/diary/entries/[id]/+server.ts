@@ -33,14 +33,15 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 
   await db.delete(userFragrance).where(and(eq(userFragrance.id, id), eq(userFragrance.userId, locals.user.id)))
 
-  void recordActivity({
-    userId: locals.user.id,
-    action: 'entry_deleted',
-    actor: 'user',
-    summary: `Removed: ${label}`,
-  })
-
-  void createJob(locals.user.id, 'list_slice_sync', {})
+  await Promise.allSettled([
+    recordActivity({
+      userId: locals.user.id,
+      action: 'entry_deleted',
+      actor: 'user',
+      summary: `Removed: ${label}`,
+    }),
+    createJob(locals.user.id, 'list_slice_sync', {}),
+  ])
 
   return json({ ok: true })
 }
@@ -98,16 +99,20 @@ export const PATCH: RequestHandler = async ({ params, locals, request }) => {
     return `Updated ${label}`
   }
 
-  void recordActivity({
-    userId: locals.user.id,
-    action: 'entry_updated',
-    actor: 'user',
-    summary: buildSummary(),
-  })
+  const sideEffects: Promise<unknown>[] = [
+    recordActivity({
+      userId: locals.user.id,
+      action: 'entry_updated',
+      actor: 'user',
+      summary: buildSummary(),
+    }),
+  ]
 
   if (body.listType) {
-    void createJob(locals.user.id, 'list_slice_sync', {})
+    sideEffects.push(createJob(locals.user.id, 'list_slice_sync', {}))
   }
+
+  await Promise.allSettled(sideEffects)
 
   return json({ ok: true })
 }
