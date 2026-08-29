@@ -50,7 +50,15 @@ export type {
   NotificationRow,
 } from './social/types.js'
 export { VISIBILITIES, LIST_KINDS, NOTIFICATION_TYPES } from './social/types.js'
-export { canView, isFollowing, isVisibility, slugifyTitle, visibilityAtLeast } from './social/visibility.js'
+export {
+  canDiscover,
+  canView,
+  isFollowing,
+  isVisibility,
+  resolveVisibility,
+  shouldNotifyFollowers,
+  slugifyTitle,
+} from './social/visibility.js'
 export { validateUsername, normalizeUsername } from './social/username.js'
 export { searchFragrances, searchUsers, searchFragrancesByQuery } from './social/search.js'
 export {

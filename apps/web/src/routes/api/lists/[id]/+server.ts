@@ -1,4 +1,11 @@
-import { createJob, deleteList, getListById, listItemsForList, updateList } from '@oryxel/ai/server'
+import {
+  createJob,
+  deleteList,
+  getListById,
+  listItemsForList,
+  shouldNotifyFollowers,
+  updateList,
+} from '@oryxel/ai/server'
 import { error, json } from '@sveltejs/kit'
 import { z } from 'zod'
 
@@ -42,7 +49,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
   if (!list) throw error(404, 'NOT_FOUND')
 
-  if (body.visibility && body.visibility !== 'private' && previous.visibility === 'private') {
+  if (shouldNotifyFollowers(list.visibility) && !shouldNotifyFollowers(previous.visibility)) {
     await createJob(locals.user.id, 'notify_list', { listId })
   }
 

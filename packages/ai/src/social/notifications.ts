@@ -1,7 +1,22 @@
-import { db, notification, notificationPreference, userProfile } from '@oryxel/db'
-import { and, count, desc, eq, inArray, isNull } from 'drizzle-orm'
+import { db, notification, notificationPreference, post, userList, userProfile } from '@oryxel/db'
+import { and, count, desc, eq, inArray, isNull, notInArray, or } from 'drizzle-orm'
 
 import type { NotificationType } from './types.js'
+
+const DISCOVERABLE_VISIBILITIES = ['followers', 'public']
+
+function currentContentIsDiscoverable() {
+  return or(
+    isNull(notification.entityType),
+    notInArray(notification.entityType, ['list', 'post']),
+    and(eq(notification.entityType, 'list'), inArray(userList.visibility, DISCOVERABLE_VISIBILITIES)),
+    and(
+      eq(notification.entityType, 'post'),
+      eq(post.status, 'published'),
+      inArray(post.visibility, DISCOVERABLE_VISIBILITIES),
+    ),
+  )
+}
 
 export async function isNotificationEnabled(userId: string, type: NotificationType) {
   const [pref] = await db
@@ -58,7 +73,9 @@ export async function listNotifications(userId: string, limit = 50) {
     })
     .from(notification)
     .leftJoin(userProfile, eq(notification.actorId, userProfile.userId))
-    .where(eq(notification.recipientId, userId))
+    .leftJoin(userList, and(eq(notification.entityType, 'list'), eq(notification.entityId, userList.id)))
+    .leftJoin(post, and(eq(notification.entityType, 'post'), eq(notification.entityId, post.id)))
+    .where(and(eq(notification.recipientId, userId), currentContentIsDiscoverable()))
     .orderBy(desc(notification.createdAt))
     .limit(limit)
 
@@ -80,7 +97,9 @@ export async function countUnreadNotifications(userId: string) {
   const [row] = await db
     .select({ count: count() })
     .from(notification)
-    .where(and(eq(notification.recipientId, userId), isNull(notification.readAt)))
+    .leftJoin(userList, and(eq(notification.entityType, 'list'), eq(notification.entityId, userList.id)))
+    .leftJoin(post, and(eq(notification.entityType, 'post'), eq(notification.entityId, post.id)))
+    .where(and(eq(notification.recipientId, userId), isNull(notification.readAt), currentContentIsDiscoverable()))
 
   return Number(row?.count ?? 0)
 }

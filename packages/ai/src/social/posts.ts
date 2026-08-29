@@ -2,7 +2,7 @@ import { db, post, postAttachment, userProfile } from '@oryxel/db'
 import { and, desc, eq, inArray } from 'drizzle-orm'
 
 import { listFollowingIds } from './follow.js'
-import { canView } from './visibility.js'
+import { canDiscover, resolveVisibility } from './visibility.js'
 
 import type { FeedPost, Visibility } from './types.js'
 
@@ -15,13 +15,23 @@ export async function createPost(
   },
 ) {
   const now = new Date()
+  const [author] = await db
+    .select({
+      username: userProfile.username,
+      displayName: userProfile.displayName,
+      defaultPostVisibility: userProfile.defaultPostVisibility,
+    })
+    .from(userProfile)
+    .where(eq(userProfile.userId, authorId))
+    .limit(1)
+  const visibility = resolveVisibility(input.visibility, author?.defaultPostVisibility, 'followers')
 
   const [row] = await db
     .insert(post)
     .values({
       authorId,
       body: input.body.trim(),
-      visibility: input.visibility ?? 'followers',
+      visibility,
       updatedAt: now,
     })
     .returning()
@@ -36,12 +46,6 @@ export async function createPost(
       })),
     )
   }
-
-  const [author] = await db
-    .select({ username: userProfile.username, displayName: userProfile.displayName })
-    .from(userProfile)
-    .where(eq(userProfile.userId, authorId))
-    .limit(1)
 
   return {
     id: row.id,
@@ -88,7 +92,7 @@ export async function listPostsForAuthor(authorId: string, viewerId: string | nu
     .limit(1)
 
   for (const row of rows) {
-    if (!(await canView(viewerId, authorId, row.visibility as Visibility))) {
+    if (!(await canDiscover(viewerId, authorId, row.visibility as Visibility))) {
       continue
     }
 
@@ -142,7 +146,7 @@ export async function loadFeedForUser(viewerId: string, limit = 30) {
   const feed: FeedPost[] = []
 
   for (const row of rows) {
-    if (!(await canView(viewerId, row.authorId, row.visibility as Visibility))) continue
+    if (!(await canDiscover(viewerId, row.authorId, row.visibility as Visibility))) continue
 
     const attachments = await db
       .select({

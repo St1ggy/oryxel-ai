@@ -1,7 +1,7 @@
 import { brand, db, fragrance, userList, userListItem } from '@oryxel/db'
 import { and, count, desc, eq, sql } from 'drizzle-orm'
 
-import { slugifyTitle } from './visibility.js'
+import { canDiscover, slugifyTitle } from './visibility.js'
 
 import type { ListKind, UserListRow, Visibility } from './types.js'
 
@@ -276,8 +276,13 @@ export async function removeListItem(listId: number, userId: string, itemId: num
   return false
 }
 
-export async function listPublicListsForUser(ownerUserId: string) {
+export async function listPublicListsForUser(ownerUserId: string, viewerId: string | null) {
   const rows = await listListsForUser(ownerUserId)
+  const visible = []
 
-  return rows.filter((row) => row.visibility !== 'private')
+  for (const row of rows) {
+    if (await canDiscover(viewerId, ownerUserId, row.visibility)) visible.push(row)
+  }
+
+  return visible
 }

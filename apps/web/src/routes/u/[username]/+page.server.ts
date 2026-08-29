@@ -1,5 +1,4 @@
 import {
-  canView,
   getProfileByUsername,
   listPostsForAuthor,
   listPublicListsForUser,
@@ -25,22 +24,15 @@ export const load: PageServerLoad = async ({ params, locals, cookies }) => {
   const locale = cookies.get(cookieName) ?? 'en'
   const stats = baseProfile ? await loadPublicDiaryStats(baseProfile.userId, baseProfile.showDiaryStats, locale) : null
 
-  const lists = await listPublicListsForUser(profile.userId)
   const viewerId = locals.user?.id ?? null
-  const visibleLists = []
-
-  for (const list of lists) {
-    if (await canView(viewerId, profile.userId, list.visibility)) {
-      visibleLists.push(list)
-    }
-  }
+  const lists = await listPublicListsForUser(profile.userId, viewerId)
 
   const posts = await listPostsForAuthor(profile.userId, viewerId)
 
   return {
     profile,
     stats,
-    lists: visibleLists,
+    lists,
     posts,
     viewerId,
   }

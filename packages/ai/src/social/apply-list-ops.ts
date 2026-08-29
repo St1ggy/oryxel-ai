@@ -4,6 +4,7 @@ import { createJob } from '../ai/jobs.js'
 
 import { addListItem, createList, listItemsForList, removeListItem, updateList } from './lists.js'
 import { searchFragrancesByQuery } from './search.js'
+import { shouldNotifyFollowers } from './visibility.js'
 
 import type { ListOp, Visibility } from './types.js'
 
@@ -37,7 +38,7 @@ export async function applyListOps(userId: string, ops: ListOp[], executor: Data
         createdListIds.push(list.id)
         lastListId = list.id
 
-        if (op.visibility && op.visibility !== 'private') isNotifyList = true
+        if (shouldNotifyFollowers(list.visibility)) isNotifyList = true
 
         break
       }
@@ -86,7 +87,7 @@ export async function applyListOps(userId: string, ops: ListOp[], executor: Data
 
         const updated = await updateList(op.listId, userId, { visibility: op.visibility as Visibility }, executor)
 
-        if (updated && op.visibility !== 'private') isNotifyList = true
+        if (updated && shouldNotifyFollowers(updated.visibility)) isNotifyList = true
 
         break
       }

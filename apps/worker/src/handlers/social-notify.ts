@@ -7,7 +7,7 @@ import {
   getListById,
   getPostById,
   listFollowerIds,
-  visibilityAtLeast,
+  shouldNotifyFollowers,
 } from '@oryxel/ai/server'
 
 import type { JobLease, Visibility } from '@oryxel/ai/server'
@@ -19,7 +19,7 @@ export async function handleNotifyPost(job: JobLease, params: Record<string, unk
 
     const row = await getPostById(postId)
 
-    if (!row || row.authorId !== authorId) {
+    if (!row || row.authorId !== authorId || !shouldNotifyFollowers(row.visibility as Visibility)) {
       await completeJob(job, { skipped: true })
 
       return
@@ -67,7 +67,7 @@ export async function handleNotifyList(job: JobLease, userId: string, params: Re
     const listId = (params['listId'] as number) ?? 0
     const list = await getListById(listId, userId)
 
-    if (!list || !visibilityAtLeast(list.visibility, 'followers')) {
+    if (!list || !shouldNotifyFollowers(list.visibility)) {
       await completeJob(job, { skipped: true })
 
       return

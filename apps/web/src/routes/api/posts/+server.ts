@@ -1,4 +1,4 @@
-import { createJob, createPost } from '@oryxel/ai/server'
+import { createJob, createPost, shouldNotifyFollowers } from '@oryxel/ai/server'
 import { error, json } from '@sveltejs/kit'
 import { z } from 'zod'
 
@@ -24,7 +24,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   const body = bodySchema.parse(await request.json())
   const post = await createPost(locals.user.id, body)
 
-  if (body.visibility !== 'private') {
+  if (shouldNotifyFollowers(post.visibility)) {
     await createJob(locals.user.id, 'notify_post', { postId: post.id, authorId: locals.user.id })
   }
 
