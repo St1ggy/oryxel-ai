@@ -1,9 +1,10 @@
 import { aiPatchAuditLog, aiPendingPatch, db, userChatMessage } from '@oryxel/db'
 import { and, desc, eq } from 'drizzle-orm'
 
+import { deleteOrphanedUserCatalogEntities } from '../diary/catalog-lifecycle'
 import { applyListOps, enqueueListNotifyJob } from '../social/apply-list-ops'
 
-import { applyPatchToDatabase } from './apply'
+import { applyPatchToDatabase, patchMayOrphanCatalogEntities } from './apply'
 import { decryptSecret, encryptSecret } from './crypto/secret-box'
 
 import type { StructuredPreferencePatch } from './contracts'
@@ -110,6 +111,13 @@ export async function applyPendingPatch(input: {
       await applyPatchToDatabase(input.userId, payload, tx)
 
       const listResult = payload.listOps?.length ? await applyListOps(input.userId, payload.listOps, tx) : null
+
+      if (
+        patchMayOrphanCatalogEntities(payload) ||
+        payload.listOps?.some((operation) => operation.op === 'remove') === true
+      ) {
+        await deleteOrphanedUserCatalogEntities(tx)
+      }
 
       if (listResult?.notifyList && listResult.createdListIds[0]) {
         await enqueueListNotifyJob(input.userId, listResult.createdListIds[0], tx)

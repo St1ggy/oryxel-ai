@@ -27,6 +27,7 @@ import {
 import { eq, inArray, or, sql } from 'drizzle-orm'
 
 import { decryptSecret } from '../ai/crypto/secret-box'
+import { deleteOrphanedUserCatalogEntities } from '../diary/catalog-lifecycle'
 
 export type UserExportPayload = {
   exportedAt: string
@@ -372,6 +373,7 @@ export async function deleteUserDataCompletely(input: { userId: string; userEmai
       await tx.delete(userAiProviderKey).where(eq(userAiProviderKey.userId, input.userId))
       await tx.delete(userAiPreferences).where(eq(userAiPreferences.userId, input.userId))
       await tx.delete(userFragrance).where(eq(userFragrance.userId, input.userId))
+      await deleteOrphanedUserCatalogEntities(tx)
       await tx.delete(userProfile).where(eq(userProfile.userId, input.userId))
       await tx.delete(session).where(eq(session.userId, input.userId))
       await tx.delete(account).where(eq(account.userId, input.userId))

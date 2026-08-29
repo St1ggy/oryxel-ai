@@ -23,22 +23,45 @@ export const task = pgTable('task', {
   priority: integer('priority').notNull().default(1),
 })
 
-export const brand = pgTable('brand', {
-  id: serial('id').primaryKey(),
-  name: text('name').notNull().unique(),
-})
+export type CatalogEntityOrigin = 'legacy' | 'catalog' | 'user'
 
-export const fragrance = pgTable('fragrance', {
-  id: serial('id').primaryKey(),
-  brandId: integer('brand_id')
-    .references(() => brand.id)
-    .notNull(),
-  name: text('name').notNull(),
-  pyramidTop: text('pyramid_top'),
-  pyramidMid: text('pyramid_mid'),
-  pyramidBase: text('pyramid_base'),
-  notesSummary: text('notes_summary'),
-})
+export const brand = pgTable(
+  'brand',
+  {
+    id: serial('id').primaryKey(),
+    name: text('name').notNull().unique(),
+    origin: text('origin').$type<CatalogEntityOrigin>().notNull().default('legacy'),
+    createdByUserId: text('created_by_user_id').references(() => user.id, { onDelete: 'set null' }),
+  },
+  (table) => [
+    check('brand_origin_check', sql`${table.origin} IN ('legacy', 'catalog', 'user')`),
+    index('brand_origin_idx').on(table.origin),
+    index('brand_created_by_user_id_idx').on(table.createdByUserId),
+  ],
+)
+
+export const fragrance = pgTable(
+  'fragrance',
+  {
+    id: serial('id').primaryKey(),
+    brandId: integer('brand_id')
+      .references(() => brand.id)
+      .notNull(),
+    name: text('name').notNull(),
+    pyramidTop: text('pyramid_top'),
+    pyramidMid: text('pyramid_mid'),
+    pyramidBase: text('pyramid_base'),
+    notesSummary: text('notes_summary'),
+    origin: text('origin').$type<CatalogEntityOrigin>().notNull().default('legacy'),
+    createdByUserId: text('created_by_user_id').references(() => user.id, { onDelete: 'set null' }),
+  },
+  (table) => [
+    check('fragrance_origin_check', sql`${table.origin} IN ('legacy', 'catalog', 'user')`),
+    index('fragrance_origin_idx').on(table.origin),
+    index('fragrance_brand_id_idx').on(table.brandId),
+    index('fragrance_created_by_user_id_idx').on(table.createdByUserId),
+  ],
+)
 
 export const userProfile = pgTable(
   'user_profile',
@@ -139,12 +162,19 @@ export const userFragrance = pgTable(
     isRecommendation: boolean('is_recommendation').notNull().default(false),
     agentComment: text('agent_comment'),
     userComment: text('user_comment'),
+    notesSummary: text('notes_summary'),
+    pyramidTop: text('pyramid_top'),
+    pyramidMid: text('pyramid_mid'),
+    pyramidBase: text('pyramid_base'),
     season: text('season'),
     timeOfDay: text('time_of_day'),
     gender: text('gender'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [uniqueIndex('user_fragrance_user_fragrance_idx').on(table.userId, table.fragranceId)],
+  (table) => [
+    uniqueIndex('user_fragrance_user_fragrance_idx').on(table.userId, table.fragranceId),
+    index('user_fragrance_fragrance_id_idx').on(table.fragranceId),
+  ],
 )
 
 //
@@ -163,7 +193,10 @@ export const aiRecommendationDismissed = pgTable(
     reason: text('reason'),
     dismissedAt: timestamp('dismissed_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [uniqueIndex('ai_rec_dismissed_user_frag').on(table.userId, table.fragranceId)],
+  (table) => [
+    uniqueIndex('ai_rec_dismissed_user_frag').on(table.userId, table.fragranceId),
+    index('ai_rec_dismissed_fragrance_id_idx').on(table.fragranceId),
+  ],
 )
 
 export const userChatMessage = pgTable(
@@ -425,6 +458,7 @@ export const userListItem = pgTable(
   (table) => [
     uniqueIndex('user_list_item_list_fragrance_idx').on(table.listId, table.fragranceId),
     index('user_list_item_list_id_idx').on(table.listId),
+    index('user_list_item_fragrance_id_idx').on(table.fragranceId),
     index('user_list_item_user_fragrance_id_idx').on(table.userFragranceId),
   ],
 )
@@ -475,7 +509,10 @@ export const postAttachment = pgTable(
     url: text('url'),
     meta: jsonb('meta').$type<Record<string, unknown>>(),
   },
-  (table) => [index('post_attachment_post_id_idx').on(table.postId)],
+  (table) => [
+    index('post_attachment_post_id_idx').on(table.postId),
+    index('post_attachment_kind_entity_id_idx').on(table.kind, table.entityId),
+  ],
 )
 
 export const notification = pgTable(

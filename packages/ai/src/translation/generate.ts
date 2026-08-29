@@ -1,5 +1,5 @@
 import { db, fragrance, translations, userFragrance } from '@oryxel/db'
-import { and, eq, inArray } from 'drizzle-orm'
+import { and, eq, inArray, sql } from 'drizzle-orm'
 
 import { extractEnglishKey, saveTranslations } from './service'
 import { translateBatch } from './translate'
@@ -34,10 +34,10 @@ function collectRowKeys(r: {
 async function loadUserCanonicalKeys(userId: string) {
   const rows = await db
     .select({
-      notesSummary: fragrance.notesSummary,
-      pyramidTop: fragrance.pyramidTop,
-      pyramidMid: fragrance.pyramidMid,
-      pyramidBase: fragrance.pyramidBase,
+      notesSummary: sql<string | null>`coalesce(${userFragrance.notesSummary}, ${fragrance.notesSummary})`,
+      pyramidTop: sql<string | null>`coalesce(${userFragrance.pyramidTop}, ${fragrance.pyramidTop})`,
+      pyramidMid: sql<string | null>`coalesce(${userFragrance.pyramidMid}, ${fragrance.pyramidMid})`,
+      pyramidBase: sql<string | null>`coalesce(${userFragrance.pyramidBase}, ${fragrance.pyramidBase})`,
     })
     .from(userFragrance)
     .innerJoin(fragrance, eq(userFragrance.fragranceId, fragrance.id))

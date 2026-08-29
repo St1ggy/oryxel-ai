@@ -1,5 +1,5 @@
 import { aiRecommendationDismissed, brand, db as database, fragrance, userFragrance } from '@oryxel/db'
-import { asc, desc, eq } from 'drizzle-orm'
+import { asc, desc, eq, sql } from 'drizzle-orm'
 
 import { extractEnglishKey, lookupTranslations, resolveCommaSeparated } from '../translation/service'
 
@@ -104,10 +104,10 @@ export async function loadDiaryForUser(userId: string, locale = 'en') {
         gender: userFragrance.gender,
         fragName: fragrance.name,
         brandName: brand.name,
-        notesSummary: fragrance.notesSummary,
-        pyramidTop: fragrance.pyramidTop,
-        pyramidMid: fragrance.pyramidMid,
-        pyramidBase: fragrance.pyramidBase,
+        notesSummary: sql<string | null>`coalesce(${userFragrance.notesSummary}, ${fragrance.notesSummary})`,
+        pyramidTop: sql<string | null>`coalesce(${userFragrance.pyramidTop}, ${fragrance.pyramidTop})`,
+        pyramidMid: sql<string | null>`coalesce(${userFragrance.pyramidMid}, ${fragrance.pyramidMid})`,
+        pyramidBase: sql<string | null>`coalesce(${userFragrance.pyramidBase}, ${fragrance.pyramidBase})`,
       })
       .from(userFragrance)
       .innerJoin(fragrance, eq(userFragrance.fragranceId, fragrance.id))

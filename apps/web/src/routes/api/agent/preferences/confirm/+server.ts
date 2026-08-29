@@ -2,6 +2,7 @@ import { error, json } from '@sveltejs/kit'
 import { z } from 'zod'
 
 import { applyPendingPatch, rejectPendingPatch } from '$lib/server/ai/storage'
+import { withUserDataLock } from '$lib/server/db'
 
 import type { RequestHandler } from './$types'
 
@@ -27,18 +28,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     return json({ ok: true, status: 'rejected' })
   }
 
-  let result: Awaited<ReturnType<typeof applyPendingPatch>>
-
-  try {
-    result = await applyPendingPatch({
-      patchId: body.patchId,
-      userId: locals.user.id,
-      expectedStatus: 'created',
-      recordConfirmation: true,
-    })
-  } catch {
-    throw error(500, 'PATCH_APPLY_FAILED')
-  }
+  const result = await withUserDataLock(locals.user.id, async () => {
+    try {
+      return await applyPendingPatch({
+        patchId: body.patchId,
+        userId: locals.user!.id,
+        expectedStatus: 'created',
+        recordConfirmation: true,
+      })
+    } catch {
+      throw error(500, 'PATCH_APPLY_FAILED')
+    }
+  })
 
   if (result.status === 'not_found') throw error(404, 'PATCH_NOT_FOUND')
 

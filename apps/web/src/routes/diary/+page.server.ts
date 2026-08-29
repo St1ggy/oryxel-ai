@@ -14,7 +14,7 @@ import {
   listUserProviderKeys,
 } from '$lib/server/ai/keys/service'
 import { applyPendingPatch, getLatestPendingPatches, listLatestChatMessages } from '$lib/server/ai/storage'
-import { db } from '$lib/server/db'
+import { db, withUserDataLock } from '$lib/server/db'
 import { aiPendingPatch, userAiPreferences, userProfile } from '$lib/server/db/schema'
 import { loadRecentActivity } from '$lib/server/diary/activity'
 import { loadDiaryForUser } from '$lib/server/diary/load'
@@ -23,22 +23,24 @@ import { loadProfileForUser } from '$lib/server/profile/load'
 import type { PageServerLoad } from './$types'
 
 async function applyConfirmedPatches(userId: string) {
-  const confirmed = await db
-    .select()
-    .from(aiPendingPatch)
-    .where(and(eq(aiPendingPatch.userId, userId), eq(aiPendingPatch.status, 'confirmed')))
+  await withUserDataLock(userId, async () => {
+    const confirmed = await db
+      .select()
+      .from(aiPendingPatch)
+      .where(and(eq(aiPendingPatch.userId, userId), eq(aiPendingPatch.status, 'confirmed')))
 
-  for (const patch of confirmed) {
-    try {
-      await applyPendingPatch({
-        patchId: patch.id,
-        userId,
-        expectedStatus: 'confirmed',
-      })
-    } catch {
-      // applyPendingPatch records the failure; the page can still load existing data.
+    for (const patch of confirmed) {
+      try {
+        await applyPendingPatch({
+          patchId: patch.id,
+          userId,
+          expectedStatus: 'confirmed',
+        })
+      } catch {
+        // applyPendingPatch records the failure; the page can still load existing data.
+      }
     }
-  }
+  })
 }
 
 export const load: PageServerLoad = async ({ locals, url, cookies }) => {

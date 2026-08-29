@@ -1,6 +1,7 @@
-import { aiRecommendationDismissed, db, fragrance, userAgentMemory, userFragrance, userProfile } from '@oryxel/db'
+import { aiRecommendationDismissed, db, userAgentMemory, userFragrance, userProfile } from '@oryxel/db'
 import { and, count, eq } from 'drizzle-orm'
 
+import { deleteOrphanedUserCatalogEntities } from '../diary/catalog-lifecycle'
 import { findOrCreateBrand, findOrCreateFragrance } from '../diary/find-or-create'
 
 import { AGENT_MEMORY_MAX_ROWS } from './agent-memory'
@@ -51,8 +52,8 @@ function opToFlags(op: TableOperation) {
   }
 }
 
-async function updateFragranceFields(executor: DatabaseExecutor, fragranceId: number, op: TableOperation) {
-  const updates: Partial<typeof fragrance.$inferInsert> = {}
+function getUserFragranceMetadata(op: TableOperation) {
+  const updates: Partial<typeof userFragrance.$inferInsert> = {}
 
   if (op.notesSummary !== undefined) updates.notesSummary = lc(op.notesSummary) ?? null
 
@@ -62,30 +63,22 @@ async function updateFragranceFields(executor: DatabaseExecutor, fragranceId: nu
 
   if (op.pyramidBase != null) updates.pyramidBase = op.pyramidBase.toLowerCase()
 
-  if (Object.keys(updates).length > 0) {
-    await executor.update(fragrance).set(updates).where(eq(fragrance.id, fragranceId))
-  }
+  return updates
 }
 
 async function applyAddOp(executor: DatabaseExecutor, userId: string, op: TableOperation) {
   let resolvedFragranceId = op.fragranceId
 
   if (!resolvedFragranceId && op.brandName && op.fragranceName) {
-    const brandId = await findOrCreateBrand(executor, op.brandName)
-    const pyramid = {
-      pyramidTop: lc(op.pyramidTop) ?? null,
-      pyramidMid: lc(op.pyramidMid) ?? null,
-      pyramidBase: lc(op.pyramidBase) ?? null,
-    }
+    const brandId = await findOrCreateBrand(executor, op.brandName, userId)
 
-    resolvedFragranceId = await findOrCreateFragrance(executor, brandId, op.fragranceName, lc(op.notesSummary), pyramid)
-  } else if (resolvedFragranceId) {
-    await updateFragranceFields(executor, resolvedFragranceId, op)
+    resolvedFragranceId = await findOrCreateFragrance(executor, brandId, op.fragranceName, userId)
   }
 
   if (!resolvedFragranceId) return
 
   const flags = opToFlags(op)
+  const metadata = getUserFragranceMetadata(op)
 
   await executor
     .insert(userFragrance)
@@ -100,6 +93,7 @@ async function applyAddOp(executor: DatabaseExecutor, userId: string, op: TableO
       gender: op.gender ?? null,
       isRecommendation: !flags.isTried && !flags.isOwned,
       ...flags,
+      ...metadata,
     })
     .onConflictDoUpdate({
       target: [userFragrance.userId, userFragrance.fragranceId],
@@ -112,6 +106,7 @@ async function applyAddOp(executor: DatabaseExecutor, userId: string, op: TableO
         gender: op.gender ?? null,
         isRecommendation: !flags.isTried && !flags.isOwned,
         ...flags,
+        ...metadata,
       },
     })
 }
@@ -130,15 +125,14 @@ async function applyPyramidAndNotesUpdate(
 
   if (!uf) return
 
-  const hasFragranceUpdate =
-    op.notesSummary !== undefined ||
-    op.pyramidTop !== undefined ||
-    op.pyramidMid !== undefined ||
-    op.pyramidBase !== undefined
+  const metadata = getUserFragranceMetadata(op)
 
-  if (!hasFragranceUpdate) return
+  if (Object.keys(metadata).length === 0) return
 
-  await updateFragranceFields(executor, uf.fragranceId, op)
+  await executor
+    .update(userFragrance)
+    .set(metadata)
+    .where(and(eq(userFragrance.userId, userId), eq(userFragrance.fragranceId, uf.fragranceId)))
 }
 
 async function applyUpdateOp(executor: DatabaseExecutor, userId: string, op: TableOperation) {
@@ -270,12 +264,8 @@ async function replaceRecommendations(
     )
 
   for (const rec of recommendations) {
-    const brandId = await findOrCreateBrand(executor, rec.brand)
-    const fragranceId = await findOrCreateFragrance(executor, brandId, rec.name, lc(rec.notesSummary), {
-      pyramidTop: lc(rec.pyramidTop) ?? null,
-      pyramidMid: lc(rec.pyramidMid) ?? null,
-      pyramidBase: lc(rec.pyramidBase) ?? null,
-    })
+    const brandId = await findOrCreateBrand(executor, rec.brand, userId)
+    const fragranceId = await findOrCreateFragrance(executor, brandId, rec.name, userId)
 
     if (dismissed.has(fragranceId)) continue
 
@@ -291,6 +281,10 @@ async function replaceRecommendations(
         isDisliked: false,
         isRecommendation: true,
         agentComment: rec.tag || null,
+        notesSummary: lc(rec.notesSummary) ?? null,
+        pyramidTop: lc(rec.pyramidTop) ?? null,
+        pyramidMid: lc(rec.pyramidMid) ?? null,
+        pyramidBase: lc(rec.pyramidBase) ?? null,
         gender: rec.gender ?? null,
         timeOfDay: rec.timeOfDay ?? null,
         season: rec.season ?? null,
@@ -346,6 +340,10 @@ async function applyPatchWithExecutor(executor: DatabaseExecutor, userId: string
   await applyAgentMemoryOps(executor, userId, patch.agentMemoryOps)
 }
 
+export function patchMayOrphanCatalogEntities(patch: StructuredPreferencePatch) {
+  return patch.recommendations != null || patch.tableOps.some((op) => op.op === 'remove')
+}
+
 export async function applyPatchToDatabase(
   userId: string,
   patch: StructuredPreferencePatch,
@@ -357,7 +355,11 @@ export async function applyPatchToDatabase(
     return
   }
 
-  await db.transaction((tx) => applyPatchWithExecutor(tx, userId, patch))
+  await db.transaction(async (tx) => {
+    await applyPatchWithExecutor(tx, userId, patch)
+
+    if (patchMayOrphanCatalogEntities(patch)) await deleteOrphanedUserCatalogEntities(tx)
+  })
 }
 
 //

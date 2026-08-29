@@ -1,9 +1,9 @@
-import { createJob } from '@oryxel/ai/server'
+import { createJob, deleteOrphanedUserCatalogEntities } from '@oryxel/ai/server'
 import { error, json } from '@sveltejs/kit'
 import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 
-import { db } from '$lib/server/db'
+import { db, withUserDataLock } from '$lib/server/db'
 import { brand, fragrance, userFragrance } from '$lib/server/db/schema'
 import { recordActivity } from '$lib/server/diary/activity'
 import { listTypeToFlags } from '$lib/server/diary/flags'
@@ -25,25 +25,32 @@ async function getFragranceLabel(entryId: number, userId: string) {
 export const DELETE: RequestHandler = async ({ params, locals }) => {
   if (!locals.user) throw error(401, 'AUTH_REQUIRED')
 
+  const userId = locals.user.id
+
   const id = Number.parseInt(params.id, 10)
 
   if (Number.isNaN(id)) throw error(400, 'INVALID_ID')
 
-  const label = await getFragranceLabel(id, locals.user.id)
+  return withUserDataLock(userId, async () => {
+    const label = await getFragranceLabel(id, userId)
 
-  await db.delete(userFragrance).where(and(eq(userFragrance.id, id), eq(userFragrance.userId, locals.user.id)))
+    await db.transaction(async (tx) => {
+      await tx.delete(userFragrance).where(and(eq(userFragrance.id, id), eq(userFragrance.userId, userId)))
+      await deleteOrphanedUserCatalogEntities(tx)
+    })
 
-  await Promise.allSettled([
-    recordActivity({
-      userId: locals.user.id,
-      action: 'entry_deleted',
-      actor: 'user',
-      summary: `Removed: ${label}`,
-    }),
-    createJob(locals.user.id, 'list_slice_sync', {}),
-  ])
+    await Promise.allSettled([
+      recordActivity({
+        userId,
+        action: 'entry_deleted',
+        actor: 'user',
+        summary: `Removed: ${label}`,
+      }),
+      createJob(userId, 'list_slice_sync', {}),
+    ])
 
-  return json({ ok: true })
+    return json({ ok: true })
+  })
 }
 
 const patchBodySchema = z.object({

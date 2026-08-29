@@ -1,6 +1,8 @@
 import { brand, db, fragrance, userList, userListItem } from '@oryxel/db'
 import { and, count, desc, eq, sql } from 'drizzle-orm'
 
+import { deleteOrphanedUserCatalogEntities } from '../diary/catalog-lifecycle.js'
+
 import { canDiscover, slugifyTitle } from './visibility.js'
 
 import type { ListKind, UserListRow, Visibility } from './types.js'
@@ -207,9 +209,13 @@ export async function updateList(
 }
 
 export async function deleteList(listId: number, userId: string) {
-  const result = await db.delete(userList).where(and(eq(userList.id, listId), eq(userList.userId, userId)))
+  return db.transaction(async (tx) => {
+    const result = await tx.delete(userList).where(and(eq(userList.id, listId), eq(userList.userId, userId)))
 
-  return (result.count ?? 0) > 0
+    if ((result.count ?? 0) > 0) await deleteOrphanedUserCatalogEntities(tx)
+
+    return (result.count ?? 0) > 0
+  })
 }
 
 export async function addListItem(

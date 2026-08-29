@@ -1,6 +1,8 @@
-import { addListItem, removeListItem } from '@oryxel/ai/server'
+import { addListItem, deleteOrphanedUserCatalogEntities, removeListItem } from '@oryxel/ai/server'
 import { error, json } from '@sveltejs/kit'
 import { z } from 'zod'
+
+import { db } from '$lib/server/db'
 
 import type { RequestHandler } from './$types'
 
@@ -37,7 +39,13 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
   if (!Number.isFinite(listId)) throw error(400, 'INVALID_ID')
 
   const body = deleteSchema.parse(await request.json())
-  const ok = await removeListItem(listId, locals.user.id, body.itemId)
+  const ok = await db.transaction(async (tx) => {
+    const removed = await removeListItem(listId, locals.user!.id, body.itemId, tx)
+
+    if (removed) await deleteOrphanedUserCatalogEntities(tx)
+
+    return removed
+  })
 
   if (!ok) throw error(404, 'NOT_FOUND')
 

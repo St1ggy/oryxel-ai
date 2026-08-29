@@ -31,7 +31,7 @@ Remove `DATABASE_MIGRATION_BASELINE` immediately after the one-time adoption. Ne
 
 ## Apply Locking Migrations
 
-Migrations that add foreign keys or build regular indexes, including `0009_account_data_cascades`, require a maintenance window. The migration transaction holds table locks until commit; the migration advisory lock only serializes other migration runners and does not stop application writes.
+Migrations that add foreign keys or build regular indexes, including `0009_account_data_cascades` and `0010_catalog_entity_provenance`, require a maintenance window. The migration transaction holds table locks until commit; the migration advisory lock only serializes other migration runners and does not stop application writes.
 
 - Put the web application into maintenance mode before running the migration.
 - Stop the worker and wait for the current job to finish.

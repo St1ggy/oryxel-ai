@@ -17,6 +17,9 @@ const state = vi.hoisted(() => ({
 }))
 
 const applyPatchToDatabase = vi.hoisted(() => vi.fn(async () => null))
+const patchMayOrphanCatalogEntities = vi.hoisted(() =>
+  vi.fn((patch: { tableOps?: { op: string }[] }) => patch.tableOps?.some((operation) => operation.op === 'remove')),
+)
 const applyListOps = vi.hoisted(() =>
   vi.fn(async () => ({
     createdListIds: [],
@@ -24,6 +27,7 @@ const applyListOps = vi.hoisted(() =>
   })),
 )
 const enqueueListNotifyJob = vi.hoisted(() => vi.fn(async () => null))
+const deleteOrphanedUserCatalogEntities = vi.hoisted(() => vi.fn(async () => null))
 
 function createExecutor() {
   return {
@@ -120,7 +124,8 @@ vi.mock('@oryxel/db', async (importOriginal) => {
   return { ...actual, db: database }
 })
 
-vi.mock('./apply', () => ({ applyPatchToDatabase }))
+vi.mock('./apply', () => ({ applyPatchToDatabase, patchMayOrphanCatalogEntities }))
+vi.mock('../diary/catalog-lifecycle', () => ({ deleteOrphanedUserCatalogEntities }))
 vi.mock('../social/apply-list-ops', () => ({ applyListOps, enqueueListNotifyJob }))
 
 const payload = {
@@ -135,8 +140,10 @@ beforeEach(() => {
   state.lockCalls = 0
   state.transactionTail = Promise.resolve()
   applyPatchToDatabase.mockClear()
+  patchMayOrphanCatalogEntities.mockClear()
   applyListOps.mockClear()
   enqueueListNotifyJob.mockClear()
+  deleteOrphanedUserCatalogEntities.mockClear()
 })
 
 describe('applyPendingPatch', () => {
@@ -152,6 +159,7 @@ describe('applyPendingPatch', () => {
     expect(first).toMatchObject({ status: 'applied', wasAlreadyApplied: false })
     expect(second).toMatchObject({ status: 'applied', wasAlreadyApplied: true })
     expect(applyPatchToDatabase).toHaveBeenCalledTimes(1)
+    expect(deleteOrphanedUserCatalogEntities).toHaveBeenCalledTimes(1)
     expect(state.lockCalls).toBe(2)
     expect(state.audits.map(({ action }) => action)).toEqual(['confirmed', 'applied'])
     expect(state.patch?.status).toBe('applied')
@@ -182,6 +190,38 @@ describe('applyPendingPatch', () => {
 
     expect(applyListOps.mock.calls[0]?.[2]).toBe(transactionExecutor)
     expect(enqueueListNotifyJob).toHaveBeenCalledWith('user-1', 9, transactionExecutor)
+  })
+
+  it('cleans catalog identities after removing a list reference', async () => {
+    state.patch = {
+      ...state.patch!,
+      payload: {
+        confidence: 0.9,
+        summary: 'Remove a list item',
+        tableOps: [],
+        listOps: [{ op: 'remove', listId: 4, fragranceId: 8 }],
+      },
+    }
+
+    await applyPendingPatch({ patchId: 1, userId: 'user-1', expectedStatus: 'created' })
+
+    expect(deleteOrphanedUserCatalogEntities).toHaveBeenCalledTimes(1)
+  })
+
+  it('skips catalog cleanup for non-destructive patches', async () => {
+    state.patch = {
+      ...state.patch!,
+      payload: {
+        confidence: 0.9,
+        summary: 'Update profile',
+        tableOps: [],
+        profile: { archetype: 'floral' },
+      },
+    }
+
+    await applyPendingPatch({ patchId: 1, userId: 'user-1', expectedStatus: 'created' })
+
+    expect(deleteOrphanedUserCatalogEntities).not.toHaveBeenCalled()
   })
 
   it('rolls back mutations and marks a failed apply once', async () => {

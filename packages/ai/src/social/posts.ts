@@ -1,6 +1,8 @@
 import { db, post, postAttachment, userProfile } from '@oryxel/db'
 import { and, desc, eq, inArray } from 'drizzle-orm'
 
+import { deleteOrphanedUserCatalogEntities } from '../diary/catalog-lifecycle.js'
+
 import { listFollowingIds } from './follow.js'
 import { canDiscover, resolveVisibility } from './visibility.js'
 
@@ -70,9 +72,13 @@ export async function getPostById(postId: number) {
 }
 
 export async function deletePost(postId: number, authorId: string) {
-  const result = await db.delete(post).where(and(eq(post.id, postId), eq(post.authorId, authorId)))
+  return db.transaction(async (tx) => {
+    const result = await tx.delete(post).where(and(eq(post.id, postId), eq(post.authorId, authorId)))
 
-  return (result.count ?? 0) > 0
+    if ((result.count ?? 0) > 0) await deleteOrphanedUserCatalogEntities(tx)
+
+    return (result.count ?? 0) > 0
+  })
 }
 
 export async function listPostsForAuthor(authorId: string, viewerId: string | null, limit = 30) {

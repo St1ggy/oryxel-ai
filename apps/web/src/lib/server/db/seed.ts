@@ -2,7 +2,11 @@ import { db } from '$lib/server/db'
 import { aiPendingPatch, brand, fragrance, userFragrance, userProfile } from '$lib/server/db/schema'
 
 export async function seedMinimalAgentScenario(userId: string) {
-  const [createdBrand] = await db.insert(brand).values({ name: 'Seed Brand' }).onConflictDoNothing().returning()
+  const [createdBrand] = await db
+    .insert(brand)
+    .values({ name: 'Seed Brand', origin: 'catalog' })
+    .onConflictDoNothing()
+    .returning()
 
   const brandId = createdBrand?.id
 
@@ -14,6 +18,7 @@ export async function seedMinimalAgentScenario(userId: string) {
       brandId,
       name: 'Seed Fragrance',
       notesSummary: 'iris, cedar, tea',
+      origin: 'catalog',
     })
     .returning()
 
