@@ -105,6 +105,19 @@ alwaysApply: true
 
 ---
 
+## 2026-08-30 — Distributed API rate limiting
+
+### What changed
+
+- Web API requests use Redis-backed fixed-window limits pooled by AI, account/admin, mutation, and read policies. User IDs and client addresses are hashed before being used in Redis keys.
+- Better Auth production rate limiting uses the same Redis secondary storage. Sessions and verification records remain database-backed; Redis read failures fall back to PostgreSQL.
+
+### Why
+
+- Limits must be consistent across stateless Vercel instances without making ordinary API reads unavailable during a Redis outage.
+
+---
+
 ## Template for new entries
 
 ```

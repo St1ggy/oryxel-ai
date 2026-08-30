@@ -207,7 +207,7 @@ PUBLIC_JOB_STREAM_URL
 STREAM_CORS_ORIGIN
 ```
 
-`REDIS_URL` — worker + job-stream-gateway (Railway Redis). `JOB_STREAM_JWT_SECRET` — shared by web (stream-token) and gateway. `PUBLIC_JOB_STREAM_URL` — base URL of the gateway for browser `EventSource` (no trailing slash). `STREAM_CORS_ORIGIN` — gateway CORS (production web origin, or `*` for local).
+`REDIS_URL` — web/API rate limiting, Better Auth secondary storage, worker and job-stream-gateway (Railway Redis). `JOB_STREAM_JWT_SECRET` — shared by web (stream-token) and gateway. `PUBLIC_JOB_STREAM_URL` — base URL of the gateway for browser `EventSource` (no trailing slash). `STREAM_CORS_ORIGIN` — gateway CORS (production web origin, or `*` for local).
 
 **Railway (monorepo):** no root `railway.toml`. Worker and job-stream-gateway each have `apps/<service>/railway.toml` with **RAILPACK**, `bun install --frozen-lockfile` from repo root, and a service-specific `startCommand`. In Railway UI: **Root directory** = repository root; **Config file** = that path per service.
 
@@ -237,6 +237,7 @@ bun run check
 | 2026-04-10 | **`@st1ggy/linter-config` v5**, ESLint 10 + **import-x**; Biome from the same package evaluated and **not** adopted; Prettier + ESLint + stylelint (web) remain. |
 | 2026-04-11 | **`@st1ggy/linter-config` `6.3.2`**, `type` aliases in Svelte via local `consistent-type-definitions` override. |
 | 2026-06-19 | **Social layer MVP**: lists, follow, feed, discover, in-app notifications; chat mode **`curate`**; migration **0006**; no Web Push. |
+| 2026-08-30 | Redis-backed distributed limits for Better Auth and web API policy groups; PostgreSQL remains authoritative for auth records. |
 
 ### `memory.mdc`
 
@@ -310,6 +311,19 @@ bun run check
 ### Why
 
 - Social MVP without push infrastructure.
+
+---
+
+## 2026-08-30 — Distributed API rate limiting
+
+### What changed
+
+- Web API requests use Redis-backed fixed-window limits pooled by AI, account/admin, mutation, and read policies. User IDs and client addresses are hashed before being used in Redis keys.
+- Better Auth production rate limiting uses the same Redis secondary storage. Sessions and verification records remain database-backed; Redis read failures fall back to PostgreSQL.
+
+### Why
+
+- Limits must be consistent across stateless Vercel instances without making ordinary API reads unavailable during a Redis outage.
 
 ---
 

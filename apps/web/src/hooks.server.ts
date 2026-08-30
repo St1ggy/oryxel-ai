@@ -6,8 +6,10 @@ import { cookieMaxAge, cookieName, getTextDirection } from '$lib/paraglide/runti
 import { paraglideMiddleware } from '$lib/paraglide/server'
 import { auth } from '$lib/server/auth'
 import { getLegacyLocaleRedirect, rewriteLegacyLocaleCookieHeader } from '$lib/server/i18n/compatibility'
+import { consumeRateLimit, createRateLimitKey, resolveRateLimitPolicy } from '$lib/server/rate-limit'
 import { getRedisClient } from '$lib/server/redis'
 
+import type { RateLimitPolicy } from '$lib/server/rate-limit'
 import type { Handle } from '@sveltejs/kit'
 
 import { building } from '$app/environment'
@@ -92,9 +94,67 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
   return svelteKitHandler({ event, resolve, auth, building })
 }
 
+function rateLimitErrorResponse(
+  error: 'RATE_LIMITED' | 'RATE_LIMIT_UNAVAILABLE',
+  status: 429 | 503,
+  retryAfter: number,
+) {
+  return Response.json(
+    { error },
+    {
+      status,
+      headers: {
+        'cache-control': 'no-store',
+        'retry-after': String(retryAfter),
+      },
+    },
+  )
+}
+
+function getRateLimitIdentity(userId: string | undefined, getClientAddress: () => string) {
+  return userId ? `user:${userId}` : `ip:${getClientAddress()}`
+}
+
+function rateLimitUnavailableResponse(policy: RateLimitPolicy, error: unknown, message: string) {
+  // eslint-disable-next-line no-console -- dependency failures need to be visible in function logs
+  console.error(message, error instanceof Error ? error.message : error)
+
+  return policy.failClosed ? rateLimitErrorResponse('RATE_LIMIT_UNAVAILABLE', 503, 30) : null
+}
+
+const handleRateLimit: Handle = async ({ event, resolve }) => {
+  const policy = resolveRateLimitPolicy(event.url.pathname, event.request.method)
+
+  if (!policy || !redis) return resolve(event)
+
+  let identity: string
+
+  try {
+    identity = getRateLimitIdentity(event.locals.user?.id, () => event.getClientAddress())
+  } catch (error) {
+    return (
+      rateLimitUnavailableResponse(policy, error, '[web] client address unavailable for rate limiting:') ??
+      resolve(event)
+    )
+  }
+
+  try {
+    const decision = await consumeRateLimit(redis, createRateLimitKey(policy.scope, identity), policy)
+
+    if (!decision.allowed) {
+      return rateLimitErrorResponse('RATE_LIMITED', 429, decision.retryAfterSeconds)
+    }
+  } catch (error) {
+    return rateLimitUnavailableResponse(policy, error, '[web] rate limit check failed:') ?? resolve(event)
+  }
+
+  return resolve(event)
+}
+
 export const handle: Handle = sequence(
   handleLegacyLocaleCompatibility,
   handleMaintenance,
   handleParaglide,
   handleBetterAuth,
+  handleRateLimit,
 )

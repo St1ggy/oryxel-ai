@@ -6,11 +6,15 @@ import { sveltekitCookies } from 'better-auth/svelte-kit'
 import { SENSITIVE_ACTION_FRESH_AGE_SECONDS } from '$lib/server/auth/fresh-session'
 import { db } from '$lib/server/db'
 import * as schema from '$lib/server/db/schema'
+import { createRedisSecondaryStorage } from '$lib/server/rate-limit'
+import { getRedisClient } from '$lib/server/redis'
 
+import { dev } from '$app/environment'
 import { getRequestEvent } from '$app/server'
 import { env } from '$env/dynamic/private'
 
 const socialProviders: Record<string, { clientId: string; clientSecret: string }> = {}
+const secondaryStorage = createRedisSecondaryStorage(getRedisClient())
 
 if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
   socialProviders.google = { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET }
@@ -36,8 +40,19 @@ export const auth = betterAuth({
   baseURL: env.ORIGIN,
   secret: env.BETTER_AUTH_SECRET,
   database: drizzleAdapter(db, { provider: 'pg', schema }),
+  secondaryStorage,
+  rateLimit: {
+    enabled: !dev,
+    window: 60,
+    max: 100,
+    storage: secondaryStorage ? 'secondary-storage' : 'memory',
+  },
   emailAndPassword: { enabled: false },
-  session: { freshAge: SENSITIVE_ACTION_FRESH_AGE_SECONDS },
+  session: {
+    freshAge: SENSITIVE_ACTION_FRESH_AGE_SECONDS,
+    storeSessionInDatabase: true,
+  },
+  verification: { storeInDatabase: true },
   account: {
     storeStateStrategy: 'cookie',
     accountLinking: {

@@ -137,7 +137,7 @@ PUBLIC_JOB_STREAM_URL
 STREAM_CORS_ORIGIN
 ```
 
-`REDIS_URL` — worker + job-stream-gateway (Railway Redis). `JOB_STREAM_JWT_SECRET` — shared by web (stream-token) and gateway. `PUBLIC_JOB_STREAM_URL` — base URL of the gateway for browser `EventSource` (no trailing slash). `STREAM_CORS_ORIGIN` — gateway CORS (production web origin, or `*` for local).
+`REDIS_URL` — web/API rate limiting, Better Auth secondary storage, worker and job-stream-gateway (Railway Redis). `JOB_STREAM_JWT_SECRET` — shared by web (stream-token) and gateway. `PUBLIC_JOB_STREAM_URL` — base URL of the gateway for browser `EventSource` (no trailing slash). `STREAM_CORS_ORIGIN` — gateway CORS (production web origin, or `*` for local).
 
 **Railway:** per-service `railway.toml` under `apps/worker/` and `apps/job-stream-gateway/` (RAILPACK + `bun install` from repo root); UI Root directory = repo root, Config file = that path.
 

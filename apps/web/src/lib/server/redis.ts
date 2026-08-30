@@ -14,7 +14,13 @@ export function getRedisClient() {
     return redisClient
   }
 
-  redisClient = new Redis(env.REDIS_URL, { maxRetriesPerRequest: 3, lazyConnect: true, protocol: 2 })
+  redisClient = new Redis(env.REDIS_URL, {
+    commandTimeout: 1500,
+    connectTimeout: 1500,
+    maxRetriesPerRequest: 3,
+    lazyConnect: true,
+    protocol: 2,
+  })
   redisClient.on('error', (error) => {
     console.error('[web] redis error:', error instanceof Error ? error.message : error)
   })
