@@ -65,6 +65,7 @@ export type JobProgressMeta = {
   attempt?: number
   durationMs?: number
   scenario?: string
+  chatMode?: string
   note?: string
 }
 

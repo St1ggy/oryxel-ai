@@ -6,12 +6,15 @@
   "scripts": {
     "start": "bun ./src/index.ts",
     "dev": "bun --watch ./src/index.ts",
+    "build": "bun build ./src/index.ts --target=node --outdir=dist",
+    "check": "tsc --noEmit",
     "lint": "prettier --check . && eslint .",
     "format": "prettier --write ."
   },
   "dependencies": {
     "@oryxel/ai": "workspace:*",
     "@oryxel/db": "workspace:*",
+    "@oryxel/runtime": "workspace:*",
     "ioredis": "^6.0.0",
     "jose": "^6.2.10"
   },

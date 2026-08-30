@@ -1,12 +1,12 @@
 import { setJobCreatedHandler } from '@oryxel/ai/server'
 import { sequence } from '@sveltejs/kit/hooks'
 import { svelteKitHandler } from 'better-auth/svelte-kit'
-import Redis from 'ioredis'
 
 import { cookieMaxAge, cookieName, getTextDirection } from '$lib/paraglide/runtime'
 import { paraglideMiddleware } from '$lib/paraglide/server'
 import { auth } from '$lib/server/auth'
 import { getLegacyLocaleRedirect, rewriteLegacyLocaleCookieHeader } from '$lib/server/i18n/compatibility'
+import { getRedisClient } from '$lib/server/redis'
 
 import type { Handle } from '@sveltejs/kit'
 
@@ -15,13 +15,9 @@ import { env } from '$env/dynamic/private'
 
 const NEW_JOBS_CHANNEL = 'jobs:new'
 
-if (!building && env.REDIS_URL) {
-  const redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: 3, lazyConnect: true, protocol: 2 })
+const redis = getRedisClient()
 
-  redis.on('error', (error) => {
-    console.error('[web] redis error:', error instanceof Error ? error.message : error)
-  })
-
+if (redis) {
   setJobCreatedHandler(async (jobId) => {
     try {
       await redis.publish(NEW_JOBS_CHANNEL, JSON.stringify({ jobId }))
@@ -39,7 +35,7 @@ const handleMaintenance: Handle = async ({ event, resolve }) => {
   const path = event.url.pathname
 
   // Let healthcheck and static assets through so Vercel/monitoring keep working.
-  if (path === '/healthz' || path.startsWith('/_app/') || path.startsWith('/favicon')) {
+  if (path === '/healthz' || path === '/readyz' || path.startsWith('/_app/') || path.startsWith('/favicon')) {
     return resolve(event)
   }
 

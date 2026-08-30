@@ -1,6 +1,8 @@
 // SSE gateway on Railway: JWT auth, Redis SUBSCRIBE job:{id}, snapshots via getJob.
 
 import { getJob } from '@oryxel/ai/server'
+import { checkDatabaseConnection, closeDatabase } from '@oryxel/db'
+import { parseHealthCheckTimeout, runReadinessChecks } from '@oryxel/runtime'
 import Redis from 'ioredis'
 import { jwtVerify } from 'jose'
 import { createServer } from 'node:http'
@@ -9,17 +11,25 @@ import { URL } from 'node:url'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 
 const PORT = Number.parseInt(process.env.PORT ?? '3333', 10)
-const JWT_SECRET = process.env.JOB_STREAM_JWT_SECRET
-const REDIS_URL = process.env.REDIS_URL
 const CORS_ORIGIN = process.env.STREAM_CORS_ORIGIN?.trim() || '*'
+const HEALTHCHECK_TIMEOUT_MS = parseHealthCheckTimeout(process.env.HEALTHCHECK_TIMEOUT_MS)
 
-if (!JWT_SECRET || !REDIS_URL) {
-  console.error('[job-stream-gateway] JOB_STREAM_JWT_SECRET and REDIS_URL are required')
-  // eslint-disable-next-line unicorn/no-process-exit -- fail fast before listen(); not a CLI tool
-  process.exit(1)
+function requiredEnv(name: 'JOB_STREAM_JWT_SECRET' | 'REDIS_URL') {
+  const value = process.env[name]?.trim()
+
+  if (!value) throw new Error(`${name} is required`)
+
+  return value
 }
 
+const JWT_SECRET = requiredEnv('JOB_STREAM_JWT_SECRET')
+const REDIS_URL = requiredEnv('REDIS_URL')
 const secretKey = new TextEncoder().encode(JWT_SECRET)
+const healthRedis = new Redis(REDIS_URL, { maxRetriesPerRequest: 3, lazyConnect: true, protocol: 2 })
+
+healthRedis.on('error', (error) => {
+  console.error('[job-stream-gateway] health redis error:', error instanceof Error ? error.message : error)
+})
 
 function corsHeaders() {
   const headers: Record<string, string> = {
@@ -216,9 +226,26 @@ const server = createServer((request, serverResponse) => {
     return
   }
 
-  if (request.method === 'GET' && requestUrl.pathname === '/health') {
-    serverResponse.writeHead(200, { 'content-type': 'text/plain' })
-    serverResponse.end('ok')
+  if (request.method === 'GET' && (requestUrl.pathname === '/health' || requestUrl.pathname === '/healthz')) {
+    sendJson(serverResponse, 200, { status: 'ok', service: 'job-stream-gateway' })
+
+    return
+  }
+
+  if (request.method === 'GET' && requestUrl.pathname === '/readyz') {
+    void runReadinessChecks(
+      [
+        { name: 'database', check: checkDatabaseConnection },
+        { name: 'redis', check: () => healthRedis.ping() },
+      ],
+      HEALTHCHECK_TIMEOUT_MS,
+    ).then((result) => {
+      sendJson(serverResponse, result.ready ? 200 : 503, {
+        status: result.ready ? 'ready' : 'unavailable',
+        service: 'job-stream-gateway',
+        checks: result.checks,
+      })
+    })
 
     return
   }
@@ -236,3 +263,24 @@ const server = createServer((request, serverResponse) => {
 server.listen(PORT, () => {
   console.log(`[job-stream-gateway] listening on :${PORT}`)
 })
+
+let shutdownPromise: Promise<void> | null = null
+
+function startShutdown() {
+  shutdownPromise ??= (async () => {
+    const closeServer = new Promise<void>((resolve, reject) => {
+      server.close((error) => {
+        if (error) reject(error)
+        else resolve()
+      })
+      server.closeAllConnections()
+    })
+
+    await Promise.all([closeServer, healthRedis.quit(), closeDatabase()])
+  })()
+
+  return shutdownPromise
+}
+
+process.on('SIGTERM', () => void startShutdown())
+process.on('SIGINT', () => void startShutdown())

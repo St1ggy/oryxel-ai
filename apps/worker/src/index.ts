@@ -9,9 +9,12 @@ import {
   renewJobLease,
   setJobUpdatedHandler,
 } from '@oryxel/ai/server'
-import { closeDatabase, db, user, withUserDataLock } from '@oryxel/db'
+import { checkDatabaseConnection, closeDatabase, db, user, withUserDataLock } from '@oryxel/db'
+import { parseHealthCheckTimeout, runReadinessChecks } from '@oryxel/runtime'
 import { eq } from 'drizzle-orm'
 import Redis from 'ioredis'
+import { createServer } from 'node:http'
+import { URL } from 'node:url'
 
 import { handleAgentChat } from './handlers/agent-chat'
 import { handleListSliceSync } from './handlers/list-slice-sync'
@@ -27,6 +30,8 @@ const POLL_INTERVAL_MS = 1000
 const HEARTBEAT_INTERVAL_MS = Math.min(30_000, Math.floor(JOB_LEASE_MS / 3))
 const RECOVERY_INTERVAL_MS = 30_000
 const NEW_JOBS_CHANNEL = 'jobs:new'
+const PORT = Number.parseInt(process.env.PORT ?? '3334', 10)
+const HEALTHCHECK_TIMEOUT_MS = parseHealthCheckTimeout(process.env.HEALTHCHECK_TIMEOUT_MS)
 
 const redisUrl = process.env.REDIS_URL?.trim()
 let publisher: Redis | null = null
@@ -53,11 +58,11 @@ if (redisUrl) {
     console.error('[worker] subscriber redis error:', error instanceof Error ? error.message : error)
   })
 
-  try {
-    await subscriber.subscribe(NEW_JOBS_CHANNEL)
-  } catch (error) {
+  // Redis wake-ups are optional; startup and interval polling must not wait for Redis.
+  // eslint-disable-next-line unicorn/prefer-top-level-await
+  void subscriber.subscribe(NEW_JOBS_CHANNEL).catch((error) => {
     console.error('[worker] subscribe failed:', error instanceof Error ? error.message : error)
-  }
+  })
 
   subscriber.on('message', (channel) => {
     if (channel === NEW_JOBS_CHANNEL) void poll()
@@ -168,7 +173,56 @@ async function processClaimedJob(job: ClaimedJob) {
 let isPolling = false
 let isRecovering = false
 let isShuttingDown = false
+let isStartupComplete = false
 let shutdownPromise: Promise<void> | null = null
+
+const healthServer = createServer((request, response) => {
+  const requestUrl = new URL(request.url ?? '/', `http://${request.headers.host ?? 'localhost'}`)
+
+  if (request.method === 'GET' && requestUrl.pathname === '/healthz') {
+    response.writeHead(200, { 'cache-control': 'no-store', 'content-type': 'application/json; charset=utf-8' })
+    response.end(JSON.stringify({ status: 'ok', service: 'worker' }))
+
+    return
+  }
+
+  if (request.method === 'GET' && requestUrl.pathname === '/readyz') {
+    void runReadinessChecks(
+      [
+        {
+          name: 'runtime',
+          check: async () => {
+            if (!isStartupComplete || isShuttingDown) throw new Error('Worker runtime is not ready')
+          },
+        },
+        { name: 'database', check: checkDatabaseConnection },
+        ...(publisher ? [{ name: 'redis', required: false, check: () => publisher.ping() }] : []),
+      ],
+      HEALTHCHECK_TIMEOUT_MS,
+    ).then((result) => {
+      response.writeHead(result.ready ? 200 : 503, {
+        'cache-control': 'no-store',
+        'content-type': 'application/json; charset=utf-8',
+      })
+      response.end(
+        JSON.stringify({
+          status: result.ready ? 'ready' : 'unavailable',
+          service: 'worker',
+          checks: result.checks,
+        }),
+      )
+    })
+
+    return
+  }
+
+  response.writeHead(404)
+  response.end()
+})
+
+healthServer.listen(PORT, () => {
+  console.log(`[worker] health server listening on :${PORT}`)
+})
 
 async function recoverJobs() {
   if (isRecovering || isShuttingDown) return
@@ -192,7 +246,15 @@ function disconnectRedis() {
 function shutdownRuntime() {
   shutdownPromise ??= (async () => {
     disconnectRedis()
-    await closeDatabase()
+    await Promise.all([
+      new Promise<void>((resolve, reject) => {
+        healthServer.close((error) => {
+          if (error) reject(error)
+          else resolve()
+        })
+      }),
+      closeDatabase(),
+    ])
   })()
 
   return shutdownPromise
@@ -248,4 +310,7 @@ process.on('SIGINT', startShutdown)
 
 // Run immediately on startup
 await recoverJobs()
-await poll()
+isStartupComplete = true
+// Startup readiness does not wait for the first potentially long-running job.
+// eslint-disable-next-line unicorn/prefer-top-level-await
+void poll()

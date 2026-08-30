@@ -97,6 +97,10 @@ export async function closeDatabase() {
   await Promise.all([activeClient?.end({ timeout: 5 }), activeAdvisoryLockClient?.end({ timeout: 5 })])
 }
 
+export async function checkDatabaseConnection() {
+  await getClient()`SELECT 1`
+}
+
 export async function withUserDataLock<T>(userId: string, callback: () => Promise<T>): Promise<T> {
   let reservedClient: Awaited<ReturnType<ReturnType<typeof postgres>['reserve']>>
 

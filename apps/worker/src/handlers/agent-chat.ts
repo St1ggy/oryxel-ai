@@ -28,7 +28,14 @@ import {
 import { db, user, userAiPreferences } from '@oryxel/db'
 import { eq } from 'drizzle-orm'
 
-import type { ChatAgentMode, JobLease, StructuredPreferencePatch } from '@oryxel/ai/server'
+import type {
+  AiProviderName,
+  AnalyzePreferencesRequest,
+  ChatAgentMode,
+  JobLease,
+  JobProgressMeta,
+  StructuredPreferencePatch,
+} from '@oryxel/ai/server'
 
 const PRE_APPLY_STEP_COUNT = 5
 
@@ -245,10 +252,10 @@ async function finishAgentChatFromPatch(input: AgentChatFinishInput) {
     scenario,
     userId,
     limits: {
-      minPyramidNotes: aiPrefs?.minPyramidNotes,
-      maxPyramidNotes: aiPrefs?.maxPyramidNotes,
-      minRecommendations: aiPrefs?.minRecommendations,
-      maxRecommendations: aiPrefs?.maxRecommendations,
+      minPyramidNotes: aiPrefs?.minPyramidNotes ?? undefined,
+      maxPyramidNotes: aiPrefs?.maxPyramidNotes ?? undefined,
+      minRecommendations: aiPrefs?.minRecommendations ?? undefined,
+      maxRecommendations: aiPrefs?.maxRecommendations ?? undefined,
     },
   })
   await assertJobLease(job)
@@ -311,7 +318,8 @@ async function finishAgentChatFromPatch(input: AgentChatFinishInput) {
 export async function handleAgentChat(job: JobLease, userId: string, params: Record<string, unknown>) {
   const message = params['message'] as string
   const locale = normalizeLocale((params['locale'] as string | undefined) ?? 'en')
-  const scenario = (params['scenario'] as string | undefined) ?? 'recommendation'
+  const scenario = ((params['scenario'] as string | undefined) ??
+    'recommendation') as AnalyzePreferencesRequest['scenario']
   const explicitProvider = params['provider'] as string | undefined
   const explicitModel = params['model'] as string | undefined
   const budget = params['budget'] as string | undefined
@@ -379,10 +387,8 @@ export async function handleAgentChat(job: JobLease, userId: string, params: Rec
       lists,
     )
 
-    const preferredProvider =
-      explicitProvider === undefined
-        ? (defaultProvider ?? undefined)
-        : (explicitProvider as Parameters<typeof analyzePreferences>[0]['preferredProvider'])
+    const preferredProvider: AnalyzePreferencesRequest['preferredProvider'] =
+      explicitProvider === undefined ? (defaultProvider ?? undefined) : (explicitProvider as AiProviderName)
 
     await pushJobProgress(job, {
       step: 3,
@@ -394,7 +400,7 @@ export async function handleAgentChat(job: JobLease, userId: string, params: Rec
       step: 4,
       total: PRE_APPLY_STEP_COUNT,
       phase: 'model_call',
-      meta: { provider: preferredProvider as Parameters<typeof pushJobProgress>[1]['meta']['provider'] },
+      meta: { provider: preferredProvider } satisfies JobProgressMeta,
     })
 
     const callStartedAt = Date.now()
@@ -403,7 +409,7 @@ export async function handleAgentChat(job: JobLease, userId: string, params: Rec
         userId,
         message,
         locale,
-        scenario: scenario as Parameters<typeof analyzePreferences>[0]['scenario'],
+        scenario,
         context,
         preferredProvider,
         minRecommendations: aiPrefs?.minRecommendations,

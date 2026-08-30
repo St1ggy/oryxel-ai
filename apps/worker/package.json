@@ -6,12 +6,15 @@
   "scripts": {
     "start": "tsx src/index.ts",
     "dev": "tsx watch src/index.ts",
+    "build": "bun build ./src/index.ts --target=node --outdir=dist",
+    "check": "tsc --noEmit",
     "lint": "prettier --check . && eslint .",
     "format": "prettier --write ."
   },
   "dependencies": {
     "@oryxel/ai": "workspace:*",
     "@oryxel/db": "workspace:*",
+    "@oryxel/runtime": "workspace:*",
     "drizzle-orm": "^0.45.2",
     "ioredis": "^6.0.0",
     "tsx": "^4.23.12"

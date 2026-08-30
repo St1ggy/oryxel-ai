@@ -10,7 +10,7 @@
 
 [build]
 builder = "RAILPACK"
-buildCommand = "bun install --frozen-lockfile"
+buildCommand = "bun install --frozen-lockfile && bun run --cwd apps/job-stream-gateway build"
 watchPatterns = [
   "/apps/job-stream-gateway/**",
   "/packages/**",
@@ -19,6 +19,6 @@ watchPatterns = [
 ]
 
 [deploy]
-startCommand = "bun run --cwd apps/job-stream-gateway start"
-healthcheckPath = "/health"
+startCommand = "bun apps/job-stream-gateway/dist/index.js"
+healthcheckPath = "/readyz"
 healthcheckTimeout = 30
