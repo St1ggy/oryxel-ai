@@ -11,7 +11,14 @@ import {
   setJobUpdatedHandler,
 } from '@oryxel/ai/server'
 import { checkDatabaseConnection, closeDatabase, db, user, withUserDataLock } from '@oryxel/db'
-import { logError, logEvent, parseHealthCheckTimeout, runReadinessChecks } from '@oryxel/runtime'
+import {
+  configureLogService,
+  logError,
+  logEvent,
+  parseHealthCheckTimeout,
+  runReadinessChecks,
+  withLogContext,
+} from '@oryxel/runtime'
 import { eq } from 'drizzle-orm'
 import Redis from 'ioredis'
 import { createServer } from 'node:http'
@@ -33,6 +40,8 @@ const RECOVERY_INTERVAL_MS = 30_000
 const NEW_JOBS_CHANNEL = 'jobs:new'
 const PORT = Number.parseInt(process.env.PORT ?? '3334', 10)
 const HEALTHCHECK_TIMEOUT_MS = parseHealthCheckTimeout(process.env.HEALTHCHECK_TIMEOUT_MS)
+
+configureLogService('worker')
 
 const redisUrl = process.env.REDIS_URL?.trim()
 let publisher: Redis | null = null
@@ -80,7 +89,7 @@ async function processJob(job: ClaimedJob) {
   const [userRow] = await db.select({ name: user.name }).from(user).where(eq(user.id, job.userId)).limit(1)
 
   if (!userRow) {
-    await failJob(job, 'User no longer exists')
+    await failJob(job, 'USER_NOT_FOUND')
 
     return
   }
@@ -126,7 +135,7 @@ async function processJob(job: ClaimedJob) {
       break
     }
     default: {
-      await failJob(job, `Unknown job type: ${job.type}`)
+      await failJob(job, 'UNKNOWN_JOB_TYPE')
     }
   }
 }
@@ -195,7 +204,7 @@ async function processClaimedJob(job: ClaimedJob) {
     logError('worker', 'job.handler.failed', error, { jobId: job.id, jobType: job.type })
 
     try {
-      await failJob(job, error instanceof Error ? error.message : 'Unknown worker error')
+      await failJob(job, 'JOB_HANDLER_FAILED')
     } catch (failureError) {
       if (!(failureError instanceof JobLeaseLostError)) throw failureError
 
@@ -325,7 +334,9 @@ async function poll() {
         break
       }
 
-      await processClaimedJob(job)
+      const claimedJob = job
+
+      await withLogContext({ jobId: claimedJob.id }, () => processClaimedJob(claimedJob))
 
       if (isShuttingDown) break
 

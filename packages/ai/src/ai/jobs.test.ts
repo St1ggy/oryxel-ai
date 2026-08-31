@@ -4,6 +4,7 @@ import {
   JobLeaseLostError,
   claimNextJob,
   completeJob,
+  failJob,
   getJobStatus,
   recoverExpiredJobs,
   releaseJobLease,
@@ -150,10 +151,19 @@ describe('background job leases', () => {
     expect(emitJobUpdated.mock.calls).toEqual([[3], [9]])
     expect(state.updates[0]).toMatchObject({
       status: 'failed',
-      errorMessage: 'Worker lease expired',
+      errorMessage: 'WORKER_LEASE_EXPIRED',
       leaseToken: null,
       leaseExpiresAt: null,
     })
+  })
+
+  it('replaces unsafe persisted job errors with a controlled code', async () => {
+    const lease = { id: 7, leaseToken: '00000000-0000-4000-8000-000000000000' }
+
+    state.returning = [[{ id: 7 }]]
+
+    await failJob(lease, 'connect redis://user:secret@example.test')
+    expect(state.updates[0]).toMatchObject({ status: 'failed', errorMessage: 'JOB_FAILED' })
   })
 
   it('reads the current status needed by worker telemetry', async () => {

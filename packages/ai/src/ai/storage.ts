@@ -1,4 +1,5 @@
 import { aiPatchAuditLog, aiPendingPatch, db, userChatMessage } from '@oryxel/db'
+import { logError } from '@oryxel/runtime'
 import { and, desc, eq } from 'drizzle-orm'
 
 import { deleteOrphanedUserCatalogEntities } from '../diary/catalog-lifecycle'
@@ -6,6 +7,7 @@ import { applyListOps, enqueueListNotifyJob } from '../social/apply-list-ops'
 
 import { applyPatchToDatabase, patchMayOrphanCatalogEntities } from './apply'
 import { decryptSecret, encryptSecret } from './crypto/secret-box'
+import { normalizeErrorCode } from './error-codes'
 
 import type { StructuredPreferencePatch } from './contracts'
 
@@ -142,7 +144,9 @@ export async function applyPendingPatch(input: {
       }
     })
   } catch (error) {
-    const failureReason = error instanceof Error ? error.message : 'Patch apply failed'
+    const failureReason = 'PATCH_APPLY_FAILED'
+
+    logError('ai', 'patch.apply_failed', error, { component: 'storage' })
 
     try {
       await markPendingPatchFailed({ ...input, failureReason })
@@ -250,7 +254,7 @@ export async function updatePatchStatus(input: {
     failed: {
       status: 'failed',
       failedAt: now,
-      failureReason: input.failureReason ?? 'Unknown apply error',
+      failureReason: normalizeErrorCode(input.failureReason ?? 'PATCH_APPLY_FAILED', 'PATCH_APPLY_FAILED'),
     },
   } as const
 

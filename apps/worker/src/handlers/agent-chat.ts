@@ -79,7 +79,7 @@ async function applyNonCriticalPatchFlow(
   }
 
   if (!isOk) {
-    await failJob(job, 'Patch apply failed')
+    await failJob(job, 'PATCH_APPLY_FAILED')
 
     return false
   }
@@ -471,6 +471,6 @@ export async function handleAgentChat(job: JobLease, userId: string, params: Rec
       aiPrefs,
     })
   } catch (error_) {
-    await failJob(job, error_ instanceof Error ? error_.message : 'Unknown error')
+    await failJob(job, 'AGENT_CHAT_FAILED', error_)
   }
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { createLogRecord, logError, resolveRequestId } from './observability'
+import { configureLogService, createLogRecord, logError, resolveRequestId, withLogContext } from './observability'
 
 describe('resolveRequestId', () => {
   it('preserves a bounded caller request ID', () => {
@@ -47,6 +47,14 @@ describe('createLogRecord', () => {
     expect(record.component).toBe(
       'https://[REDACTED]@example.test redis://[REDACTED]@cache.test Bearer [REDACTED] token=[REDACTED]',
     )
+  })
+
+  it('attributes shared AI logs to the deployed service and request context', () => {
+    configureLogService('web')
+
+    const record = withLogContext({ requestId: 'request-2' }, () => createLogRecord('ai', 'provider.failed'))
+
+    expect(record).toMatchObject({ service: 'web', requestId: 'request-2', event: 'provider.failed' })
   })
 })
 

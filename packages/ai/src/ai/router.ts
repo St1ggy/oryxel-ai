@@ -1,3 +1,5 @@
+import { logEvent } from '@oryxel/runtime'
+
 import { listConfiguredProviderIds, listProviderApiKeyCandidates } from './keys/service'
 import { getAiRouterPolicy } from './policy'
 import { anthropicProvider } from './providers/anthropic'
@@ -106,7 +108,7 @@ export async function analyzePreferences(rawInput: unknown, options?: AiCallOpti
         provider: providerName,
         ok: false,
         latencyMs: 0,
-        error: `${providerName} API key is not configured`,
+        error: 'KEY_NOT_CONFIGURED',
       })
       continue
     }
@@ -153,7 +155,7 @@ export async function analyzePreferences(rawInput: unknown, options?: AiCallOpti
             latencyMs: Date.now() - startedAt,
             keyLabel: candidate.label,
             keySource: candidate.source,
-            error: error instanceof Error ? error.message : 'Unknown router error',
+            error: 'PROVIDER_REQUEST_FAILED',
           })
 
           if (isRotate) {
@@ -168,7 +170,7 @@ export async function analyzePreferences(rawInput: unknown, options?: AiCallOpti
 
   const summary = attempts.map((a) => `${a.provider}: ${a.ok ? 'ok' : (a.error ?? 'failed')}`).join(', ')
 
-  console.error('[ai-router] All providers failed:', summary)
+  logEvent('ai', 'router.providers_exhausted', { component: 'router', count: attempts.length }, 'error')
 
   throw new Error(`All AI providers failed. Attempts: ${summary}`)
 }

@@ -14,6 +14,7 @@ import {
   recordActivity,
 } from '@oryxel/ai/server'
 import { db, userAiPreferences } from '@oryxel/db'
+import { logError } from '@oryxel/runtime'
 import { eq } from 'drizzle-orm'
 
 import type { AnalyzePreferencesRequest, DiaryRow, JobLease } from '@oryxel/ai/server'
@@ -145,10 +146,11 @@ async function fillListBatches(
     } catch (batchError) {
       if (batchError instanceof JobLeaseLostError) throw batchError
 
-      console.error(
-        `[profile-sync] ${phase} batch ${index + 1}/${batches.length} failed:`,
-        batchError instanceof Error ? batchError.message : batchError,
-      )
+      logError('worker', 'job.profile_sync.batch_failed', batchError, {
+        jobId: job.id,
+        component: 'profile-sync',
+        mode: phase,
+      })
     }
   }
 }
@@ -180,7 +182,10 @@ async function runProfileStep(job: JobLease, context: StepContext) {
   } catch (error_) {
     if (error_ instanceof JobLeaseLostError) throw error_
 
-    console.error('[profile-sync] Profile update failed:', error_ instanceof Error ? error_.message : error_)
+    logError('worker', 'job.profile_sync.profile_failed', error_, {
+      jobId: job.id,
+      component: 'profile-sync',
+    })
   }
 }
 
@@ -226,7 +231,10 @@ async function runRecommendationsStep(job: JobLease, context: StepContext) {
   } catch (error_) {
     if (error_ instanceof JobLeaseLostError) throw error_
 
-    console.error('[profile-sync] Recommendations failed:', error_ instanceof Error ? error_.message : error_)
+    logError('worker', 'job.profile_sync.recommendations_failed', error_, {
+      jobId: job.id,
+      component: 'profile-sync',
+    })
   }
 }
 
@@ -407,6 +415,6 @@ export async function handleProfileSync(
 
     await runSync(job, syncContext, total, hasPreferences)
   } catch (error_) {
-    await failJob(job, error_ instanceof Error ? error_.message : 'Unknown error')
+    await failJob(job, 'PROFILE_SYNC_FAILED', error_)
   }
 }

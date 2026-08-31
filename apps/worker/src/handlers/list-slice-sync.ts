@@ -22,6 +22,6 @@ export async function handleListSliceSync(job: JobLease, userId: string, params:
       await completeJob(job, { ok: true })
     }
   } catch (error) {
-    await failJob(job, error instanceof Error ? error.message : 'list_slice_sync failed')
+    await failJob(job, 'LIST_SLICE_SYNC_FAILED', error)
   }
 }

@@ -1,4 +1,6 @@
-export type LogService = 'job-stream-gateway' | 'web' | 'worker'
+import { AsyncLocalStorage } from 'node:async_hooks'
+
+export type LogService = 'ai' | 'job-stream-gateway' | 'web' | 'worker'
 export type LogLevel = 'error' | 'info' | 'warn'
 
 export type LogFields = {
@@ -11,6 +13,7 @@ export type LogFields = {
   jobType?: string
   count?: number
   component?: string
+  provider?: string
   intervalMs?: number
   mode?: string
   outcome?: string
@@ -29,6 +32,16 @@ export type LogRecord = LogFields & {
 
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/
 const MAX_LOG_STRING_LENGTH = 500
+const logContext = new AsyncLocalStorage<LogFields>()
+let configuredService: Exclude<LogService, 'ai'> | undefined
+
+export function configureLogService(service: Exclude<LogService, 'ai'>) {
+  configuredService = service
+}
+
+export function withLogContext<T>(fields: LogFields, callback: () => T): T {
+  return logContext.run({ ...logContext.getStore(), ...fields }, callback)
+}
 
 function redactUrlCredentials(value: string) {
   let sanitized = value
@@ -109,10 +122,10 @@ export function createLogRecord(
   now = new Date(),
 ): LogRecord {
   return {
-    ...sanitizeFields(fields),
+    ...sanitizeFields({ ...logContext.getStore(), ...fields }),
     timestamp: now.toISOString(),
     level,
-    service,
+    service: service === 'ai' && configuredService ? configuredService : service,
     event: sanitizeString('event', event),
   }
 }

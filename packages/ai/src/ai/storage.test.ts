@@ -9,6 +9,7 @@ const state = vi.hoisted(() => ({
     id: number
     userId: string
     status: string
+    failureReason?: string
     payload: Record<string, unknown>
   },
   audits: [] as { action: string }[],
@@ -237,6 +238,7 @@ describe('applyPendingPatch', () => {
     ).rejects.toThrow('apply failed')
 
     expect(state.patch?.status).toBe('failed')
+    expect(state.patch?.failureReason).toBe('PATCH_APPLY_FAILED')
     expect(state.audits.map(({ action }) => action)).toEqual(['failed'])
   })
 })

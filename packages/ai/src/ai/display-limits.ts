@@ -1,3 +1,5 @@
+import { logEvent } from '@oryxel/runtime'
+
 import type { StructuredPreferencePatch } from './contracts'
 
 export type PatchDisplayLimits = {
@@ -87,9 +89,10 @@ export function warnIfPatchViolatesDisplayLimits(
     return
   }
 
-  console.warn('[ai-display-limits] Patch outside user display limits', {
-    userId: input.userId,
-    scenario: input.scenario,
-    violations,
-  })
+  logEvent(
+    'ai',
+    'display_limits.violation',
+    { component: 'display-limits', mode: input.scenario, count: violations.length },
+    'warn',
+  )
 }

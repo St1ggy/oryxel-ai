@@ -1,5 +1,5 @@
 import { setJobCreatedHandler } from '@oryxel/ai/server'
-import { logError, logEvent, resolveRequestId } from '@oryxel/runtime'
+import { configureLogService, logError, logEvent, resolveRequestId, withLogContext } from '@oryxel/runtime'
 import { sequence } from '@sveltejs/kit/hooks'
 import { svelteKitHandler } from 'better-auth/svelte-kit'
 
@@ -18,6 +18,8 @@ import { building } from '$app/environment'
 import { env } from '$env/dynamic/private'
 
 const NEW_JOBS_CHANNEL = 'jobs:new'
+
+configureLogService('web')
 
 const redis = getRedisClient()
 
@@ -65,37 +67,37 @@ const handleObservability: Handle = async ({ event, resolve }) => {
 
   event.locals.requestId = requestId
 
-  try {
-    const response = withRequestId(await resolve(event), requestId)
-    const requestPath = event.url.pathname
-    const routeId = event.route.id ?? 'unmatched'
+  return withLogContext({ requestId }, async () => {
+    try {
+      const response = withRequestId(await resolve(event), requestId)
+      const requestPath = event.url.pathname
+      const routeId = event.route.id ?? 'unmatched'
 
-    if (shouldLogRequest(requestPath, response.status)) {
-      logEvent(
-        'web',
-        'http.request.completed',
-        {
-          requestId,
-          method: event.request.method,
-          path: routeId,
-          status: response.status,
-          durationMs: Math.round(performance.now() - startedAt),
-        },
-        httpLogLevel(response.status),
-      )
+      if (shouldLogRequest(requestPath, response.status)) {
+        logEvent(
+          'web',
+          'http.request.completed',
+          {
+            method: event.request.method,
+            path: routeId,
+            status: response.status,
+            durationMs: Math.round(performance.now() - startedAt),
+          },
+          httpLogLevel(response.status),
+        )
+      }
+
+      return response
+    } catch (error) {
+      logError('web', 'http.request.failed', error, {
+        method: event.request.method,
+        path: event.route.id ?? 'unmatched',
+        durationMs: Math.round(performance.now() - startedAt),
+      })
+
+      throw error
     }
-
-    return response
-  } catch (error) {
-    logError('web', 'http.request.failed', error, {
-      requestId,
-      method: event.request.method,
-      path: event.route.id ?? 'unmatched',
-      durationMs: Math.round(performance.now() - startedAt),
-    })
-
-    throw error
-  }
+  })
 }
 
 const handleMaintenance: Handle = async ({ event, resolve }) => {

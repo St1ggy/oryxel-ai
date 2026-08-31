@@ -1,4 +1,5 @@
 import { aiRecommendationDismissed, brand, db as database, fragrance, userFragrance } from '@oryxel/db'
+import { logError } from '@oryxel/runtime'
 import { asc, desc, eq, sql } from 'drizzle-orm'
 
 import { extractEnglishKey, lookupTranslations, resolveCommaSeparated } from '../translation/service'
@@ -143,7 +144,7 @@ export async function loadDiaryForUser(userId: string, locale = 'en') {
 
     return result
   } catch (error) {
-    console.error('[diary/load] Failed to load diary from database:', error)
+    logError('ai', 'diary.load_failed', error, { component: 'diary' })
 
     return { to_try: [], liked: [], neutral: [], disliked: [], owned: [] }
   }
@@ -170,7 +171,7 @@ export async function loadDismissedForUser(userId: string) {
 
     return rows
   } catch (error) {
-    console.error('[diary/load] Failed to load dismissed list:', error)
+    logError('ai', 'diary.dismissed_load_failed', error, { component: 'diary' })
 
     return []
   }

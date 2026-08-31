@@ -1,7 +1,9 @@
 import { backgroundJob, db } from '@oryxel/db'
+import { logError } from '@oryxel/runtime'
 import { and, desc, eq, gt, inArray, lte, sql } from 'drizzle-orm'
 import { randomUUID } from 'node:crypto'
 
+import { normalizeErrorCode } from './error-codes'
 import { emitJobCreated, emitJobUpdated } from './job-notify'
 
 import type { AiProviderName, StructuredPreferencePatch } from './contracts'
@@ -195,7 +197,7 @@ export async function recoverExpiredJobs() {
     .update(backgroundJob)
     .set({
       status: 'failed',
-      errorMessage: 'Worker lease expired',
+      errorMessage: 'WORKER_LEASE_EXPIRED',
       completedAt: sql`now()`,
       leaseToken: null,
       leaseExpiresAt: null,
@@ -259,12 +261,14 @@ export async function completeJob(job: JobLease, result: Record<string, unknown>
   requireUpdatedJob(job, updated)
 }
 
-export async function failJob(job: JobLease, errorMessage: string) {
+export async function failJob(job: JobLease, errorCode: string, error?: unknown) {
+  if (error !== undefined) logError('ai', 'job.handler_failed', error, { component: 'jobs', jobId: job.id })
+
   const updated = await db
     .update(backgroundJob)
     .set({
       status: 'failed',
-      errorMessage,
+      errorMessage: normalizeErrorCode(errorCode, 'JOB_FAILED'),
       completedAt: sql`now()`,
       leaseToken: null,
       leaseExpiresAt: null,

@@ -1,3 +1,5 @@
+import { logError, logEvent } from '@oryxel/runtime'
+
 import { listConfiguredProviderIds, listProviderApiKeyCandidates } from '../ai/keys/service'
 import { getAiRouterPolicy } from '../ai/policy'
 import { normalizeLocale } from '../i18n/locale.js'
@@ -212,7 +214,7 @@ export async function translateBatch(userId: string, phrases: string[], locale: 
   const configuredIds = await listConfiguredProviderIds(userId)
 
   if (configuredIds.length === 0) {
-    console.warn('[translate] No AI providers configured for user')
+    logEvent('ai', 'translation.providers_unavailable', { component: 'translation' }, 'warn')
 
     return new Map()
   }
@@ -240,11 +242,11 @@ export async function translateBatch(userId: string, phrases: string[], locale: 
 
       return parseTranslationResponse(raw, phrases)
     } catch (error) {
-      console.error(`[translate] ${providerName} failed:`, error instanceof Error ? error.message : error)
+      logError('ai', 'translation.provider_failed', error, { component: 'translation', provider: providerName })
     }
   }
 
-  console.warn('[translate] All providers failed for translation batch')
+  logEvent('ai', 'translation.providers_exhausted', { component: 'translation' }, 'warn')
 
   return new Map()
 }

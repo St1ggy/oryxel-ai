@@ -14,6 +14,7 @@
   },
   "devDependencies": {
     "@st1ggy/linter-config": "^2.1.7",
+    "@types/node": "^26.4.0",
     "typescript": "^5.9.3",
     "vitest": "^4.1.11"
   }

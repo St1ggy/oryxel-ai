@@ -38,7 +38,7 @@ export async function handleNotifyPost(job: JobLease, params: Record<string, unk
 
     await completeJob(job, { notified: followers.length })
   } catch (error) {
-    await failJob(job, error instanceof Error ? error.message : 'notify_post failed')
+    await failJob(job, 'NOTIFY_POST_FAILED', error)
   }
 }
 
@@ -58,7 +58,7 @@ export async function handleNotifyFollow(job: JobLease, params: Record<string, u
 
     await completeJob(job, { ok: true })
   } catch (error) {
-    await failJob(job, error instanceof Error ? error.message : 'notify_follow failed')
+    await failJob(job, 'NOTIFY_FOLLOW_FAILED', error)
   }
 }
 
@@ -86,6 +86,6 @@ export async function handleNotifyList(job: JobLease, userId: string, params: Re
 
     await completeJob(job, { notified: followers.length })
   } catch (error) {
-    await failJob(job, error instanceof Error ? error.message : 'notify_list failed')
+    await failJob(job, 'NOTIFY_LIST_FAILED', error)
   }
 }

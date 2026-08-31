@@ -1,4 +1,5 @@
 import { db, fragrance, translations, userFragrance } from '@oryxel/db'
+import { logError } from '@oryxel/runtime'
 import { and, eq, inArray, sql } from 'drizzle-orm'
 
 import { extractEnglishKey, saveTranslations } from './service'
@@ -102,9 +103,6 @@ export async function generateMissingTranslations(userId: string, locale: string
 
     await saveTranslations(entries)
   } catch (error) {
-    console.error(
-      '[translation/generate] generateMissingTranslations failed:',
-      error instanceof Error ? error.message : error,
-    )
+    logError('ai', 'translation.generation_failed', error, { component: 'translation' })
   }
 }
