@@ -211,6 +211,8 @@ STREAM_CORS_ORIGIN
 
 **Railway (monorepo):** no root `railway.toml`. Worker and job-stream-gateway each have `apps/<service>/railway.toml` with **RAILPACK**, `bun install --frozen-lockfile` from repo root, and a service-specific `startCommand`. In Railway UI: **Root directory** = repository root; **Config file** = that path per service.
 
+**Observability:** `@oryxel/runtime` emits vendor-neutral JSON logs for web, worker, and gateway. Correlate HTTP events by validated `requestId` and background-job lifecycles by `jobId`. Never log request bodies, query strings, user IDs, arbitrary exception messages, stack traces, or credentials.
+
 Extend this list in **`memory.mdc`** and here when new features add secrets.
 
 ---
@@ -238,6 +240,7 @@ bun run check
 | 2026-04-11 | **`@st1ggy/linter-config` `6.3.2`**, `type` aliases in Svelte via local `consistent-type-definitions` override. |
 | 2026-06-19 | **Social layer MVP**: lists, follow, feed, discover, in-app notifications; chat mode **`curate`**; migration **0006**; no Web Push. |
 | 2026-08-30 | Redis-backed distributed limits for Better Auth and web API policy groups; PostgreSQL remains authoritative for auth records. |
+| 2026-08-31 | Vendor-neutral structured logs correlate requests by `requestId` and background work by `jobId` without raw user or exception data. |
 
 ### `memory.mdc`
 
@@ -324,6 +327,20 @@ bun run check
 ### Why
 
 - Limits must be consistent across stateless Vercel instances without making ordinary API reads unavailable during a Redis outage.
+
+---
+
+## 2026-08-31 — Structured production observability
+
+### What changed
+
+- Web, worker, and job-stream gateway emit vendor-neutral JSON lifecycle logs through `@oryxel/runtime`.
+- HTTP requests use validated `x-request-id` values; background work is correlated across enqueue, processing, and SSE events by `jobId`.
+- Logs use route templates and controlled fields. They omit request bodies, query strings, user IDs, arbitrary exception messages, and stack traces.
+
+### Why
+
+- Production incidents need cross-service correlation without introducing a vendor dependency or exposing user and credential data.
 
 ---
 

@@ -141,6 +141,8 @@ STREAM_CORS_ORIGIN
 
 **Railway:** per-service `railway.toml` under `apps/worker/` and `apps/job-stream-gateway/` (RAILPACK + `bun install` from repo root); UI Root directory = repo root, Config file = that path.
 
+**Observability:** `@oryxel/runtime` emits vendor-neutral JSON logs for web, worker, and gateway. Correlate HTTP events by validated `requestId` and background-job lifecycles by `jobId`. Never log request bodies, query strings, user IDs, arbitrary exception messages, stack traces, or credentials.
+
 Extend this list in **`memory.mdc`** and here when new features add secrets.
 
 ---
@@ -164,3 +166,4 @@ bun run check
 |------|----------|
 | 2026-03-30 | Workspace rules retargeted to **oryxel-ai** (Drizzle + Better Auth + `src/routes/`). |
 | 2026-06-19 | **Social layer MVP**: lists, follow, feed, discover, in-app notifications; chat mode **`curate`** + `listOps`; `@oryxel/ai/src/social/`; migration **0006**. Notifications in-app only — **no VAPID/Web Push**. |
+| 2026-08-31 | Vendor-neutral structured logs correlate requests by `requestId` and background work by `jobId` without raw user or exception data. |

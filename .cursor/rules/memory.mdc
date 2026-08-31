@@ -118,6 +118,20 @@ alwaysApply: true
 
 ---
 
+## 2026-08-31 — Structured production observability
+
+### What changed
+
+- Web, worker, and job-stream gateway emit vendor-neutral JSON lifecycle logs through `@oryxel/runtime`.
+- HTTP requests use validated `x-request-id` values; background work is correlated across enqueue, processing, and SSE events by `jobId`.
+- Logs use route templates and controlled fields. They omit request bodies, query strings, user IDs, arbitrary exception messages, and stack traces.
+
+### Why
+
+- Production incidents need cross-service correlation without introducing a vendor dependency or exposing user and credential data.
+
+---
+
 ## Template for new entries
 
 ```
