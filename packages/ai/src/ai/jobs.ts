@@ -321,3 +321,13 @@ export async function getJob(jobId: number, userId: string) {
     errorMessage: row.errorMessage,
   }
 }
+
+export async function getJobStatus(jobId: number, userId: string) {
+  const rows = await db
+    .select({ status: backgroundJob.status })
+    .from(backgroundJob)
+    .where(and(eq(backgroundJob.id, jobId), eq(backgroundJob.userId, userId)))
+    .limit(1)
+
+  return rows[0]?.status ?? null
+}

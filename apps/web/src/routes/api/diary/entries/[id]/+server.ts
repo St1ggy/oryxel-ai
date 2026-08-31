@@ -1,8 +1,9 @@
-import { createJob, deleteOrphanedUserCatalogEntities } from '@oryxel/ai/server'
+import { deleteOrphanedUserCatalogEntities } from '@oryxel/ai/server'
 import { error, json } from '@sveltejs/kit'
 import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 
+import { createObservedJob } from '$lib/server/ai/jobs'
 import { db, withUserDataLock } from '$lib/server/db'
 import { brand, fragrance, userFragrance } from '$lib/server/db/schema'
 import { recordActivity } from '$lib/server/diary/activity'
@@ -46,7 +47,7 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
         actor: 'user',
         summary: `Removed: ${label}`,
       }),
-      createJob(userId, 'list_slice_sync', {}),
+      createObservedJob(locals.requestId, userId, 'list_slice_sync', {}),
     ])
 
     return json({ ok: true })
@@ -116,7 +117,7 @@ export const PATCH: RequestHandler = async ({ params, locals, request }) => {
   ]
 
   if (body.listType) {
-    sideEffects.push(createJob(locals.user.id, 'list_slice_sync', {}))
+    sideEffects.push(createObservedJob(locals.requestId, locals.user.id, 'list_slice_sync', {}))
   }
 
   await Promise.allSettled(sideEffects)

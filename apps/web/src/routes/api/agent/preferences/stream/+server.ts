@@ -2,7 +2,7 @@ import { chatAgentModeSchema, normalizeLocale } from '@oryxel/ai/server'
 import { error, json } from '@sveltejs/kit'
 import { z } from 'zod'
 
-import { createJob } from '$lib/server/ai/jobs'
+import { createObservedJob } from '$lib/server/ai/jobs'
 import { createChatMessage } from '$lib/server/ai/storage'
 
 import type { RequestHandler } from './$types'
@@ -215,7 +215,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
   await createChatMessage({ userId, role: 'user', content: body.message, locale, scenario })
 
-  const jobId = await createJob(userId, 'agent_chat', {
+  const jobId = await createObservedJob(locals.requestId, userId, 'agent_chat', {
     message: body.message,
     locale,
     scenario,

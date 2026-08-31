@@ -1,4 +1,5 @@
 import { setJobCreatedHandler } from '@oryxel/ai/server'
+import { logError, logEvent, resolveRequestId } from '@oryxel/runtime'
 import { sequence } from '@sveltejs/kit/hooks'
 import { svelteKitHandler } from 'better-auth/svelte-kit'
 
@@ -10,7 +11,8 @@ import { consumeRateLimit, createRateLimitKey, resolveRateLimitPolicy } from '$l
 import { getRedisClient } from '$lib/server/redis'
 
 import type { RateLimitPolicy } from '$lib/server/rate-limit'
-import type { Handle } from '@sveltejs/kit'
+import type { LogLevel } from '@oryxel/runtime'
+import type { Handle, HandleServerError } from '@sveltejs/kit'
 
 import { building } from '$app/environment'
 import { env } from '$env/dynamic/private'
@@ -24,9 +26,76 @@ if (redis) {
     try {
       await redis.publish(NEW_JOBS_CHANNEL, JSON.stringify({ jobId }))
     } catch (error) {
-      console.error('[web] redis publish failed:', error instanceof Error ? error.message : error)
+      logError('web', 'job.publish.failed', error, { jobId, component: 'redis' })
     }
   })
+}
+
+function withRequestId(response: Response, requestId: string) {
+  try {
+    response.headers.set('x-request-id', requestId)
+
+    return response
+  } catch {
+    const headers = new Headers(response.headers)
+
+    headers.set('x-request-id', requestId)
+
+    return new Response(response.body, { status: response.status, statusText: response.statusText, headers })
+  }
+}
+
+function shouldLogRequest(path: string, status: number) {
+  if (path.startsWith('/_app/') || path.startsWith('/favicon')) return false
+
+  return status >= 400 || (path !== '/healthz' && path !== '/readyz')
+}
+
+function httpLogLevel(status: number): LogLevel {
+  if (status >= 500) return 'error'
+
+  if (status >= 400) return 'warn'
+
+  return 'info'
+}
+
+const handleObservability: Handle = async ({ event, resolve }) => {
+  const requestId = resolveRequestId(event.request.headers.get('x-request-id'))
+  const startedAt = performance.now()
+
+  event.locals.requestId = requestId
+
+  try {
+    const response = withRequestId(await resolve(event), requestId)
+    const requestPath = event.url.pathname
+    const routeId = event.route.id ?? 'unmatched'
+
+    if (shouldLogRequest(requestPath, response.status)) {
+      logEvent(
+        'web',
+        'http.request.completed',
+        {
+          requestId,
+          method: event.request.method,
+          path: routeId,
+          status: response.status,
+          durationMs: Math.round(performance.now() - startedAt),
+        },
+        httpLogLevel(response.status),
+      )
+    }
+
+    return response
+  } catch (error) {
+    logError('web', 'http.request.failed', error, {
+      requestId,
+      method: event.request.method,
+      path: event.route.id ?? 'unmatched',
+      durationMs: Math.round(performance.now() - startedAt),
+    })
+
+    throw error
+  }
 }
 
 const handleMaintenance: Handle = async ({ event, resolve }) => {
@@ -82,7 +151,12 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
 
   try {
     session = await auth.api.getSession({ headers: event.request.headers })
-  } catch {
+  } catch (error) {
+    logError('web', 'auth.session.failed', error, {
+      requestId: event.locals.requestId,
+      method: event.request.method,
+      path: event.route.id ?? 'unmatched',
+    })
     session = null
   }
 
@@ -115,9 +189,8 @@ function getRateLimitIdentity(userId: string | undefined, getClientAddress: () =
   return userId ? `user:${userId}` : `ip:${getClientAddress()}`
 }
 
-function rateLimitUnavailableResponse(policy: RateLimitPolicy, error: unknown, message: string) {
-  // eslint-disable-next-line no-console -- dependency failures need to be visible in function logs
-  console.error(message, error instanceof Error ? error.message : error)
+function rateLimitUnavailableResponse(policy: RateLimitPolicy, error: unknown, component: string) {
+  logError('web', 'rate_limit.unavailable', error, { component, mode: policy.failClosed ? 'fail_closed' : 'fail_open' })
 
   return policy.failClosed ? rateLimitErrorResponse('RATE_LIMIT_UNAVAILABLE', 503, 30) : null
 }
@@ -132,10 +205,7 @@ const handleRateLimit: Handle = async ({ event, resolve }) => {
   try {
     identity = getRateLimitIdentity(event.locals.user?.id, () => event.getClientAddress())
   } catch (error) {
-    return (
-      rateLimitUnavailableResponse(policy, error, '[web] client address unavailable for rate limiting:') ??
-      resolve(event)
-    )
+    return rateLimitUnavailableResponse(policy, error, 'client_address') ?? resolve(event)
   }
 
   try {
@@ -145,16 +215,30 @@ const handleRateLimit: Handle = async ({ event, resolve }) => {
       return rateLimitErrorResponse('RATE_LIMITED', 429, decision.retryAfterSeconds)
     }
   } catch (error) {
-    return rateLimitUnavailableResponse(policy, error, '[web] rate limit check failed:') ?? resolve(event)
+    return rateLimitUnavailableResponse(policy, error, 'redis') ?? resolve(event)
   }
 
   return resolve(event)
 }
 
 export const handle: Handle = sequence(
+  handleObservability,
   handleLegacyLocaleCompatibility,
   handleMaintenance,
   handleParaglide,
   handleBetterAuth,
   handleRateLimit,
 )
+
+export const handleError: HandleServerError = ({ error, event, status, message }) => {
+  const requestId = event.locals.requestId ?? resolveRequestId(event.request.headers.get('x-request-id'))
+
+  logError('web', 'http.server.error', error, {
+    requestId,
+    method: event.request.method,
+    path: event.route.id ?? 'unmatched',
+    status,
+  })
+
+  return { message, requestId }
+}

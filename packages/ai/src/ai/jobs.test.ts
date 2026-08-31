@@ -4,6 +4,7 @@ import {
   JobLeaseLostError,
   claimNextJob,
   completeJob,
+  getJobStatus,
   recoverExpiredJobs,
   releaseJobLease,
   renewJobLease,
@@ -17,6 +18,7 @@ const state = vi.hoisted(() => ({
     userId: string
     type: string
     params: Record<string, unknown> | null
+    status?: string
   },
   lock: null as null | { strength: string; config: Record<string, unknown> },
   updates: [] as Record<string, unknown>[],
@@ -152,5 +154,17 @@ describe('background job leases', () => {
       leaseToken: null,
       leaseExpiresAt: null,
     })
+  })
+
+  it('reads the current status needed by worker telemetry', async () => {
+    state.pending = {
+      id: 7,
+      userId: 'user-1',
+      type: 'agent_chat',
+      params: null,
+      status: 'done',
+    }
+
+    await expect(getJobStatus(7, 'user-1')).resolves.toBe('done')
   })
 })

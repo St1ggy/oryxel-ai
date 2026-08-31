@@ -1,3 +1,4 @@
+import { logError } from '@oryxel/runtime'
 import { createHash } from 'node:crypto'
 
 import type Redis from 'ioredis'
@@ -105,8 +106,7 @@ export function createRedisSecondaryStorage(redis: Redis | null) {
       try {
         return await redis.get(getAuthStorageKey(key))
       } catch (error) {
-        // eslint-disable-next-line no-console -- cache fallback must remain visible in function logs
-        console.error('[web] auth cache read failed:', error instanceof Error ? error.message : error)
+        logError('web', 'auth.cache.read_failed', error, { component: 'redis' })
 
         return null
       }

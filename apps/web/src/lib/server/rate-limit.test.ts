@@ -125,7 +125,15 @@ describe('createRedisSecondaryStorage', () => {
     const storage = createRedisSecondaryStorage(redis)
 
     await expect(storage?.get('session')).resolves.toBeNull()
-    expect(errorSpy).toHaveBeenCalledWith('[web] auth cache read failed:', 'unavailable')
+    expect(errorSpy).toHaveBeenCalledTimes(1)
+    expect(JSON.parse(String(errorSpy.mock.calls[0]?.[0]))).toMatchObject({
+      service: 'web',
+      level: 'error',
+      event: 'auth.cache.read_failed',
+      component: 'redis',
+      errorName: 'Error',
+    })
+    expect(String(errorSpy.mock.calls[0]?.[0])).not.toContain('unavailable')
 
     errorSpy.mockRestore()
   })

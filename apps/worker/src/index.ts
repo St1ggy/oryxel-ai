@@ -4,13 +4,14 @@ import {
   claimNextJob,
   emitJobUpdated,
   failJob,
+  getJobStatus,
   recoverExpiredJobs,
   releaseJobLease,
   renewJobLease,
   setJobUpdatedHandler,
 } from '@oryxel/ai/server'
 import { checkDatabaseConnection, closeDatabase, db, user, withUserDataLock } from '@oryxel/db'
-import { parseHealthCheckTimeout, runReadinessChecks } from '@oryxel/runtime'
+import { logError, logEvent, parseHealthCheckTimeout, runReadinessChecks } from '@oryxel/runtime'
 import { eq } from 'drizzle-orm'
 import Redis from 'ioredis'
 import { createServer } from 'node:http'
@@ -43,7 +44,7 @@ if (redisUrl) {
   publisher = redis
 
   redis.on('error', (error) => {
-    console.error('[worker] redis error:', error instanceof Error ? error.message : error)
+    logError('worker', 'redis.client.error', error, { component: 'publisher' })
   })
 
   setJobUpdatedHandler(async (jobId) => {
@@ -55,22 +56,22 @@ if (redisUrl) {
   jobSubscriber = subscriber
 
   subscriber.on('error', (error) => {
-    console.error('[worker] subscriber redis error:', error instanceof Error ? error.message : error)
+    logError('worker', 'redis.client.error', error, { component: 'subscriber' })
   })
 
   // Redis wake-ups are optional; startup and interval polling must not wait for Redis.
   // eslint-disable-next-line unicorn/prefer-top-level-await
   void subscriber.subscribe(NEW_JOBS_CHANNEL).catch((error) => {
-    console.error('[worker] subscribe failed:', error instanceof Error ? error.message : error)
+    logError('worker', 'redis.subscribe.failed', error, { component: NEW_JOBS_CHANNEL })
   })
 
   subscriber.on('message', (channel) => {
     if (channel === NEW_JOBS_CHANNEL) void poll()
   })
 
-  console.log('[worker] Redis pub/sub enabled for job streams + new-job wake-ups')
+  logEvent('worker', 'redis.pubsub.enabled', { mode: 'streams_and_wakeups' })
 } else {
-  console.warn('[worker] REDIS_URL not set — job stream publishes disabled, falling back to interval poll only')
+  logEvent('worker', 'redis.pubsub.disabled', { mode: 'interval_poll' }, 'warn')
 }
 
 async function processJob(job: ClaimedJob) {
@@ -85,8 +86,6 @@ async function processJob(job: ClaimedJob) {
   }
 
   const userName = userRow.name
-
-  console.log(`[worker] processing job ${job.id} type=${job.type} userId=${job.userId}`)
 
   emitJobUpdated(job.id)
 
@@ -132,9 +131,37 @@ async function processJob(job: ClaimedJob) {
   }
 }
 
+async function logJobOutcome(job: ClaimedJob, startedAt: number) {
+  try {
+    const status = (await getJobStatus(job.id, job.userId)) ?? 'missing'
+
+    logEvent(
+      'worker',
+      'job.processing.finished',
+      {
+        jobId: job.id,
+        jobType: job.type,
+        status,
+        durationMs: Math.round(performance.now() - startedAt),
+      },
+      status === 'failed' || status === 'missing' ? 'warn' : 'info',
+    )
+  } catch (error) {
+    logError('worker', 'job.status_lookup.failed', error, {
+      jobId: job.id,
+      jobType: job.type,
+      durationMs: Math.round(performance.now() - startedAt),
+    })
+  }
+}
+
 async function processClaimedJob(job: ClaimedJob) {
+  const startedAt = performance.now()
   let isRenewing = false
   let leaseLost = false
+
+  logEvent('worker', 'job.processing.started', { jobId: job.id, jobType: job.type })
+
   const heartbeat = setInterval(() => {
     if (isRenewing || leaseLost) return
 
@@ -144,7 +171,7 @@ async function processClaimedJob(job: ClaimedJob) {
         leaseLost = !renewed
       })
       .catch((error) => {
-        console.error(`[worker] heartbeat failed for job ${job.id}:`, error instanceof Error ? error.message : error)
+        logError('worker', 'job.heartbeat.failed', error, { jobId: job.id, jobType: job.type })
       })
       .finally(() => {
         isRenewing = false
@@ -155,19 +182,30 @@ async function processClaimedJob(job: ClaimedJob) {
     await withUserDataLock(job.userId, () => processJob(job))
   } catch (error) {
     if (error instanceof JobLeaseLostError || leaseLost) {
-      console.warn(`[worker] stopped reporting job ${job.id} after losing its lease`)
+      logEvent(
+        'worker',
+        'job.lease_lost',
+        { jobId: job.id, jobType: job.type, durationMs: Math.round(performance.now() - startedAt) },
+        'warn',
+      )
 
       return
     }
+
+    logError('worker', 'job.handler.failed', error, { jobId: job.id, jobType: job.type })
 
     try {
       await failJob(job, error instanceof Error ? error.message : 'Unknown worker error')
     } catch (failureError) {
       if (!(failureError instanceof JobLeaseLostError)) throw failureError
+
+      logEvent('worker', 'job.lease_lost', { jobId: job.id, jobType: job.type }, 'warn')
     }
   } finally {
     clearInterval(heartbeat)
   }
+
+  await logJobOutcome(job, startedAt)
 }
 
 let isPolling = false
@@ -221,7 +259,7 @@ const healthServer = createServer((request, response) => {
 })
 
 healthServer.listen(PORT, () => {
-  console.log(`[worker] health server listening on :${PORT}`)
+  logEvent('worker', 'health.server.started', { port: PORT })
 })
 
 async function recoverJobs() {
@@ -230,9 +268,11 @@ async function recoverJobs() {
   isRecovering = true
 
   try {
-    await recoverExpiredJobs()
+    const recovered = await recoverExpiredJobs()
+
+    if (recovered.length > 0) logEvent('worker', 'jobs.expired_recovered', { count: recovered.length }, 'warn')
   } catch (error) {
-    console.error('[worker] recovery error:', error instanceof Error ? error.message : error)
+    logError('worker', 'jobs.recovery.failed', error)
   } finally {
     isRecovering = false
   }
@@ -255,9 +295,19 @@ function shutdownRuntime() {
       }),
       closeDatabase(),
     ])
+    logEvent('worker', 'runtime.shutdown.completed')
   })()
 
   return shutdownPromise
+}
+
+async function finishShutdown() {
+  try {
+    await shutdownRuntime()
+  } catch (error) {
+    logError('worker', 'runtime.shutdown.failed', error)
+    process.exitCode = 1
+  }
 }
 
 async function poll() {
@@ -282,31 +332,35 @@ async function poll() {
       job = await claimNextJob()
     }
   } catch (error) {
-    console.error('[worker] poll error:', error instanceof Error ? error.message : error)
+    logError('worker', 'jobs.poll.failed', error)
   } finally {
     isPolling = false
 
-    if (isShuttingDown) await shutdownRuntime()
+    if (isShuttingDown) await finishShutdown()
   }
 }
 
-console.log('[worker] starting, polling every', POLL_INTERVAL_MS, 'ms (fallback)')
+logEvent('worker', 'runtime.started', { intervalMs: POLL_INTERVAL_MS, mode: 'poll' })
 
 const pollTimer = setInterval(() => void poll(), POLL_INTERVAL_MS)
 const recoveryTimer = setInterval(() => void recoverJobs(), RECOVERY_INTERVAL_MS)
 
-function startShutdown() {
+function startShutdown(signal: string) {
   if (isShuttingDown) return
 
   isShuttingDown = true
+  logEvent('worker', 'runtime.shutdown.started', { signal })
   clearInterval(pollTimer)
   clearInterval(recoveryTimer)
 
-  if (!isPolling) void shutdownRuntime()
+  if (!isPolling) void finishShutdown()
 }
 
-process.on('SIGTERM', startShutdown)
-process.on('SIGINT', startShutdown)
+process.on('SIGTERM', () => startShutdown('SIGTERM'))
+process.on('SIGINT', () => startShutdown('SIGINT'))
+process.on('uncaughtExceptionMonitor', (error) => {
+  logError('worker', 'runtime.uncaught_exception', error)
+})
 
 // Run immediately on startup
 await recoverJobs()

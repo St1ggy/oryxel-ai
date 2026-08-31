@@ -1,3 +1,4 @@
+import { logError } from '@oryxel/runtime'
 import Redis from 'ioredis'
 
 import { building } from '$app/environment'
@@ -22,7 +23,7 @@ export function getRedisClient() {
     protocol: 2,
   })
   redisClient.on('error', (error) => {
-    console.error('[web] redis error:', error instanceof Error ? error.message : error)
+    logError('web', 'redis.client.error', error, { component: 'shared' })
   })
 
   return redisClient
