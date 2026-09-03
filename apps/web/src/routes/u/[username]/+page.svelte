@@ -31,12 +31,10 @@
   let followingOpen = $state(false)
 
   function setTab(next: ProfileTab) {
-    void goto(
-      next === 'overview'
-        ? resolve(`/u/${profile.username}`)
-        : resolve(`/u/${profile.username}?tab=${next}`),
-      { replaceState: true, keepFocus: true },
-    )
+    void goto(next === 'overview' ? resolve(`/u/${profile.username}`) : resolve(`/u/${profile.username}?tab=${next}`), {
+      replaceState: true,
+      keepFocus: true,
+    })
   }
 
   async function toggleFollow() {

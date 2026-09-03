@@ -30,7 +30,7 @@ export const qwen: ProviderGuide = {
       'Sélectionnez un workspace (généralement default), créez la clé et copiez-la immédiatement.',
       "Ajoutez la clé dans Oryxel comme Qwen. En cas de 401/403, vérifiez que la région et l'endpoint correspondent.",
     ],
-    jp: [
+    ja: [
       'Alibaba Cloud Model Studioにログインして右上で必要なリージョンを選択。',
       'API KeyページでCreate API Keyをクリック。',
       'ワークスペース（通常はdefault）を選択してキーを作成し、すぐにコピー。',
@@ -64,7 +64,7 @@ export const qwen: ProviderGuide = {
       '401 — clé invalide ou non-correspondance région/endpoint.',
       '429 — limites/quotas. Vérifiez Free Trial et Billing dans Alibaba Cloud.',
     ],
-    jp: [
+    ja: [
       'キーのリージョンはエンドポイントのリージョンと一致している必要があります（エラーのよくある原因）。',
       '401 — 無効なキーまたはリージョン/エンドポイントの不一致。',
       '429 — 制限/クォータ。Alibaba CloudのFree TrialとBillingを確認。',

@@ -8,7 +8,7 @@ alwaysApply: false
 
 ## Supported languages (oryxel-ai)
 
-Per `project.inlang/settings.json`: **`en`**, **`es`**, **`fr`**, **`jp`**, **`ru`**, **`zh`**.
+Per `project.inlang/settings.json`: **`en`**, **`es`**, **`fr`**, **`ja`**, **`ru`**, **`zh`**.
 
 ## Rule: user-facing strings go through Paraglide
 
@@ -33,7 +33,7 @@ Add the key to **all six** locale files at once:
 messages/en.json
 messages/es.json
 messages/fr.json
-messages/jp.json
+messages/ja.json
 messages/ru.json
 messages/zh.json
 ```

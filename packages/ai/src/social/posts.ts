@@ -1,8 +1,10 @@
 import { db, post, postAttachment, userProfile } from '@oryxel/db'
 import { and, desc, eq, inArray } from 'drizzle-orm'
 
+import { deleteOrphanedUserCatalogEntities } from '../diary/catalog-lifecycle.js'
+
 import { listFollowingIds } from './follow.js'
-import { canView } from './visibility.js'
+import { canDiscover, resolveVisibility } from './visibility.js'
 
 import type { FeedPost, Visibility } from './types.js'
 
@@ -15,13 +17,23 @@ export async function createPost(
   },
 ) {
   const now = new Date()
+  const [author] = await db
+    .select({
+      username: userProfile.username,
+      displayName: userProfile.displayName,
+      defaultPostVisibility: userProfile.defaultPostVisibility,
+    })
+    .from(userProfile)
+    .where(eq(userProfile.userId, authorId))
+    .limit(1)
+  const visibility = resolveVisibility(input.visibility, author?.defaultPostVisibility, 'followers')
 
   const [row] = await db
     .insert(post)
     .values({
       authorId,
       body: input.body.trim(),
-      visibility: input.visibility ?? 'followers',
+      visibility,
       updatedAt: now,
     })
     .returning()
@@ -36,12 +48,6 @@ export async function createPost(
       })),
     )
   }
-
-  const [author] = await db
-    .select({ username: userProfile.username, displayName: userProfile.displayName })
-    .from(userProfile)
-    .where(eq(userProfile.userId, authorId))
-    .limit(1)
 
   return {
     id: row.id,
@@ -66,9 +72,13 @@ export async function getPostById(postId: number) {
 }
 
 export async function deletePost(postId: number, authorId: string) {
-  const result = await db.delete(post).where(and(eq(post.id, postId), eq(post.authorId, authorId)))
+  return db.transaction(async (tx) => {
+    const result = await tx.delete(post).where(and(eq(post.id, postId), eq(post.authorId, authorId)))
 
-  return (result.count ?? 0) > 0
+    if ((result.count ?? 0) > 0) await deleteOrphanedUserCatalogEntities(tx)
+
+    return (result.count ?? 0) > 0
+  })
 }
 
 export async function listPostsForAuthor(authorId: string, viewerId: string | null, limit = 30) {
@@ -88,27 +98,29 @@ export async function listPostsForAuthor(authorId: string, viewerId: string | nu
     .limit(1)
 
   for (const row of rows) {
-    if (await canView(viewerId, authorId, row.visibility as Visibility)) {
-      const attachments = await db
-        .select({
-          kind: postAttachment.kind,
-          entityId: postAttachment.entityId,
-          url: postAttachment.url,
-        })
-        .from(postAttachment)
-        .where(eq(postAttachment.postId, row.id))
-
-      visible.push({
-        id: row.id,
-        authorId: row.authorId,
-        authorUsername: author?.username ?? null,
-        authorDisplayName: author?.displayName ?? null,
-        body: row.body,
-        visibility: row.visibility as Visibility,
-        createdAt: row.createdAt,
-        attachments,
-      })
+    if (!(await canDiscover(viewerId, authorId, row.visibility as Visibility))) {
+      continue
     }
+
+    const attachments = await db
+      .select({
+        kind: postAttachment.kind,
+        entityId: postAttachment.entityId,
+        url: postAttachment.url,
+      })
+      .from(postAttachment)
+      .where(eq(postAttachment.postId, row.id))
+
+    visible.push({
+      id: row.id,
+      authorId: row.authorId,
+      authorUsername: author?.username ?? null,
+      authorDisplayName: author?.displayName ?? null,
+      body: row.body,
+      visibility: row.visibility as Visibility,
+      createdAt: row.createdAt,
+      attachments,
+    })
   }
 
   return visible
@@ -140,7 +152,7 @@ export async function loadFeedForUser(viewerId: string, limit = 30) {
   const feed: FeedPost[] = []
 
   for (const row of rows) {
-    if (!(await canView(viewerId, row.authorId, row.visibility as Visibility))) continue
+    if (!(await canDiscover(viewerId, row.authorId, row.visibility as Visibility))) continue
 
     const attachments = await db
       .select({

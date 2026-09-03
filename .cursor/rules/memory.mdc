@@ -13,7 +13,7 @@ alwaysApply: true
 
 ### What changed
 
-- `.cursor/rules/` describe **oryxel-ai**: SvelteKit, Drizzle, Better Auth, Paraglide, `src/routes/`, `src/lib/server/db/` (not a Prisma/media `src/pages/` FSD app).
+- `.cursor/rules/` describe **oryxel-ai**: SvelteKit under `apps/web`, shared Drizzle in `packages/db`, Better Auth, and Paraglide (not a Prisma/media `src/pages/` FSD app).
 
 ### Why
 
@@ -102,6 +102,50 @@ alwaysApply: true
 ### Why
 
 - Product social MVP: collections, subscriptions, feed, discoverability, agent-curated lists — without push complexity.
+
+---
+
+## 2026-08-30 — Distributed API rate limiting
+
+### What changed
+
+- Web API requests use Redis-backed fixed-window limits pooled by AI, account/admin, mutation, and read policies. User IDs and client addresses are hashed before being used in Redis keys.
+- Better Auth production rate limiting uses a dedicated atomic Redis `rateLimit.customStorage`. Sessions and verification records are database-only; do not configure `secondaryStorage`.
+
+### Why
+
+- Limits must be consistent across stateless Vercel instances without making ordinary API reads unavailable during a Redis outage.
+
+---
+
+## 2026-08-31 — Structured production observability
+
+### What changed
+
+- Web, worker, and job-stream gateway emit vendor-neutral JSON lifecycle logs through `@oryxel/runtime`.
+- HTTP requests use validated `x-request-id` values; background work is correlated across enqueue, processing, and SSE events by `jobId`.
+- Logs use route templates and controlled fields. They omit request bodies, query strings, user IDs, arbitrary exception messages, and stack traces.
+
+### Why
+
+- Production incidents need cross-service correlation without introducing a vendor dependency or exposing user and credential data.
+
+---
+
+## 2026-08-31 — Production data and runtime hardening
+
+### What changed
+
+- Railway PostgreSQL is the authoritative app database through postgres.js in `packages/db`; Better Auth sessions and background jobs never use Redis as source of truth.
+- Production web, worker, and gateway require Redis. Redis stores atomic rate limits, worker wake-ups, and SSE notifications only; gateway streams reconcile PostgreSQL periodically and enforce exact CORS plus global/per-user limits.
+- Runtime readiness validates the complete app migration ledger and checksums. CI applies migrations twice to a fresh PostgreSQL service on pull requests and `main` pushes.
+- Notification jobs are independent events; coalescing is limited to refresh jobs (`profile_sync`, `list_slice_sync`) and enqueue is transactional.
+- Canonical catalog identities are globally unique; user-created brands/fragrances are unique per owner and visible only to canonical search or their owner. Account deletion removes orphans and detaches referenced survivors without publishing them.
+- Database cutover requires distinct PostgreSQL identity, migration/sequence/table parity, exact `/readyz`, and a recorded boundary before any destination write; stale-source rollback is forbidden after that boundary.
+
+### Why
+
+- Production behavior must remain privacy-safe and deterministic under Redis loss, concurrent requests, incomplete migrations, account deletion, and database provider changes.
 
 ---
 

@@ -6,11 +6,11 @@ export type NoteRelationship = {
   note: string
   sentiment: NoteRelationshipSentiment
   label: string
-  /** User manually set this sentiment — agent must not modify it. */
+  // User manually set this sentiment — agent must not modify it.
   lockedByUser?: boolean
-  /** Agent's short description of the note (character, typical use). */
+  // Agent's short description of the note (character, typical use).
   agentComment?: string
-  /** Translated note name resolved at load time — not persisted. */
+  // Translated note name resolved at load time — not persisted.
   translatedNote?: string
 }
 
@@ -38,14 +38,16 @@ export type DiaryRow = {
   isTried: boolean
   isLiked: boolean
   isDisliked: boolean
-  /** AI-generated to-try suggestion (vs user wishlist). */
+  // AI-generated to-try suggestion (vs user wishlist).
   isRecommendation: boolean
   pyramidTop: string | null
   pyramidMid: string | null
   pyramidBase: string | null
 }
 
-/** Mobile shell: chat | tables (lists) | profile — matches Figma bottom nav */
+//
+// Mobile shell: chat | tables (lists) | profile — matches Figma bottom nav
+//
 export type DiaryMobileTab = 'chat' | 'lists' | 'profile'
 
 export type ChatMessage = {
@@ -63,10 +65,14 @@ export type ActivityEntry = {
   createdAt: Date
 }
 
-/** Axis key → value 0-100. Keys are chosen by AI per user profile. */
+//
+// Axis key → value 0-100. Keys are chosen by AI per user profile.
+//
 export type RadarAxes = Record<string, number>
 
-/** Combined display model with localized label. */
+//
+// Combined display model with localized label.
+//
 export type RadarAxis = {
   key: string
   value: number

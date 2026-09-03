@@ -8,32 +8,18 @@ describe('structuredPreferencePatchSchema', () => {
       confidence: 0.87,
       summary: 'Profile update',
       profile: {
-        archetype: {
-          en: 'Modern classic',
-          es: 'Clásico moderno',
-          fr: 'Classique moderne',
-          jp: 'モダンクラシック',
-          ru: 'Современная классика',
-          zh: '现代经典',
-        },
-        favoriteNote: { en: 'iris', es: 'iris', fr: 'iris', jp: 'アイリス', ru: 'ирис', zh: '鸢尾花' },
+        archetype: 'Modern classic',
+        favoriteNote: 'iris',
         radar: { woody: 85, citrus: 60, green: 40, spice: 30, sweet: 20 },
         radarLabels: {
-          woody: { en: 'Woody', es: 'Leñoso', fr: 'Boisé', jp: 'ウッディ', ru: 'Древесный', zh: '木质' },
-          citrus: { en: 'Citrus', es: 'Cítrico', fr: 'Citrus', jp: 'シトラス', ru: 'Цитрусовый', zh: '柑橘' },
+          woody: 'Woody',
+          citrus: 'Citrus',
         },
       },
       tableOps: [],
     })
 
-    expect(parsed.profile?.favoriteNote).toEqual({
-      en: 'iris',
-      es: 'iris',
-      fr: 'iris',
-      jp: 'アイリス',
-      ru: 'ирис',
-      zh: '鸢尾花',
-    })
+    expect(parsed.profile?.favoriteNote).toBe('iris')
     expect(parsed.confidence).toBeGreaterThan(0.8)
   })
 
@@ -57,6 +43,16 @@ describe('analyzePreferencesRequestSchema', () => {
 
     expect(parsed.locale).toBe('en')
     expect(parsed.scenario).toBe('recommendation')
+  })
+
+  it('normalizes the legacy Japanese locale', () => {
+    const parsed = analyzePreferencesRequestSchema.parse({
+      userId: 'u1',
+      message: 'Help me choose',
+      locale: 'jp',
+    })
+
+    expect(parsed.locale).toBe('ja')
   })
 
   it('parses context payload', () => {

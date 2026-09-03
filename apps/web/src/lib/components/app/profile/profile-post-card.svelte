@@ -22,11 +22,7 @@
 <Card class="space-y-2 p-4">
   {#if showAuthor}
     <div class="flex items-start gap-3">
-      <ProfileAvatar
-        displayName={post.authorDisplayName}
-        username={post.authorUsername ?? ''}
-        size="sm"
-      />
+      <ProfileAvatar displayName={post.authorDisplayName} username={post.authorUsername ?? ''} size="sm" />
       <div class="min-w-0 flex-1">
         <div class="flex flex-wrap items-baseline gap-2 text-sm">
           {#if post.authorUsername}

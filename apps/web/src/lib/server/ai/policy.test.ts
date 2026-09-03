@@ -16,6 +16,6 @@ describe('getAiRouterPolicy', () => {
 
     const policy = getAiRouterPolicy()
 
-    expect(policy.providerOrder).toEqual(['openai', 'qwen', 'perplexity', 'anthropic', 'gemini'])
+    expect(policy.providerOrder).toEqual(['groq', 'openai', 'qwen', 'deepseek', 'perplexity', 'anthropic', 'gemini'])
   })
 })

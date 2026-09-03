@@ -1,3 +1,5 @@
+import { getLocaleMapValue } from '@oryxel/ai'
+
 export type FamilyDefinition = {
   family: string
   color: string
@@ -8,7 +10,9 @@ export type FamilyDefinition = {
 
 /** Resolve the display name for a family in a given locale. */
 export function familyDisplayName(family: FamilyDefinition, locale: string) {
-  return family.translations?.[locale] ?? family.translations?.['en'] ?? family.family
+  return family.translations
+    ? (getLocaleMapValue(family.translations, locale) ?? family.translations['en'] ?? family.family)
+    : family.family
 }
 
 const FAMILY_DEFS: FamilyDefinition[] = [

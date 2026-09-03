@@ -7,26 +7,27 @@ alwaysApply: true
 
 ## Stack
 
-| Layer | Technology |
-|-------|------------|
-| Framework | SvelteKit 2 + Svelte 5 (runes) |
-| Language | TypeScript |
-| CSS | Tailwind CSS v4 |
-| ORM | Drizzle ORM |
-| Database | PostgreSQL via `@neondatabase/serverless` |
-| Auth | Better Auth + `drizzleAdapter` (GitHub + email/password in demo config) |
-| i18n | Paraglide.js (inlang) |
-| Tests | Vitest, Playwright |
-| Adapter | Vercel |
-| Package manager | bun |
+| Layer           | Technology                                             |
+| --------------- | ------------------------------------------------------ |
+| Framework       | SvelteKit 2 + Svelte 5 (runes)                         |
+| Language        | TypeScript                                             |
+| CSS             | Tailwind CSS v4                                        |
+| ORM             | Drizzle ORM                                            |
+| Database        | Railway PostgreSQL via postgres.js in `packages/db`    |
+| Auth            | Better Auth + `drizzleAdapter`; database-only sessions |
+| i18n            | Paraglide.js (inlang)                                  |
+| Tests           | Vitest, Playwright                                     |
+| Deploy          | Vercel web + Railway worker/gateway/PostgreSQL/Redis   |
+| Package manager | bun                                                    |
 
 ## Repository layout
 
-- **Routes & pages:** `src/routes/` (`+page.svelte`, `+page.server.ts`, layouts, `+server.ts`).
-- **Server:** `src/lib/server/auth.ts`, `src/lib/server/db/` (`index.ts`, `schema.ts`, `auth.schema.ts`).
-- **Hooks:** `src/hooks.server.ts` (Paraglide + Better Auth), `src/hooks.ts` (URL de-localization).
-- **Messages:** `messages/{en,es,fr,jp,ru,zh}.json` — see `project.inlang/settings.json` for locale list.
+- **Routes & pages:** `apps/web/src/routes/` (`+page.svelte`, `+page.server.ts`, layouts, `+server.ts`).
+- **Database:** `packages/db/src/` (`index.ts`, `schema.ts`, `auth.schema.ts`) and append-only `packages/db/drizzle/`.
+- **Runtime services:** `apps/worker`, `apps/job-stream-gateway`; shared domain logic is in `packages/ai`.
+- **Hooks:** `apps/web/src/hooks.server.ts` (Paraglide + Better Auth), `apps/web/src/hooks.ts` (URL de-localization).
+- **Messages:** `messages/{en,es,fr,ja,ru,zh}.json` — see `project.inlang/settings.json` for locale list.
 
 ## Scripts (prefer bun)
 
-See `package.json`: `dev`, `build`, `check`, `lint`, `format`, `test`, `db:push` / `db:generate` / `db:migrate` / `db:studio`, `auth:schema`.
+See root and workspace `package.json` files: `dev`, `build`, `check`, `lint`, `format`, `test`, `verify`, app DB `db:generate` / `db:migrate`, and web `auth:schema`. `db:push` is local-only.

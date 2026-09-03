@@ -1,4 +1,4 @@
-import { type Simulation, forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY } from 'd3-force'
+import { forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY } from 'd3-force'
 import { select } from 'd3-selection'
 
 import { buildAdjacency, lightenHex, linkDistanceFactor, linkOpacity, linkThickness, truncateLabel } from '../common'

@@ -1,4 +1,5 @@
 export * from './ai/contracts'
+export * from './i18n/locale.js'
 export * from './ai/schemas'
 export * from './ai/decision.js'
 export * from './ai/jobs'
@@ -23,6 +24,7 @@ export * from './ai/crypto/secret-box'
 export * from './ai/keys/service'
 export * from './diary/load'
 export * from './diary/find-or-create'
+export * from './diary/catalog-lifecycle'
 export * from './diary/activity'
 export * from './profile/load'
 export * from './translation/service'
@@ -49,7 +51,15 @@ export type {
   NotificationRow,
 } from './social/types.js'
 export { VISIBILITIES, LIST_KINDS, NOTIFICATION_TYPES } from './social/types.js'
-export { canView, isFollowing, isVisibility, slugifyTitle, visibilityAtLeast } from './social/visibility.js'
+export {
+  canDiscover,
+  canView,
+  isFollowing,
+  isVisibility,
+  resolveVisibility,
+  shouldNotifyFollowers,
+  slugifyTitle,
+} from './social/visibility.js'
 export { validateUsername, normalizeUsername } from './social/username.js'
 export { searchFragrances, searchUsers, searchFragrancesByQuery } from './social/search.js'
 export {

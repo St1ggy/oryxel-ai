@@ -1,0 +1,245 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import {
+  JobLeaseLostError,
+  claimNextJob,
+  completeJob,
+  createJob,
+  failJob,
+  getJobStatus,
+  recoverExpiredJobs,
+  releaseJobLease,
+  renewJobLease,
+} from './jobs'
+
+import type * as OryxelDatabaseModule from '@oryxel/db'
+
+const state = vi.hoisted(() => ({
+  pending: null as null | {
+    id: number
+    userId: string
+    type: string
+    params: Record<string, unknown> | null
+    status?: string
+  },
+  lock: null as null | { strength: string; config: Record<string, unknown> },
+  inserts: [] as Record<string, unknown>[],
+  insertReturning: [] as { id: number }[][],
+  insertError: null as Error | null,
+  transactionCalls: 0,
+  updates: [] as Record<string, unknown>[],
+  returning: [] as { id: number }[][],
+}))
+
+const emitJobUpdated = vi.hoisted(() => vi.fn())
+const emitJobCreated = vi.hoisted(() => vi.fn())
+
+function createExecutor() {
+  return {
+    select() {
+      const builder = {
+        from() {
+          return builder
+        },
+        where() {
+          return builder
+        },
+        orderBy() {
+          return builder
+        },
+        for(strength: string, config: Record<string, unknown>) {
+          state.lock = { strength, config }
+
+          return builder
+        },
+        async limit() {
+          return state.pending ? [{ ...state.pending }] : []
+        },
+      }
+
+      return builder
+    },
+    update() {
+      const builder = {
+        set(values: Record<string, unknown>) {
+          state.updates.push(values)
+
+          return builder
+        },
+        where() {
+          return builder
+        },
+        async returning() {
+          return state.returning.shift() ?? []
+        },
+      }
+
+      return builder
+    },
+    insert() {
+      const builder = {
+        values(values: Record<string, unknown>) {
+          state.inserts.push(values)
+
+          return builder
+        },
+        async returning() {
+          if (state.insertError) throw state.insertError
+
+          return state.insertReturning.shift() ?? []
+        },
+      }
+
+      return builder
+    },
+  }
+}
+
+vi.mock('@oryxel/db', async (importOriginal) => {
+  const actual = await importOriginal<typeof OryxelDatabaseModule>()
+  const database = {
+    ...createExecutor(),
+    transaction<T>(callback: (tx: ReturnType<typeof createExecutor>) => Promise<T>) {
+      state.transactionCalls++
+
+      return callback(createExecutor())
+    },
+  }
+
+  return { ...actual, db: database }
+})
+
+vi.mock('./job-notify', () => ({
+  emitJobCreated,
+  emitJobUpdated,
+}))
+
+beforeEach(() => {
+  state.pending = null
+  state.lock = null
+  state.inserts = []
+  state.insertReturning = []
+  state.insertError = null
+  state.transactionCalls = 0
+  state.updates = []
+  state.returning = []
+  emitJobUpdated.mockClear()
+  emitJobCreated.mockClear()
+})
+
+describe('background job enqueue', () => {
+  it('keeps distinct notification events pending', async () => {
+    state.insertReturning = [[{ id: 10 }], [{ id: 11 }]]
+
+    await expect(createJob('user-1', 'notify_post', { postId: 1 })).resolves.toBe(10)
+    await expect(createJob('user-1', 'notify_post', { postId: 2 })).resolves.toBe(11)
+
+    expect(state.updates).toEqual([])
+    expect(state.inserts).toEqual([
+      { userId: 'user-1', type: 'notify_post', status: 'pending', params: { postId: 1 } },
+      { userId: 'user-1', type: 'notify_post', status: 'pending', params: { postId: 2 } },
+    ])
+    expect(emitJobCreated.mock.calls).toEqual([[10], [11]])
+  })
+
+  it('cancels and replaces refresh work in one transaction', async () => {
+    state.insertReturning = [[{ id: 12 }]]
+
+    await expect(createJob('user-1', 'profile_sync')).resolves.toBe(12)
+
+    expect(state.transactionCalls).toBe(1)
+    expect(state.updates[0]).toMatchObject({ status: 'cancelled' })
+    expect(state.inserts[0]).toMatchObject({ userId: 'user-1', type: 'profile_sync', status: 'pending' })
+    expect(emitJobCreated).toHaveBeenCalledWith(12)
+  })
+
+  it('does not publish a replacement when its transaction fails', async () => {
+    state.insertError = new Error('insert failed')
+
+    await expect(createJob('user-1', 'list_slice_sync')).rejects.toThrow('insert failed')
+    expect(state.transactionCalls).toBe(1)
+    expect(state.updates[0]).toMatchObject({ status: 'cancelled' })
+    expect(emitJobCreated).not.toHaveBeenCalled()
+  })
+})
+
+describe('background job leases', () => {
+  it('claims pending work with a skip-locked row lock', async () => {
+    state.pending = {
+      id: 7,
+      userId: 'user-1',
+      type: 'agent_chat',
+      params: { message: 'hello' },
+    }
+    state.returning = [[{ id: 7 }]]
+
+    const claimed = await claimNextJob()
+
+    expect(state.lock).toEqual({ strength: 'update', config: { skipLocked: true } })
+    expect(claimed).toMatchObject({ id: 7, userId: 'user-1', type: 'agent_chat' })
+    expect(claimed?.leaseToken).toMatch(/^[\da-f-]{36}$/)
+    expect(state.updates[0]).toMatchObject({ status: 'processing', leaseToken: claimed?.leaseToken })
+  })
+
+  it('does not publish a terminal update after lease ownership is lost', async () => {
+    state.returning = [[]]
+    const lease = { id: 7, leaseToken: '00000000-0000-4000-8000-000000000000' }
+
+    await expect(completeJob(lease, { ok: true })).rejects.toBeInstanceOf(JobLeaseLostError)
+    expect(emitJobUpdated).not.toHaveBeenCalled()
+  })
+
+  it('renews only an active matching lease', async () => {
+    const lease = { id: 7, leaseToken: '00000000-0000-4000-8000-000000000000' }
+
+    state.returning = [[], [{ id: 7 }]]
+
+    await expect(renewJobLease(lease)).resolves.toBe(false)
+    await expect(renewJobLease(lease)).resolves.toBe(true)
+    expect(emitJobUpdated).not.toHaveBeenCalled()
+  })
+
+  it('returns an unstarted shutdown claim to the pending queue', async () => {
+    const lease = { id: 7, leaseToken: '00000000-0000-4000-8000-000000000000' }
+
+    state.returning = [[{ id: 7 }]]
+
+    await expect(releaseJobLease(lease)).resolves.toBe(true)
+    expect(state.updates[0]).toMatchObject({ status: 'pending', leaseToken: null, leaseExpiresAt: null })
+    expect(emitJobUpdated).not.toHaveBeenCalled()
+  })
+
+  it('publishes each expired job recovered by the database update', async () => {
+    state.returning = [[{ id: 3 }, { id: 9 }]]
+
+    await expect(recoverExpiredJobs()).resolves.toEqual([3, 9])
+    expect(emitJobUpdated.mock.calls).toEqual([[3], [9]])
+    expect(state.updates[0]).toMatchObject({
+      status: 'failed',
+      errorMessage: 'WORKER_LEASE_EXPIRED',
+      leaseToken: null,
+      leaseExpiresAt: null,
+    })
+  })
+
+  it('replaces unsafe persisted job errors with a controlled code', async () => {
+    const lease = { id: 7, leaseToken: '00000000-0000-4000-8000-000000000000' }
+
+    state.returning = [[{ id: 7 }]]
+
+    await failJob(lease, 'connect redis://user:secret@example.test')
+    expect(state.updates[0]).toMatchObject({ status: 'failed', errorMessage: 'JOB_FAILED' })
+  })
+
+  it('reads the current status needed by worker telemetry', async () => {
+    state.pending = {
+      id: 7,
+      userId: 'user-1',
+      type: 'agent_chat',
+      params: null,
+      status: 'done',
+    }
+
+    await expect(getJobStatus(7, 'user-1')).resolves.toBe('done')
+  })
+})

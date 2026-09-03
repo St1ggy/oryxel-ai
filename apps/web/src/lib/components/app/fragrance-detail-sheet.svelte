@@ -1,9 +1,7 @@
 <script lang="ts">
   import { Sparkles } from '@lucide/svelte'
-  /* eslint-disable import-x/no-duplicates -- easing vs transition are separate runtime modules */
   import { cubicOut } from 'svelte/easing'
   import { fade, fly } from 'svelte/transition'
-  /* eslint-enable import-x/no-duplicates */
 
   import RatingStars from '$lib/components/ui/rating-stars.svelte'
   import * as m from '$lib/paraglide/messages.js'
@@ -199,8 +197,7 @@
           onkeydown={onCommentKeydown}
           rows="3"
           class="w-full resize-none bg-transparent text-sm leading-relaxed text-foreground outline-none placeholder:text-foreground-muted/35"
-          placeholder={m.oryxel_detail_your_note_placeholder()}
-        ></textarea>
+          placeholder={m.oryxel_detail_your_note_placeholder()}></textarea>
         {#if commentDirty}
           <p class="text-right text-[11px] text-foreground-muted/40">{commentSaving ? '…' : '⌘↵ to save'}</p>
         {/if}

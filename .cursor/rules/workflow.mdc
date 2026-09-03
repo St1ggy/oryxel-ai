@@ -31,7 +31,7 @@ Run only on changed files (not the whole project — too slow):
 
 ```bash
 # Example
-bunx eslint --fix src/routes/+page.svelte src/lib/server/db/schema.ts
+bunx eslint --fix apps/web/src/routes/+page.svelte packages/db/src/schema.ts
 ```
 
 ### 2. Type-check
@@ -45,13 +45,13 @@ Catches TypeScript errors in `.svelte` files that `tsc` alone cannot see.
 
 ## Fixing found errors
 
-| Error type | Action |
-|-----------|--------|
-| Prettier / formatting | `bunx eslint --fix` will auto-fix |
-| Import order | `bunx eslint --fix` will auto-fix |
-| TypeScript type error | Fix manually, then re-run `bun run check` |
-| Svelte `{@const}` outside block | Move inside `{#each}` / `{#if}` |
-| Tailwind dynamic class purge | Replace with `style="..."` using a CSS variable |
+| Error type                      | Action                                          |
+| ------------------------------- | ----------------------------------------------- |
+| Prettier / formatting           | `bunx eslint --fix` will auto-fix               |
+| Import order                    | `bunx eslint --fix` will auto-fix               |
+| TypeScript type error           | Fix manually, then re-run `bun run check`       |
+| Svelte `{@const}` outside block | Move inside `{#each}` / `{#if}`                 |
+| Tailwind dynamic class purge    | Replace with `style="..."` using a CSS variable |
 
 ## Project commands
 
@@ -66,5 +66,5 @@ bun run db:generate  # generate SQL migrations
 bun run db:migrate   # apply migrations
 bun run db:studio    # Drizzle Studio
 
-bun run auth:schema  # regenerate Better Auth Drizzle schema
+bun run --cwd apps/web auth:schema  # regenerate packages/db/src/auth.schema.ts
 ```

@@ -3,7 +3,7 @@ import commonConfig from '@st1ggy/linter-config/eslint-common'
 import { defineConfig } from 'eslint/config'
 
 export default defineConfig([
-  { ignores: ['eslint.config.js', 'prettier.config.js'] },
+  { ignores: ['dist', 'eslint.config.js', 'prettier.config.js'] },
   ...commonConfig,
   {
     rules: {
@@ -12,6 +12,7 @@ export default defineConfig([
       // Worker is a Node.js background service — console logging is expected.
       'no-console': 'off',
       // Fire-and-forget void calls are intentional in background processing.
+      'sonarjs/function-return-type': 'off',
       'sonarjs/void-use': 'off',
     },
   },

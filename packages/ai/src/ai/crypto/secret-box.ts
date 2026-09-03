@@ -41,7 +41,7 @@ function getMasterKey() {
   return decoded
 }
 
-export function encryptSecret(plain: string) {
+export function encryptSecret(plain: string): EncryptedSecret {
   if (!plain.trim()) {
     throw new Error('Secret is empty')
   }
@@ -59,12 +59,7 @@ export function encryptSecret(plain: string) {
   }
 }
 
-export function decryptSecret(payload: {
-  encryptedKey: string
-  keyIv: string
-  keyAuthTag: string
-  keyVersion: string
-}) {
+export function decryptSecret(payload: EncryptedSecret) {
   if (payload.keyVersion !== KEY_VERSION) {
     throw new Error(`Unsupported key version: ${payload.keyVersion}`)
   }

@@ -4,7 +4,7 @@ import sanitizeHtml from 'sanitize-html'
 import type { IOptions } from 'sanitize-html'
 
 // CJS package attaches `defaults` on the default export; no reliable ESM named import.
-const sanitizeDefaults = sanitizeHtml.defaults // eslint-disable-line import-x/no-named-as-default-member -- see above
+const sanitizeDefaults = sanitizeHtml.defaults
 
 marked.setOptions({
   gfm: true,

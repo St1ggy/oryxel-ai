@@ -1,9 +1,8 @@
 import {
+  JobLeaseLostError,
   analyzePreferences,
-  appendPatchAuditLog,
-  applyProfileAndSuggestions,
-  applyRecommendations,
-  applySingleTableOp,
+  applyPendingPatch,
+  assertJobLease,
   completeJob,
   countStrippedPatchMutations,
   createChatMessage,
@@ -13,135 +12,93 @@ import {
   getUserDefaultProvider,
   inferSuggestedChatMode,
   isCriticalPatch,
+  listListsForUser,
   loadDiaryForUser,
   loadDismissedForUser,
   loadProfileForUser,
   loadRecentChatMessages,
+  normalizeLocale,
   pushJobProgress,
   pushPartialResult,
   recordActivity,
   sanitizePatchForChatMode,
   sanitizePatchToRecommendationsOnly,
-  updatePatchStatus,
   warnIfPatchViolatesDisplayLimits,
-} from '@oryxel/ai/server'
-import {
-  applyListOps,
-  enqueueListNotifyJob,
-  listListsForUser,
 } from '@oryxel/ai/server'
 import { db, user, userAiPreferences } from '@oryxel/db'
 import { eq } from 'drizzle-orm'
 
-import type { ChatAgentMode, StructuredPreferencePatch } from '@oryxel/ai/server'
-
-async function applyPatchWithProgress(
-  jobId: number,
-  userId: string,
-  patch: StructuredPreferencePatch,
-  baseStep: number,
-  total: number,
-) {
-  const profileStep = patch.profile != null || patch.suggestions != null ? 1 : 0
-  const recStep = patch.recommendations == null ? 0 : 1
-  let step = baseStep
-
-  try {
-    if (profileStep) {
-      const startedAt = Date.now()
-
-      await pushJobProgress(jobId, { step: ++step, total, phase: 'apply_profile' })
-      await applyProfileAndSuggestions(userId, patch)
-      await pushJobProgress(jobId, {
-        step,
-        total,
-        phase: 'apply_profile',
-        meta: { durationMs: Date.now() - startedAt, note: 'done' },
-      })
-    }
-
-    // Apply tableOps FIRST so that user interactions with recommendations
-    // (e.g. op=move marking a rec as disliked) are committed before
-    // applyRecommendations deletes isRecommendation=true,isTried=false rows.
-    for (const op of patch.tableOps) {
-      const startedAt = Date.now()
-
-      await pushJobProgress(jobId, {
-        step: ++step,
-        total,
-        phase: 'apply_ops',
-        meta: { note: op.op },
-      })
-      await applySingleTableOp(userId, op)
-      await pushJobProgress(jobId, {
-        step,
-        total,
-        phase: 'apply_ops',
-        meta: { durationMs: Date.now() - startedAt, note: `${op.op}:done` },
-      })
-    }
-
-    if (recStep) {
-      const startedAt = Date.now()
-
-      await pushJobProgress(jobId, { step: ++step, total, phase: 'apply_recs' })
-      await applyRecommendations(userId, patch)
-      await pushJobProgress(jobId, {
-        step,
-        total,
-        phase: 'apply_recs',
-        meta: { durationMs: Date.now() - startedAt, note: 'done' },
-      })
-    }
-
-    return true
-  } catch {
-    return false
-  }
-}
+import type {
+  AiProviderName,
+  AnalyzePreferencesRequest,
+  ChatAgentMode,
+  JobLease,
+  JobProgressMeta,
+  StructuredPreferencePatch,
+} from '@oryxel/ai/server'
 
 const PRE_APPLY_STEP_COUNT = 5
 
+async function pushJobProgressBestEffort(job: JobLease, event: Parameters<typeof pushJobProgress>[1]) {
+  try {
+    await pushJobProgress(job, event)
+  } catch (error) {
+    if (error instanceof JobLeaseLostError) throw error
+
+    // Progress telemetry must not change the outcome of an atomic patch apply.
+  }
+}
+
 async function applyNonCriticalPatchFlow(
-  jobId: number,
+  job: JobLease,
   userId: string,
   patch: StructuredPreferencePatch,
   pendingPatchId: number,
   totalSteps: number,
   locale: string,
-  routerAttempts: unknown,
   explicitProvider: string | undefined,
   defaultProvider: string | null | undefined,
 ) {
-  const ok = await applyPatchWithProgress(jobId, userId, patch, PRE_APPLY_STEP_COUNT, totalSteps)
+  const startedAt = Date.now()
 
-  if (!ok) {
-    await updatePatchStatus({
-      patchId: pendingPatchId,
-      userId,
-      action: 'failed',
-      failureReason: 'Patch apply failed',
-    })
-    await appendPatchAuditLog({
-      userId,
-      patchId: pendingPatchId,
-      action: 'apply_failed',
-      details: { attempts: routerAttempts },
-    })
-    await failJob(jobId, 'Patch apply failed')
+  await pushJobProgressBestEffort(job, {
+    step: PRE_APPLY_STEP_COUNT + 1,
+    total: totalSteps,
+    phase: 'applying',
+  })
+
+  let isOk = false
+
+  try {
+    await assertJobLease(job)
+    const result = await applyPendingPatch({ patchId: pendingPatchId, userId, expectedStatus: 'created' })
+
+    isOk = result.status === 'applied'
+  } catch {
+    isOk = false
+  }
+
+  if (!isOk) {
+    await failJob(job, 'PATCH_APPLY_FAILED')
 
     return false
   }
 
-  void generateMissingTranslations(userId, locale)
-  await updatePatchStatus({ patchId: pendingPatchId, userId, action: 'applied' })
+  await pushJobProgressBestEffort(job, {
+    step: totalSteps,
+    total: totalSteps,
+    phase: 'applying',
+    meta: { durationMs: Date.now() - startedAt, note: 'done' },
+  })
+
+  await generateMissingTranslations(userId, locale)
   void recordActivity({
     userId,
     action: 'patch_applied',
     actor: 'agent',
     provider: explicitProvider ?? defaultProvider ?? undefined,
     summary: patch.summary ?? '',
-  })
+  }).catch(() => null)
 
   return true
 }
@@ -227,11 +184,7 @@ function sanitizeAgentChatPatch(
   return sanitized
 }
 
-function assistantFallbackMessage(
-  patch: StructuredPreferencePatch,
-  critical: boolean,
-  chatMode: ChatAgentMode,
-) {
+function assistantFallbackMessage(patch: StructuredPreferencePatch, critical: boolean, chatMode: ChatAgentMode) {
   if (critical) {
     return `CRITICAL_PENDING:${patch.summary}`
   }
@@ -248,7 +201,7 @@ function assistantFallbackMessage(
 }
 
 type AgentChatFinishInput = {
-  jobId: number
+  job: JobLease
   userId: string
   message: string
   locale: string
@@ -270,7 +223,7 @@ type AgentChatFinishInput = {
 
 async function finishAgentChatFromPatch(input: AgentChatFinishInput) {
   const {
-    jobId,
+    job,
     userId,
     message,
     locale,
@@ -299,53 +252,43 @@ async function finishAgentChatFromPatch(input: AgentChatFinishInput) {
     scenario,
     userId,
     limits: {
-      minPyramidNotes: aiPrefs?.minPyramidNotes,
-      maxPyramidNotes: aiPrefs?.maxPyramidNotes,
-      minRecommendations: aiPrefs?.minRecommendations,
-      maxRecommendations: aiPrefs?.maxRecommendations,
+      minPyramidNotes: aiPrefs?.minPyramidNotes ?? undefined,
+      maxPyramidNotes: aiPrefs?.maxPyramidNotes ?? undefined,
+      minRecommendations: aiPrefs?.minRecommendations ?? undefined,
+      maxRecommendations: aiPrefs?.maxRecommendations ?? undefined,
     },
   })
-  const critical = isCriticalPatch(patch)
+  await assertJobLease(job)
+  const isCritical = isCriticalPatch(patch)
   const pendingPatch = await createPendingPatch({
     userId,
     patch,
-    patchType: critical ? 'critical' : 'minor',
+    patchType: isCritical ? 'critical' : 'minor',
     attempts: router.attempts as unknown as Record<string, unknown>[],
   })
 
-  const profileStep = patch.profile != null || patch.suggestions != null ? 1 : 0
-  const recStep = patch.recommendations == null ? 0 : 1
-  const applyTotal = profileStep + recStep + patch.tableOps.length
-  const totalSteps = PRE_APPLY_STEP_COUNT + applyTotal
+  const totalSteps = PRE_APPLY_STEP_COUNT + 1
 
-  const skipApply = chatMode === 'ask' || chatMode === 'curate' || critical
+  const isSkipApply = chatMode === 'ask' || isCritical
 
-  if (!skipApply) {
-    const continued = await applyNonCriticalPatchFlow(
-      jobId,
+  if (!isSkipApply) {
+    const isContinued = await applyNonCriticalPatchFlow(
+      job,
       userId,
       patch,
       pendingPatch.id,
       totalSteps,
       locale,
-      router.attempts,
       explicitProvider,
       defaultProvider,
     )
 
-    if (!continued) return
+    if (!isContinued) return
   }
 
-  if (chatMode === 'curate' && patch.listOps && patch.listOps.length > 0) {
-    const listResult = await applyListOps(userId, patch.listOps)
+  const assistantMessage = patch.reply ?? assistantFallbackMessage(patch, isCritical, chatMode)
 
-    if (listResult.notifyList && listResult.createdListIds[0]) {
-      await enqueueListNotifyJob(userId, listResult.createdListIds[0])
-    }
-  }
-
-  const assistantMessage = patch.reply ?? assistantFallbackMessage(patch, critical, chatMode)
-
+  await assertJobLease(job)
   await createChatMessage({
     userId,
     role: 'assistant',
@@ -354,37 +297,38 @@ async function finishAgentChatFromPatch(input: AgentChatFinishInput) {
     scenario: scenario as 'analog' | 'pyramid' | 'recommendation' | 'comparison' | 'command',
   })
 
-  const triggerSync =
-    !critical &&
+  const isTriggerSync =
+    !isCritical &&
     chatMode !== 'ask' &&
     !recommendationsOnly &&
     chatMode !== 'recommend' &&
     (patch.tableOps.length >= 2 || patch.recommendations != null || scenario === 'command')
 
-  await completeJob(jobId, {
-    requiresConfirmation: critical,
+  await completeJob(job, {
+    requiresConfirmation: isCritical,
     pendingPatchId: pendingPatch.id,
     summary: patch.summary,
     reply: patch.reply,
-    triggerSync,
+    triggerSync: isTriggerSync,
     modeMismatch,
     appliedPatch: structuredClone(patch) as Record<string, unknown>,
   })
 }
 
-export async function handleAgentChat(jobId: number, userId: string, params: Record<string, unknown>) {
+export async function handleAgentChat(job: JobLease, userId: string, params: Record<string, unknown>) {
   const message = params['message'] as string
-  const locale = (params['locale'] as string | undefined) ?? 'en'
-  const scenario = (params['scenario'] as string | undefined) ?? 'recommendation'
+  const locale = normalizeLocale((params['locale'] as string | undefined) ?? 'en')
+  const scenario = ((params['scenario'] as string | undefined) ??
+    'recommendation') as AnalyzePreferencesRequest['scenario']
   const explicitProvider = params['provider'] as string | undefined
   const explicitModel = params['model'] as string | undefined
   const budget = params['budget'] as string | undefined
-  const recommendationsOnly = params['recommendationsOnly'] === true
+  const isRecommendationsOnly = params['recommendationsOnly'] === true
   const chatMode = ((params['chatMode'] as string | undefined) ??
-    (recommendationsOnly ? 'recommend' : 'agent')) as ChatAgentMode
+    (isRecommendationsOnly ? 'recommend' : 'agent')) as ChatAgentMode
 
   try {
-    await pushJobProgress(jobId, {
+    await pushJobProgress(job, {
       step: 1,
       total: PRE_APPLY_STEP_COUNT,
       phase: 'validate',
@@ -426,7 +370,7 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
       listListsForUser(userId),
     ])
 
-    await pushJobProgress(jobId, {
+    await pushJobProgress(job, {
       step: 2,
       total: PRE_APPLY_STEP_COUNT,
       phase: 'load_context',
@@ -443,22 +387,20 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
       lists,
     )
 
-    const preferredProvider =
-      explicitProvider === undefined
-        ? (defaultProvider ?? undefined)
-        : (explicitProvider as Parameters<typeof analyzePreferences>[0]['preferredProvider'])
+    const preferredProvider: AnalyzePreferencesRequest['preferredProvider'] =
+      explicitProvider === undefined ? (defaultProvider ?? undefined) : (explicitProvider as AiProviderName)
 
-    await pushJobProgress(jobId, {
+    await pushJobProgress(job, {
       step: 3,
       total: PRE_APPLY_STEP_COUNT,
       phase: 'build_prompt',
       meta: { scenario },
     })
-    await pushJobProgress(jobId, {
+    await pushJobProgress(job, {
       step: 4,
       total: PRE_APPLY_STEP_COUNT,
       phase: 'model_call',
-      meta: { provider: preferredProvider as Parameters<typeof pushJobProgress>[1]['meta']['provider'] },
+      meta: { provider: preferredProvider } satisfies JobProgressMeta,
     })
 
     const callStartedAt = Date.now()
@@ -467,7 +409,7 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
         userId,
         message,
         locale,
-        scenario: scenario as Parameters<typeof analyzePreferences>[0]['scenario'],
+        scenario,
         context,
         preferredProvider,
         minRecommendations: aiPrefs?.minRecommendations,
@@ -480,16 +422,16 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
         systemPromptAppend: aiPrefs?.systemPromptAppend ?? undefined,
         systemPromptReplace: aiPrefs?.systemPromptReplace ?? undefined,
         allowAgentMemoryOps: false,
-        recommendationsOnly: recommendationsOnly || chatMode === 'recommend' || undefined,
+        recommendationsOnly: isRecommendationsOnly || chatMode === 'recommend' || undefined,
         chatMode,
         model: explicitModel,
       },
       {
         onPartial: (partial) => {
-          void pushPartialResult(jobId, partial)
+          void pushPartialResult(job, partial).catch(() => null)
         },
         onTokenProgress: ({ tokensOut, durationMs }) => {
-          void pushJobProgress(jobId, {
+          void pushJobProgress(job, {
             step: 4,
             total: PRE_APPLY_STEP_COUNT,
             phase: 'model_call',
@@ -498,12 +440,12 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
               tokensOut,
               durationMs,
             },
-          })
+          }).catch(() => null)
         },
       },
     )
 
-    await pushJobProgress(jobId, {
+    await pushJobProgress(job, {
       step: 5,
       total: PRE_APPLY_STEP_COUNT,
       phase: 'parse',
@@ -516,19 +458,19 @@ export async function handleAgentChat(jobId: number, userId: string, params: Rec
     })
 
     await finishAgentChatFromPatch({
-      jobId,
+      job,
       userId,
       message,
       locale,
       scenario,
       chatMode,
-      recommendationsOnly,
+      recommendationsOnly: isRecommendationsOnly,
       router,
       explicitProvider,
       defaultProvider,
       aiPrefs,
     })
   } catch (error_) {
-    await failJob(jobId, error_ instanceof Error ? error_.message : 'Unknown error')
+    await failJob(job, 'AGENT_CHAT_FAILED', error_)
   }
 }

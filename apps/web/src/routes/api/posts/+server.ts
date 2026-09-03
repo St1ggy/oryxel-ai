@@ -1,6 +1,8 @@
-import { createJob, createPost } from '@oryxel/ai/server'
+import { createPost, shouldNotifyFollowers } from '@oryxel/ai/server'
 import { error, json } from '@sveltejs/kit'
 import { z } from 'zod'
+
+import { createObservedJob } from '$lib/server/ai/jobs'
 
 import type { RequestHandler } from './$types'
 
@@ -12,7 +14,7 @@ const bodySchema = z.object({
       z.object({
         kind: z.string(),
         entityId: z.number().int().optional(),
-        url: z.string().url().optional(),
+        url: z.url().optional(),
       }),
     )
     .optional(),
@@ -24,8 +26,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   const body = bodySchema.parse(await request.json())
   const post = await createPost(locals.user.id, body)
 
-  if (body.visibility !== 'private') {
-    await createJob(locals.user.id, 'notify_post', { postId: post.id, authorId: locals.user.id })
+  if (shouldNotifyFollowers(post.visibility)) {
+    await createObservedJob(locals.requestId, locals.user.id, 'notify_post', {
+      postId: post.id,
+      authorId: locals.user.id,
+    })
   }
 
   return json({ post }, { status: 201 })

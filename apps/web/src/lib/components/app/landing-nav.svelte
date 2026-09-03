@@ -15,7 +15,7 @@
     ru: 'RU',
     es: 'ES',
     fr: 'FR',
-    jp: 'JP',
+    ja: 'JA',
     zh: 'ZH',
   }
 

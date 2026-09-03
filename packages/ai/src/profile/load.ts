@@ -1,11 +1,14 @@
 import { db, userFragrance, userProfile } from '@oryxel/db'
 import { eq, sql } from 'drizzle-orm'
 
+import { getLocaleMapValue } from '../i18n/locale.js'
 import { lookupTranslations } from '../translation/service'
 
-import type { NoteRelationship, RadarAxes, RadarAxis } from '../types/diary'
+import type { NoteRelationship, RadarAxes } from '../types/diary'
 
-/** Handles both new plain strings and old locale-map JSON (backward compat). */
+//
+// Handles both new plain strings and old locale-map JSON (backward compat).
+//
 function resolveStringOrMap(value: unknown, locale: string) {
   if (!value) return null
 
@@ -14,7 +17,7 @@ function resolveStringOrMap(value: unknown, locale: string) {
       try {
         const parsed = JSON.parse(value) as Record<string, string>
 
-        return parsed[locale] ?? parsed['en'] ?? Object.values(parsed)[0] ?? value
+        return getLocaleMapValue(parsed, locale) ?? parsed['en'] ?? Object.values(parsed)[0] ?? value
       } catch {
         // not JSON, return as-is
       }
@@ -26,16 +29,18 @@ function resolveStringOrMap(value: unknown, locale: string) {
   if (typeof value === 'object' && !Array.isArray(value)) {
     const m = value as Record<string, string>
 
-    return m[locale] ?? m['en'] ?? Object.values(m)[0] ?? null
+    return getLocaleMapValue(m, locale) ?? m['en'] ?? Object.values(m)[0] ?? null
   }
 
   return null
 }
 
-/** Strip commentary that older AI responses appended after a comma / dash / parenthesis, then clip. */
+//
+// Strip commentary that older AI responses appended after a comma / dash / parenthesis, then clip.
+//
 function compactRadarLabel(raw: string, fallback: string) {
   const head = raw
-    .split(/[,—–\-(]/u)[0]
+    .split(/[,—–\-(]/u, 1)[0]
     .trim()
     .slice(0, 24)
 

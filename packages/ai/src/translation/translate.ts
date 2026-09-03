@@ -1,9 +1,14 @@
+import { logError, logEvent } from '@oryxel/runtime'
+
 import { listConfiguredProviderIds, listProviderApiKeyCandidates } from '../ai/keys/service'
 import { getAiRouterPolicy } from '../ai/policy'
+import { normalizeLocale } from '../i18n/locale.js'
 
 import type { AiProviderName } from '../ai/contracts'
 
-/** Phrase index → English phrase.  Input encoding for the translate prompt. */
+//
+// Phrase index → English phrase.  Input encoding for the translate prompt.
+//
 type IndexedPhrases = Record<string, string>
 
 const OPENAI_COMPAT_URLS: Partial<Record<AiProviderName, string>> = {
@@ -47,13 +52,15 @@ function modelForProvider(name: AiProviderName) {
 }
 
 function languageForLocale(locale: string) {
+  locale = normalizeLocale(locale)
+
   if (locale.startsWith('es')) return 'Spanish'
 
   if (locale.startsWith('fr')) return 'French'
 
   if (locale === 'ru') return 'Russian'
 
-  if (locale.startsWith('jp') || locale.startsWith('ja')) return 'Japanese'
+  if (locale.startsWith('ja')) return 'Japanese'
 
   if (locale.startsWith('zh')) return 'Chinese'
 
@@ -71,7 +78,7 @@ function buildTranslatePrompt(indexed: IndexedPhrases, locale: string) {
   ].join('\n')
 }
 
-async function callOpenAICompat(url: string, model: string, prompt: string, apiKey: string) {
+async function callOpenAICompat(url: string, model: string, prompt: string, apiKey: string, signal: AbortSignal) {
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
@@ -86,16 +93,17 @@ async function callOpenAICompat(url: string, model: string, prompt: string, apiK
       // eslint-disable-next-line camelcase
       max_tokens: 2048,
     }),
+    signal,
   })
 
-  if (!response.ok) throw new Error(`${url.split('/')[2]} error ${response.status}`)
+  if (!response.ok) throw new Error(`${url.split('/', 3)[2]} error ${response.status}`)
 
   const json = (await response.json()) as { choices?: { message?: { content?: string } }[] }
 
   return json.choices?.[0]?.message?.content ?? '{}'
 }
 
-async function callAnthropic(model: string, prompt: string, apiKey: string) {
+async function callAnthropic(model: string, prompt: string, apiKey: string, signal: AbortSignal) {
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -110,6 +118,7 @@ async function callAnthropic(model: string, prompt: string, apiKey: string) {
       system: 'Return JSON only.',
       messages: [{ role: 'user', content: prompt }],
     }),
+    signal,
   })
 
   if (!response.ok) throw new Error(`Anthropic error ${response.status}`)
@@ -119,7 +128,7 @@ async function callAnthropic(model: string, prompt: string, apiKey: string) {
   return json.content?.find((c) => c.type === 'text')?.text ?? '{}'
 }
 
-async function callGemini(model: string, prompt: string, apiKey: string) {
+async function callGemini(model: string, prompt: string, apiKey: string, signal: AbortSignal) {
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
     {
@@ -130,6 +139,7 @@ async function callGemini(model: string, prompt: string, apiKey: string) {
 
         generationConfig: { maxOutputTokens: 2048 },
       }),
+      signal,
     },
   )
 
@@ -142,18 +152,29 @@ async function callGemini(model: string, prompt: string, apiKey: string) {
   return json.candidates?.[0]?.content?.parts?.[0]?.text ?? '{}'
 }
 
-async function callProvider(providerName: AiProviderName, prompt: string, apiKey: string) {
+async function callProvider(providerName: AiProviderName, prompt: string, apiKey: string, signal: AbortSignal) {
   const model = modelForProvider(providerName)
 
-  if (providerName === 'anthropic') return callAnthropic(model, prompt, apiKey)
+  if (providerName === 'anthropic') return callAnthropic(model, prompt, apiKey, signal)
 
-  if (providerName === 'gemini') return callGemini(model, prompt, apiKey)
+  if (providerName === 'gemini') return callGemini(model, prompt, apiKey, signal)
 
   const url = OPENAI_COMPAT_URLS[providerName]
 
   if (!url) throw new Error(`No URL for provider ${providerName}`)
 
-  return callOpenAICompat(url, model, prompt, apiKey)
+  return callOpenAICompat(url, model, prompt, apiKey, signal)
+}
+
+async function callWithTimeout<T>(work: (signal: AbortSignal) => Promise<T>, timeoutMs: number) {
+  const controller = new AbortController()
+  const timeoutId = globalThis.setTimeout(() => controller.abort(), timeoutMs)
+
+  try {
+    return await work(controller.signal)
+  } finally {
+    clearTimeout(timeoutId)
+  }
 }
 
 function parseTranslationResponse(raw: string, phrases: string[]) {
@@ -193,7 +214,7 @@ export async function translateBatch(userId: string, phrases: string[], locale: 
   const configuredIds = await listConfiguredProviderIds(userId)
 
   if (configuredIds.length === 0) {
-    console.warn('[translate] No AI providers configured for user')
+    logEvent('ai', 'translation.providers_unavailable', { component: 'translation' }, 'warn')
 
     return new Map()
   }
@@ -214,15 +235,18 @@ export async function translateBatch(userId: string, phrases: string[], locale: 
     const candidate = candidates[0]
 
     try {
-      const raw = await callProvider(providerName, prompt, candidate.key)
+      const raw = await callWithTimeout(
+        (signal) => callProvider(providerName, prompt, candidate.key, signal),
+        policy.timeoutMs,
+      )
 
       return parseTranslationResponse(raw, phrases)
     } catch (error) {
-      console.error(`[translate] ${providerName} failed:`, error instanceof Error ? error.message : error)
+      logError('ai', 'translation.provider_failed', error, { component: 'translation', provider: providerName })
     }
   }
 
-  console.warn('[translate] All providers failed for translation batch')
+  logEvent('ai', 'translation.providers_exhausted', { component: 'translation' }, 'warn')
 
   return new Map()
 }

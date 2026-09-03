@@ -1,12 +1,14 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
+vi.mock('$env/dynamic/private', () => ({
+  env: {
+    AI_KEYS_ENCRYPTION_KEY: 'BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc=',
+  },
+}))
 
 import { decryptSecret, encryptSecret } from './secret-box'
 
 describe('secret-box', () => {
-  beforeEach(() => {
-    process.env.AI_KEYS_ENCRYPTION_KEY = Buffer.alloc(32, 7).toString('base64')
-  })
-
   it('encrypts and decrypts API key roundtrip', () => {
     const encrypted = encryptSecret('sk-test-123456789')
     const decrypted = decryptSecret(encrypted)

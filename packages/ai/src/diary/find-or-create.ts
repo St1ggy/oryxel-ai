@@ -1,73 +1,72 @@
 import { type db } from '@oryxel/db'
 import { brand, fragrance } from '@oryxel/db'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, ne, or, sql } from 'drizzle-orm'
 
 // Works for both the top-level db instance and a transaction object
 type DatabaseOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0]
 
-export async function findOrCreateBrand(tx: DatabaseOrTx, name: string) {
+export async function findOrCreateBrand(tx: DatabaseOrTx, name: string, userId: string) {
   const trimmed = name.trim()
 
-  // brand.name has a unique constraint — onConflictDoNothing is safe here
-  await tx.insert(brand).values({ name: trimmed }).onConflictDoNothing()
+  const scope = or(ne(brand.origin, 'user'), eq(brand.createdByUserId, userId))
+  const [existing] = await tx
+    .select({ id: brand.id })
+    .from(brand)
+    .where(and(eq(brand.name, trimmed), scope))
+    .orderBy(sql`CASE WHEN ${brand.origin} = 'user' THEN 1 ELSE 0 END`)
+    .for('update')
+    .limit(1)
 
-  const [row] = await tx.select({ id: brand.id }).from(brand).where(eq(brand.name, trimmed)).limit(1)
+  if (existing) return existing.id
+
+  await tx.insert(brand).values({ name: trimmed, origin: 'user', createdByUserId: userId }).onConflictDoNothing()
+
+  const [row] = await tx
+    .select({ id: brand.id })
+    .from(brand)
+    .where(and(eq(brand.name, trimmed), scope))
+    .orderBy(sql`CASE WHEN ${brand.origin} = 'user' THEN 1 ELSE 0 END`)
+    .for('update')
+    .limit(1)
+
+  if (!row) throw new Error('Brand identity could not be created')
 
   return row.id
 }
 
-type PyramidFields = {
-  pyramidTop?: string | null
-  pyramidMid?: string | null
-  pyramidBase?: string | null
-}
-
-export async function findOrCreateFragrance(
-  tx: DatabaseOrTx,
-  brandId: number,
-  name: string,
-  notesSummary?: string | null,
-  pyramid?: PyramidFields,
-) {
+export async function findOrCreateFragrance(tx: DatabaseOrTx, brandId: number, name: string, userId: string) {
   const trimmed = name.trim()
 
-  // fragrance table has NO unique constraint on (brandId, name) — select-then-insert
+  const scope = or(ne(fragrance.origin, 'user'), eq(fragrance.createdByUserId, userId))
   const [existing] = await tx
     .select({ id: fragrance.id })
     .from(fragrance)
-    .where(and(eq(fragrance.brandId, brandId), eq(fragrance.name, trimmed)))
+    .where(and(eq(fragrance.brandId, brandId), eq(fragrance.name, trimmed), scope))
+    .orderBy(sql`CASE WHEN ${fragrance.origin} = 'user' THEN 1 ELSE 0 END`)
+    .for('update')
     .limit(1)
 
-  if (existing) {
-    const updates: Partial<typeof fragrance.$inferInsert> = {}
+  if (existing) return existing.id
 
-    // Overwrite with canonical English text (plain string, no locale maps)
-    if (notesSummary != null) updates.notesSummary = notesSummary
-
-    if (pyramid?.pyramidTop != null) updates.pyramidTop = pyramid.pyramidTop
-
-    if (pyramid?.pyramidMid != null) updates.pyramidMid = pyramid.pyramidMid
-
-    if (pyramid?.pyramidBase != null) updates.pyramidBase = pyramid.pyramidBase
-
-    if (Object.keys(updates).length > 0) {
-      await tx.update(fragrance).set(updates).where(eq(fragrance.id, existing.id))
-    }
-
-    return existing.id
-  }
-
-  const [inserted] = await tx
+  await tx
     .insert(fragrance)
     .values({
       brandId,
       name: trimmed,
-      notesSummary: notesSummary ?? null,
-      pyramidTop: pyramid?.pyramidTop ?? null,
-      pyramidMid: pyramid?.pyramidMid ?? null,
-      pyramidBase: pyramid?.pyramidBase ?? null,
+      origin: 'user',
+      createdByUserId: userId,
     })
-    .returning({ id: fragrance.id })
+    .onConflictDoNothing()
+
+  const [inserted] = await tx
+    .select({ id: fragrance.id })
+    .from(fragrance)
+    .where(and(eq(fragrance.brandId, brandId), eq(fragrance.name, trimmed), scope))
+    .orderBy(sql`CASE WHEN ${fragrance.origin} = 'user' THEN 1 ELSE 0 END`)
+    .for('update')
+    .limit(1)
+
+  if (!inserted) throw new Error('Fragrance identity could not be created')
 
   return inserted.id
 }

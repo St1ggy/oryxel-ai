@@ -154,8 +154,7 @@
           class="w-full resize-none rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-foreground placeholder:text-foreground-muted focus:border-border-strong focus:outline-none"
           rows={3}
           placeholder={m.oryxel_table_user_comment_placeholder()}
-          bind:value={userCommentValue}
-        ></textarea>
+          bind:value={userCommentValue}></textarea>
       </div>
 
       {#if saveError}

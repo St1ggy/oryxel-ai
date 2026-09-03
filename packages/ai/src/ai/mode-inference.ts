@@ -162,13 +162,13 @@ function isQuestionIntent(normalized: string) {
 }
 
 function countIntentSignals(message: string, normalized: string) {
-  const agent = hasKeyword(normalized, AGENT_KEYWORDS) || isBulkImport(message, normalized)
-  const add = hasKeyword(normalized, ADD_KEYWORDS)
-  const recommend = hasKeyword(normalized, RECOMMEND_KEYWORDS)
-  const curate = hasKeyword(normalized, CURATE_KEYWORDS)
-  const ask = isQuestionIntent(normalized) && !agent && !add && !recommend && !curate
+  const isAgent = hasKeyword(normalized, AGENT_KEYWORDS) || isBulkImport(message, normalized)
+  const isAdd = hasKeyword(normalized, ADD_KEYWORDS)
+  const isRecommend = hasKeyword(normalized, RECOMMEND_KEYWORDS)
+  const isCurate = hasKeyword(normalized, CURATE_KEYWORDS)
+  const isAsk = isQuestionIntent(normalized) && !isAgent && !isAdd && !isRecommend && !isCurate
 
-  return { agent, add, recommend, ask, curate }
+  return { agent: isAgent, add: isAdd, recommend: isRecommend, ask: isAsk, curate: isCurate }
 }
 
 function reasonForMode(mode: ChatAgentMode) {

@@ -30,7 +30,7 @@ export const gemini: ProviderGuide = {
       "Copiez la clé et assurez-vous d'utiliser le bon projet.",
       'Ajoutez la clé dans Oryxel (fournisseur Gemini) et sauvegardez.',
     ],
-    jp: [
+    ja: [
       'Google AI StudioでAPI keysセクションに移動。',
       '必要なGoogle CloudプロジェクトのキーをCreate。',
       'キーをコピーして正しいプロジェクトを使用しているか確認。',
@@ -64,7 +64,7 @@ export const gemini: ProviderGuide = {
       '403 est souvent lié aux autorisations du projet ou aux restrictions régionales.',
       "429 signifie que les limites d'utilisation sont dépassées.",
     ],
-    jp: [
+    ja: [
       'プロジェクトで必要なGemini API/クォータが有効になっているか確認してください。',
       '403はプロジェクトの権限や地域制限に関連することが多いです。',
       '429は使用制限を超えたことを意味します。',

@@ -103,18 +103,18 @@
 
     handle.setPointerCapture(event.pointerId)
 
-    const onMove = (event: PointerEvent) => {
+    const onMove = (moveEvent: PointerEvent) => {
       const r = desktopSplitElement!.getBoundingClientRect()
-      const pct = ((event.clientX - r.left) / r.width) * 100
+      const pct = ((moveEvent.clientX - r.left) / r.width) * 100
 
       chatWidthPct = clampChatPanelWidthPct(pct)
     }
 
-    const onUp = (event: PointerEvent) => {
+    const onUp = (upEvent: PointerEvent) => {
       resizingChat = false
 
       try {
-        handle.releasePointerCapture(event.pointerId)
+        handle.releasePointerCapture(upEvent.pointerId)
       } catch {
         /* already released */
       }
@@ -357,7 +357,7 @@
     showPatchAppliedToast({
       summary,
       payload,
-      onViewDetails: (payload, subtitle) => openPatchDetailsModal(payload, subtitle),
+      onViewDetails: (detailPayload, subtitle) => openPatchDetailsModal(detailPayload, subtitle),
     })
   }
 

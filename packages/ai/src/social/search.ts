@@ -1,20 +1,20 @@
 import { brand, db, fragrance, userProfile } from '@oryxel/db'
-import { and, eq, ilike, isNotNull, or } from 'drizzle-orm'
+import { and, eq, ilike, isNotNull, ne, or } from 'drizzle-orm'
 
-import type { FragranceSearchHit, UserSearchHit } from './types.js'
+type DatabaseExecutor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0]
 
 function escapeIlikePattern(input: string) {
-  return input.replace(/[%_\\]/g, '\\$&')
+  return input.replaceAll(/[%_\\]/g, String.raw`\$&`)
 }
 
-export async function searchFragrances(query: string, limit = 20) {
+export async function searchFragrances(query: string, viewerId: string, limit = 20, executor: DatabaseExecutor = db) {
   const q = query.trim()
 
   if (q.length < 2) return []
 
   const pattern = `%${escapeIlikePattern(q)}%`
 
-  const rows = await db
+  const rows = await executor
     .select({
       fragranceId: fragrance.id,
       brandName: brand.name,
@@ -23,15 +23,26 @@ export async function searchFragrances(query: string, limit = 20) {
     })
     .from(fragrance)
     .innerJoin(brand, eq(fragrance.brandId, brand.id))
-    .where(or(ilike(fragrance.name, pattern), ilike(brand.name, pattern), ilike(fragrance.notesSummary, pattern)))
+    .where(
+      and(
+        or(ilike(fragrance.name, pattern), ilike(brand.name, pattern), ilike(fragrance.notesSummary, pattern)),
+        or(ne(fragrance.origin, 'user'), eq(fragrance.createdByUserId, viewerId)),
+        or(ne(brand.origin, 'user'), eq(brand.createdByUserId, viewerId)),
+      ),
+    )
     .orderBy(brand.name, fragrance.name)
     .limit(Math.min(limit, 50))
 
   return rows
 }
 
-export async function searchFragrancesByQuery(query: string, limit = 5) {
-  return searchFragrances(query, limit)
+export async function searchFragrancesByQuery(
+  query: string,
+  viewerId: string,
+  limit = 5,
+  executor: DatabaseExecutor = db,
+) {
+  return searchFragrances(query, viewerId, limit, executor)
 }
 
 export async function searchUsers(query: string, limit = 20) {

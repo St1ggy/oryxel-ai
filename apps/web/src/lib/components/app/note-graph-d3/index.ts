@@ -6,7 +6,7 @@ import { attachZoom, buildAdjacency, linkOpacity, makeControls } from './common'
 import { defaultRenderer } from './styles/default'
 
 import type { NoteGraph } from '$lib/utils/note-graph'
-import type { GraphControls, GraphStyle, NoteLink, NoteNode, StyleRenderer, TooltipState } from './types'
+import type { GraphStyle, NoteLink, NoteNode, StyleRenderer, TooltipState } from './types'
 
 // Lazy-load style renderers to keep initial bundle tight
 const RENDERERS: Record<GraphStyle, StyleRenderer> = {

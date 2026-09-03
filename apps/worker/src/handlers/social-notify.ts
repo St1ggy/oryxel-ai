@@ -1,31 +1,33 @@
 import {
+  assertJobLease,
   completeJob,
   createNotification,
   createNotificationsBatch,
   failJob,
-  getPostById,
   getListById,
+  getPostById,
   listFollowerIds,
-  visibilityAtLeast,
+  shouldNotifyFollowers,
 } from '@oryxel/ai/server'
 
-import type { Visibility } from '@oryxel/ai/server'
+import type { JobLease, Visibility } from '@oryxel/ai/server'
 
-export async function handleNotifyPost(jobId: number, params: Record<string, unknown>) {
+export async function handleNotifyPost(job: JobLease, params: Record<string, unknown>) {
   try {
     const postId = params['postId'] as number
     const authorId = params['authorId'] as string
 
     const row = await getPostById(postId)
 
-    if (!row || row.authorId !== authorId) {
-      await completeJob(jobId, { skipped: true })
+    if (!row || row.authorId !== authorId || !shouldNotifyFollowers(row.visibility as Visibility)) {
+      await completeJob(job, { skipped: true })
 
       return
     }
 
     const followers = await listFollowerIds(authorId)
 
+    await assertJobLease(job)
     await createNotificationsBatch(followers, {
       actorId: authorId,
       type: 'new_post',
@@ -34,17 +36,18 @@ export async function handleNotifyPost(jobId: number, params: Record<string, unk
       payload: { visibility: row.visibility },
     })
 
-    await completeJob(jobId, { notified: followers.length })
+    await completeJob(job, { notified: followers.length })
   } catch (error) {
-    await failJob(jobId, error instanceof Error ? error.message : 'notify_post failed')
+    await failJob(job, 'NOTIFY_POST_FAILED', error)
   }
 }
 
-export async function handleNotifyFollow(jobId: number, params: Record<string, unknown>) {
+export async function handleNotifyFollow(job: JobLease, params: Record<string, unknown>) {
   try {
     const followerId = params['followerId'] as string
     const followingId = params['followingId'] as string
 
+    await assertJobLease(job)
     await createNotification({
       recipientId: followingId,
       actorId: followerId,
@@ -53,25 +56,26 @@ export async function handleNotifyFollow(jobId: number, params: Record<string, u
       payload: {},
     })
 
-    await completeJob(jobId, { ok: true })
+    await completeJob(job, { ok: true })
   } catch (error) {
-    await failJob(jobId, error instanceof Error ? error.message : 'notify_follow failed')
+    await failJob(job, 'NOTIFY_FOLLOW_FAILED', error)
   }
 }
 
-export async function handleNotifyList(jobId: number, userId: string, params: Record<string, unknown>) {
+export async function handleNotifyList(job: JobLease, userId: string, params: Record<string, unknown>) {
   try {
     const listId = (params['listId'] as number) ?? 0
     const list = await getListById(listId, userId)
 
-    if (!list || !visibilityAtLeast(list.visibility, 'followers')) {
-      await completeJob(jobId, { skipped: true })
+    if (!list || !shouldNotifyFollowers(list.visibility)) {
+      await completeJob(job, { skipped: true })
 
       return
     }
 
     const followers = await listFollowerIds(userId)
 
+    await assertJobLease(job)
     await createNotificationsBatch(followers, {
       actorId: userId,
       type: 'new_list',
@@ -80,8 +84,8 @@ export async function handleNotifyList(jobId: number, userId: string, params: Re
       payload: { slug: list.slug, title: list.title, visibility: list.visibility as Visibility },
     })
 
-    await completeJob(jobId, { notified: followers.length })
+    await completeJob(job, { notified: followers.length })
   } catch (error) {
-    await failJob(jobId, error instanceof Error ? error.message : 'notify_list failed')
+    await failJob(job, 'NOTIFY_LIST_FAILED', error)
   }
 }

@@ -25,6 +25,16 @@ export {
 } from './crud'
 export { PROVIDER_DISPLAY_NAME } from '$lib/ai/provider-guides'
 
+async function hasPlatformAccess(userId: string) {
+  const [preferences] = await db
+    .select({ platformAccess: userAiPreferences.platformAccess })
+    .from(userAiPreferences)
+    .where(eq(userAiPreferences.userId, userId))
+    .limit(1)
+
+  return preferences?.platformAccess === true
+}
+
 export async function resolveProviderApiKey(userId: string, provider: ProviderId) {
   const [first] = await listProviderApiKeyCandidates(userId, provider, 1)
 
@@ -60,7 +70,7 @@ export async function listProviderApiKeyCandidates(userId: string, provider: Pro
 
   const platformConfig = getPlatformKeyConfig()
 
-  if (platformConfig && platformConfig.provider === provider) {
+  if (platformConfig && platformConfig.provider === provider && (await hasPlatformAccess(userId))) {
     candidates.push({ key: platformConfig.key, source: 'platform', keyId: null, label: 'platform', isDefault: false })
   }
 
@@ -116,7 +126,7 @@ export async function hasEffectiveProviderAccess(userId: string) {
 
   if (hasUserKeys || hasAnyFallbackKey()) return true
 
-  return Boolean(getPlatformKeyConfig())
+  return Boolean(getPlatformKeyConfig()) && (await hasPlatformAccess(userId))
 }
 
 export async function grantPlatformAccess(userId: string) {

@@ -16,7 +16,7 @@ export const BUILTIN_FAMILIES: FamilySeed[] = [
     name: 'citrus',
     color: '#FFB347',
     sortOrder: 1,
-    translations: { en: 'Citrus', ru: 'Цитрус', es: 'Cítrico', fr: 'Agrume', jp: 'シトラス', zh: '柑橘' },
+    translations: { en: 'Citrus', ru: 'Цитрус', es: 'Cítrico', fr: 'Agrume', ja: 'シトラス', zh: '柑橘' },
     keywords: [
       'bergamot',
       'lemon',
@@ -82,7 +82,7 @@ export const BUILTIN_FAMILIES: FamilySeed[] = [
     name: 'floral',
     color: '#FF69B4',
     sortOrder: 2,
-    translations: { en: 'Floral', ru: 'Флоральный', es: 'Floral', fr: 'Floral', jp: 'フローラル', zh: '花香' },
+    translations: { en: 'Floral', ru: 'Флоральный', es: 'Floral', fr: 'Floral', ja: 'フローラル', zh: '花香' },
     keywords: [
       'rose',
       'jasmine',
@@ -181,7 +181,7 @@ export const BUILTIN_FAMILIES: FamilySeed[] = [
     name: 'woody',
     color: '#8B4513',
     sortOrder: 3,
-    translations: { en: 'Woody', ru: 'Древесный', es: 'Amaderado', fr: 'Boisé', jp: 'ウッディ', zh: '木质' },
+    translations: { en: 'Woody', ru: 'Древесный', es: 'Amaderado', fr: 'Boisé', ja: 'ウッディ', zh: '木质' },
     keywords: [
       'cedar',
       'sandalwood',
@@ -271,7 +271,7 @@ export const BUILTIN_FAMILIES: FamilySeed[] = [
     name: 'spicy',
     color: '#D2691E',
     sortOrder: 4,
-    translations: { en: 'Spicy', ru: 'Пряный', es: 'Especiado', fr: 'Épicé', jp: 'スパイシー', zh: '辛香' },
+    translations: { en: 'Spicy', ru: 'Пряный', es: 'Especiado', fr: 'Épicé', ja: 'スパイシー', zh: '辛香' },
     keywords: [
       'pepper',
       'cardamom',
@@ -347,7 +347,7 @@ export const BUILTIN_FAMILIES: FamilySeed[] = [
     name: 'musky',
     color: '#DDA0DD',
     sortOrder: 5,
-    translations: { en: 'Musky', ru: 'Мускусный', es: 'Almizclado', fr: 'Musqué', jp: 'ムスキー', zh: '麝香' },
+    translations: { en: 'Musky', ru: 'Мускусный', es: 'Almizclado', fr: 'Musqué', ja: 'ムスキー', zh: '麝香' },
     keywords: [
       'musk',
       'ambroxan',
@@ -434,7 +434,7 @@ export const BUILTIN_FAMILIES: FamilySeed[] = [
     name: 'green',
     color: '#7CB342',
     sortOrder: 6,
-    translations: { en: 'Green', ru: 'Зелёный', es: 'Verde', fr: 'Vert', jp: 'グリーン', zh: '绿叶' },
+    translations: { en: 'Green', ru: 'Зелёный', es: 'Verde', fr: 'Vert', ja: 'グリーン', zh: '绿叶' },
     keywords: [
       'basil',
       'mint',
@@ -508,7 +508,7 @@ export const BUILTIN_FAMILIES: FamilySeed[] = [
     name: 'fresh',
     color: '#5DADE2',
     sortOrder: 7,
-    translations: { en: 'Fresh', ru: 'Свежий', es: 'Fresco', fr: 'Frais', jp: 'フレッシュ', zh: '清新' },
+    translations: { en: 'Fresh', ru: 'Свежий', es: 'Fresco', fr: 'Frais', ja: 'フレッシュ', zh: '清新' },
     keywords: [
       'aquatic',
       'marine',
@@ -593,7 +593,7 @@ export const BUILTIN_FAMILIES: FamilySeed[] = [
     name: 'leather',
     color: '#5D4037',
     sortOrder: 8,
-    translations: { en: 'Leather', ru: 'Кожаный', es: 'Cuero', fr: 'Cuir', jp: 'レザー', zh: '皮革' },
+    translations: { en: 'Leather', ru: 'Кожаный', es: 'Cuero', fr: 'Cuir', ja: 'レザー', zh: '皮革' },
     keywords: [
       'leather',
       'tobacco',

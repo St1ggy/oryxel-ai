@@ -1,7 +1,8 @@
+import { normalizeLocale } from '@oryxel/ai/server'
 import { error, json } from '@sveltejs/kit'
 import { z } from 'zod'
 
-import { createJob } from '$lib/server/ai/jobs'
+import { createObservedJob } from '$lib/server/ai/jobs'
 
 import type { RequestHandler } from './$types'
 
@@ -15,10 +16,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   }
 
   const body = bodySchema.parse(await request.json())
-  const locale = body.locale ?? 'en'
+  const locale = normalizeLocale(body.locale ?? 'en')
   const userId = locals.user.id
 
-  const jobId = await createJob(userId, 'profile_sync', { locale })
+  const jobId = await createObservedJob(locals.requestId, userId, 'profile_sync', { locale })
 
   return json({ jobId })
 }

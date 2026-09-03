@@ -13,8 +13,15 @@ declare global {
   }
 
   namespace App {
+    // eslint-disable-next-line @typescript-eslint/consistent-type-definitions -- SvelteKit merges interface Error
+    interface Error {
+      message: string
+      requestId?: string
+    }
+
     // eslint-disable-next-line @typescript-eslint/consistent-type-definitions -- SvelteKit merges interface Locals
     interface Locals {
+      requestId: string
       user?: User
       session?: Session
     }

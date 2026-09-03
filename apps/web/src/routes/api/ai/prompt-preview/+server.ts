@@ -3,6 +3,7 @@ import {
   buildPromptWithOptions,
   createPromptPreviewSampleRequest,
   estimatePromptTokensApprox,
+  normalizeLocale,
 } from '@oryxel/ai/server'
 import { error, json } from '@sveltejs/kit'
 import { eq } from 'drizzle-orm'
@@ -54,7 +55,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   const maxP = raw.maxPyramidNotes ?? prefs?.maxPyramidNotes ?? 5
   const minR = raw.minRecommendations ?? prefs?.minRecommendations ?? 5
   const maxR = raw.maxRecommendations ?? prefs?.maxRecommendations ?? 20
-  const locale = raw.locale ?? 'en'
+  const locale = normalizeLocale(raw.locale ?? 'en')
   const scenario = raw.scenario ?? 'command'
   const tone = raw.tone === undefined ? (prefs?.tone ?? null) : raw.tone
   const depth = raw.depth === undefined ? (prefs?.depth ?? null) : raw.depth

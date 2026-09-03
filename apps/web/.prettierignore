@@ -12,5 +12,9 @@ bun.lockb
 
 # Generated
 .svelte-kit/
+project.inlang/.meta.json
+project.inlang/cache/
+project.inlang/README.md
 src/lib/paraglide/
 src/paraglide/
+test-results/

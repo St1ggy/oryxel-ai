@@ -16,7 +16,7 @@ export const DIARY_LIST_TAB_VALUES = [...FRAGRANCE_LIST_TAB_VALUES, 'profile', '
 
 /** @deprecated Use FragranceListTabValue */
 
-export type DiaryListTabValue = (typeof DIARY_LIST_TAB_VALUES)[number]
+export type DiaryListTabValue = FragranceListTabValue | 'profile' | 'notes' | 'guide'
 
 export function diaryPrimaryItems() {
   return [

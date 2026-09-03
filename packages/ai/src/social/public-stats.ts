@@ -2,10 +2,13 @@ import { db, userProfile } from '@oryxel/db'
 import { eq } from 'drizzle-orm'
 
 import { loadDiaryForUser } from '../diary/load.js'
+import { getLocaleMapValue } from '../i18n/locale.js'
 
 import type { PublicDiaryStats } from './types.js'
 
-/** Handles both new plain strings and old locale-map JSON (backward compat). */
+//
+// Handles both new plain strings and old locale-map JSON (backward compat).
+//
 function resolveStringOrMap(value: unknown, locale: string) {
   if (!value) return null
 
@@ -14,7 +17,7 @@ function resolveStringOrMap(value: unknown, locale: string) {
       try {
         const parsed = JSON.parse(value) as Record<string, string>
 
-        return parsed[locale] ?? parsed['en'] ?? Object.values(parsed)[0] ?? value
+        return getLocaleMapValue(parsed, locale) ?? parsed['en'] ?? Object.values(parsed)[0] ?? value
       } catch {
         // not JSON, return as-is
       }
@@ -26,7 +29,7 @@ function resolveStringOrMap(value: unknown, locale: string) {
   if (typeof value === 'object' && !Array.isArray(value)) {
     const map = value as Record<string, string>
 
-    return map[locale] ?? map['en'] ?? Object.values(map)[0] ?? null
+    return getLocaleMapValue(map, locale) ?? map['en'] ?? Object.values(map)[0] ?? null
   }
 
   return null
@@ -34,7 +37,7 @@ function resolveStringOrMap(value: unknown, locale: string) {
 
 function compactRadarLabel(raw: string, fallback: string) {
   const head = raw
-    .split(/[,—–\-(]/u)[0]
+    .split(/[,—–\-(]/u, 1)[0]
     .trim()
     .slice(0, 24)
 
@@ -68,6 +71,7 @@ export async function loadPublicDiaryStats(userId: string, showDiaryStats: boole
   const diary = await loadDiaryForUser(userId, locale)
   const diaryCounts = {
     owned: diary.owned.length,
+    // eslint-disable-next-line camelcase
     to_try: diary.to_try.length,
     liked: diary.liked.length,
     neutral: diary.neutral.length,

@@ -1,42 +1,83 @@
-# sv
+# Oryxel AI
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+Oryxel AI is an AI-assisted fragrance diary, recommendation workspace, and social collection app. The monorepo contains a SvelteKit web application, a PostgreSQL-backed background worker, and a dedicated SSE gateway for live job progress.
 
-## Creating a project
+## Architecture
 
-If you're seeing this, you've probably already done this step. Congrats!
+| Component                 | Runtime                                            | Production target  | Health                                                    |
+| ------------------------- | -------------------------------------------------- | ------------------ | --------------------------------------------------------- |
+| `apps/web`                | SvelteKit on Vercel Functions                      | Vercel             | `/healthz`, `/readyz`                                     |
+| `apps/worker`             | Bun/Node background worker                         | Railway            | `/healthz`, `/readyz`                                     |
+| `apps/job-stream-gateway` | Bun/Node SSE service                               | Railway            | `/healthz`, `/readyz`                                     |
+| `packages/db`             | App and authentication schema via postgres.js      | Railway PostgreSQL | Full migration ledger checked by service readiness        |
+| `packages/catalog-db`     | Canonical fragrance catalog schema                 | PostgreSQL         | Used by catalog-backed features                           |
+| Redis                     | Auth/API rate limits, worker wake-ups, SSE updates | Railway Redis      | Production required by web, worker, and gateway readiness |
 
-```sh
-# create a new project
-npx sv create my-app
+PostgreSQL is authoritative for application state, Better Auth sessions, and background jobs. Redis provides atomic distributed limits, worker wake-ups, and SSE notifications; it stores no authoritative session or job state. Every production readiness check validates the complete app migration ledger, not only database connectivity.
+
+Canonical catalog identities are globally unique. User-created brand and fragrance identities are owner-scoped and are visible only to their owner unless promoted through a separate catalog process.
+
+## Local Development
+
+Requirements: Bun `1.2.12`, Node.js with npm for the current test orchestrator, PostgreSQL, and Redis when testing distributed limits or live job streams. Install the Playwright browser once before running the complete test suite:
+
+```bash
+bunx playwright install chromium
 ```
 
-To recreate this project with the same configuration:
-
-```sh
-# recreate this project
-bun x sv@0.13.0 create --template minimal --types ts --add prettier eslint vitest="usages:unit,component" playwright tailwindcss="plugins:typography,forms" sveltekit-adapter="adapter:vercel" devtools-json drizzle="database:postgresql+postgresql:neon" better-auth="demo:password,github" mdsvex paraglide="languageTags:en,es,ru,jp,zh,fr+demo:no" mcp="ide:cursor,claude-code+setup:remote" --install bun oryxel-ai
+```bash
+bun install --frozen-lockfile
+cp .env.example .env.development
 ```
 
-## Developing
+Populate `.env.development`, then apply both append-only migration histories:
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```sh
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
+```bash
+bun run --cwd packages/db db:migrate
+bun run --cwd packages/catalog-db migrate
 ```
 
-## Building
+Start the web application:
 
-To create a production version of your app:
-
-```sh
-npm run build
+```bash
+bun run dev
 ```
 
-You can preview the production build with `npm run preview`.
+Run the worker and SSE gateway in separate terminals when exercising background jobs:
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+```bash
+bun --env-file=.env.development run start:worker
+bun --env-file=.env.development run start:job-stream-gateway
+```
+
+The gateway requires `REDIS_URL` and `JOB_STREAM_JWT_SECRET`. Local workers can poll PostgreSQL without Redis, but production worker startup rejects a missing `REDIS_URL`; a runtime Redis outage makes readiness fail while PostgreSQL polling continues.
+
+## Verification
+
+Run the complete production gate before merging or deploying:
+
+```bash
+bun run verify
+```
+
+This runs formatting and lint checks, TypeScript and Svelte checks, migration-history validation, unit and Playwright tests, and production builds for all deployable services.
+
+## Configuration
+
+Copy `.env.example` as the local baseline. Production secrets belong in Vercel or Railway environment variables and must not be committed; verify feature-specific variables against the consuming service before deployment.
+
+The following values must agree across services:
+
+- `DATABASE_URL`: web, worker, and gateway app database.
+- `CATALOG_DATABASE_URL`: catalog migration and ingestion tooling only; do not distribute it to runtime services that do not consume it.
+- `REDIS_URL`: web, worker, and gateway Redis deployment.
+- `JOB_STREAM_JWT_SECRET`: identical high-entropy secret on web and gateway.
+- `PUBLIC_JOB_STREAM_URL`: public gateway base URL embedded in the web build.
+- `STREAM_CORS_ORIGIN`: exact production web origin on the gateway.
+
+## Operations
+
+- [Production operations](docs/operations.md): deployment, rollback, incident response, Redis degradation, and job recovery.
+- [Database cutover](docs/db-cutover.md): provider migration and parity verification.
+- [Background job leases](docs/job-leases.md): lease deployment and non-replay guarantees.
+- [Database audit state](docs/db-audit-current-state.md): historical schema audit notes.

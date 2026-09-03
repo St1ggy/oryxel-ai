@@ -1,23 +1,45 @@
 import { backgroundJob, db } from '@oryxel/db'
-import { and, desc, eq, inArray, sql } from 'drizzle-orm'
+import { logError } from '@oryxel/runtime'
+import { and, desc, eq, gt, inArray, lte, sql } from 'drizzle-orm'
+import { randomUUID } from 'node:crypto'
 
+import { normalizeErrorCode } from './error-codes'
 import { emitJobCreated, emitJobUpdated } from './job-notify'
 
 import type { AiProviderName, StructuredPreferencePatch } from './contracts'
 
+type DatabaseExecutor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0]
+
 export type JobType =
-  | 'profile_sync'
-  | 'agent_chat'
-  | 'notify_post'
-  | 'notify_follow'
-  | 'notify_list'
-  | 'list_slice_sync'
+  'profile_sync' | 'agent_chat' | 'notify_post' | 'notify_follow' | 'notify_list' | 'list_slice_sync'
 export type JobStatus = 'pending' | 'processing' | 'done' | 'failed' | 'cancelled'
 
-/** Sync-pipeline phases (profile_sync handler). */
+export type JobLease = {
+  id: number
+  leaseToken: string
+}
+
+export type ClaimedJob = JobLease & {
+  userId: string
+  type: JobType
+  params: Record<string, unknown> | null
+}
+
+export class JobLeaseLostError extends Error {
+  constructor(jobId: number) {
+    super(`Lease lost for job ${jobId}`)
+    this.name = 'JobLeaseLostError'
+  }
+}
+
+//
+// Sync-pipeline phases (profile_sync handler).
+//
 export type SyncPhase = 'owned' | 'liked' | 'disliked' | 'neutral' | 'profile' | 'recommendations' | 'to_try'
 
-/** Detailed agent-chat / per-call phases. */
+//
+// Detailed agent-chat / per-call phases.
+//
 export type AgentPhase =
   | 'validate'
   | 'load_context'
@@ -30,7 +52,9 @@ export type AgentPhase =
   | 'translate'
   | 'done'
 
-/** Legacy coarse phases — kept so older clients/UI keep rendering. */
+//
+// Legacy coarse phases — kept so older clients/UI keep rendering.
+//
 export type LegacyPhase = 'analyzing' | 'applying'
 
 export type JobPhase = SyncPhase | AgentPhase | LegacyPhase
@@ -43,6 +67,7 @@ export type JobProgressMeta = {
   attempt?: number
   durationMs?: number
   scenario?: string
+  chatMode?: string
   note?: string
 }
 
@@ -53,33 +78,149 @@ export type JobProgress = {
   meta?: JobProgressMeta
 }
 
-/** Most recent N progress events kept on a job — older ones drop on append. */
+//
+// Most recent N progress events kept on a job — older ones drop on append.
+//
 export const MAX_PROGRESS_EVENTS = 50
+export const JOB_LEASE_MS = 5 * 60 * 1000
+const COALESCED_JOB_TYPES = new Set<JobType>(['profile_sync', 'list_slice_sync'])
 
-export async function createJob(userId: string, type: JobType, params?: Record<string, unknown>) {
-  // For non-chat types, cancel any pending jobs of the same type so the
-  // user always gets a fresh run without queue buildup.
-  if (type !== 'agent_chat') {
-    await db
+const leaseExpiry = sql<Date>`now() + (${JOB_LEASE_MS} * interval '1 millisecond')`
+
+function activeLease(job: JobLease) {
+  return and(
+    eq(backgroundJob.id, job.id),
+    eq(backgroundJob.status, 'processing'),
+    eq(backgroundJob.leaseToken, job.leaseToken),
+    gt(backgroundJob.leaseExpiresAt, sql`now()`),
+  )
+}
+
+function requireUpdatedJob(job: JobLease, updated: { id: number }[]) {
+  if (updated.length === 0) throw new JobLeaseLostError(job.id)
+
+  emitJobUpdated(job.id)
+}
+
+export async function createJob(
+  userId: string,
+  type: JobType,
+  params?: Record<string, unknown>,
+  executor: DatabaseExecutor = db,
+): Promise<number> {
+  if (executor === db) {
+    const jobId: number = await db.transaction((tx) => createJob(userId, type, params, tx))
+
+    emitJobCreated(jobId)
+
+    return jobId
+  }
+
+  // Refresh work supersedes an older pending refresh. Event jobs represent
+  // distinct business events and must never cancel each other.
+  if (COALESCED_JOB_TYPES.has(type)) {
+    await executor
       .update(backgroundJob)
       .set({ status: 'cancelled', completedAt: new Date() })
       .where(and(eq(backgroundJob.userId, userId), eq(backgroundJob.type, type), eq(backgroundJob.status, 'pending')))
   }
 
-  const [row] = await db
+  const [row] = await executor
     .insert(backgroundJob)
     .values({ userId, type, status: 'pending', params })
     .returning({ id: backgroundJob.id })
 
-  emitJobCreated(row.id)
-
   return row.id
 }
 
-export async function pushJobProgress(jobId: number, event: JobProgress) {
+export async function claimNextJob(): Promise<ClaimedJob | null> {
+  return db.transaction(async (tx) => {
+    const [pending] = await tx
+      .select({
+        id: backgroundJob.id,
+        userId: backgroundJob.userId,
+        type: backgroundJob.type,
+        params: backgroundJob.params,
+      })
+      .from(backgroundJob)
+      .where(eq(backgroundJob.status, 'pending'))
+      .orderBy(backgroundJob.createdAt, backgroundJob.id)
+      .for('update', { skipLocked: true })
+      .limit(1)
+
+    if (!pending) return null
+
+    const leaseToken = randomUUID()
+    const [claimed] = await tx
+      .update(backgroundJob)
+      .set({
+        status: 'processing',
+        leaseToken,
+        leaseExpiresAt: leaseExpiry,
+        errorMessage: null,
+        completedAt: null,
+      })
+      .where(and(eq(backgroundJob.id, pending.id), eq(backgroundJob.status, 'pending')))
+      .returning({ id: backgroundJob.id })
+
+    if (!claimed) return null
+
+    return {
+      id: pending.id,
+      userId: pending.userId,
+      type: pending.type as JobType,
+      params: pending.params,
+      leaseToken,
+    }
+  })
+}
+
+export async function renewJobLease(job: JobLease) {
+  const updated = await db
+    .update(backgroundJob)
+    .set({ leaseExpiresAt: leaseExpiry })
+    .where(activeLease(job))
+    .returning({ id: backgroundJob.id })
+
+  return updated.length > 0
+}
+
+export async function releaseJobLease(job: JobLease) {
+  const released = await db
+    .update(backgroundJob)
+    .set({ status: 'pending', leaseToken: null, leaseExpiresAt: null })
+    .where(activeLease(job))
+    .returning({ id: backgroundJob.id })
+
+  return released.length > 0
+}
+
+export async function assertJobLease(job: JobLease) {
+  if (!(await renewJobLease(job))) throw new JobLeaseLostError(job.id)
+}
+
+export async function recoverExpiredJobs() {
+  const recovered = await db
+    .update(backgroundJob)
+    .set({
+      status: 'failed',
+      errorMessage: 'WORKER_LEASE_EXPIRED',
+      completedAt: sql`now()`,
+      leaseToken: null,
+      leaseExpiresAt: null,
+    })
+    .where(and(eq(backgroundJob.status, 'processing'), lte(backgroundJob.leaseExpiresAt, sql`now()`)))
+    .returning({ id: backgroundJob.id })
+
+  for (const job of recovered) emitJobUpdated(job.id)
+
+  return recovered.map(({ id }) => id)
+}
+
+export async function pushJobProgress(job: JobLease, event: JobProgress) {
   const appended = JSON.stringify([event])
 
-  await db
+  const updated = await db
     .update(backgroundJob)
     .set({
       // Append the new event, then drop the oldest if the array would exceed the cap.
@@ -92,41 +233,58 @@ export async function pushJobProgress(jobId: number, event: JobProgress) {
         END
       `,
     })
-    .where(eq(backgroundJob.id, jobId))
+    .where(activeLease(job))
+    .returning({ id: backgroundJob.id })
 
-  emitJobUpdated(jobId)
+  requireUpdatedJob(job, updated)
 }
 
-/** Stream-time partial result from an in-flight provider call. UI may render preview. */
-export async function pushPartialResult(jobId: number, partial: Partial<StructuredPreferencePatch>) {
-  await db
+//
+// Stream-time partial result from an in-flight provider call. UI may render preview.
+//
+export async function pushPartialResult(job: JobLease, partial: Partial<StructuredPreferencePatch>) {
+  const updated = await db
     .update(backgroundJob)
     .set({ result: { partial: true, ...partial } as unknown as Record<string, unknown> })
-    .where(and(eq(backgroundJob.id, jobId), eq(backgroundJob.status, 'processing')))
+    .where(activeLease(job))
+    .returning({ id: backgroundJob.id })
 
-  emitJobUpdated(jobId)
+  requireUpdatedJob(job, updated)
 }
 
-export async function completeJob(jobId: number, result: Record<string, unknown>) {
-  await db
+export async function completeJob(job: JobLease, result: Record<string, unknown>) {
+  const updated = await db
     .update(backgroundJob)
-    .set({ status: 'done', result, completedAt: new Date() })
-    .where(eq(backgroundJob.id, jobId))
+    .set({
+      status: 'done',
+      result,
+      completedAt: sql`now()`,
+      leaseToken: null,
+      leaseExpiresAt: null,
+    })
+    .where(activeLease(job))
+    .returning({ id: backgroundJob.id })
 
-  emitJobUpdated(jobId)
+  requireUpdatedJob(job, updated)
 }
 
-export async function failJob(jobId: number, errorMessage: string) {
-  await db
+export async function failJob(job: JobLease, errorCode: string, error?: unknown) {
+  if (error !== undefined) logError('ai', 'job.handler_failed', error, { component: 'jobs', jobId: job.id })
+
+  const updated = await db
     .update(backgroundJob)
-    .set({ status: 'failed', errorMessage, completedAt: new Date() })
-    .where(eq(backgroundJob.id, jobId))
+    .set({
+      status: 'failed',
+      errorMessage: normalizeErrorCode(errorCode, 'JOB_FAILED'),
+      completedAt: sql`now()`,
+      leaseToken: null,
+      leaseExpiresAt: null,
+    })
+    .where(activeLease(job))
+    .returning({ id: backgroundJob.id })
 
-  emitJobUpdated(jobId)
+  requireUpdatedJob(job, updated)
 }
-
-/** Jobs in 'processing' older than this are considered stale and auto-failed. */
-const STALE_PROCESSING_MS = 15 * 60 * 1000 // 15 minutes
 
 export async function getActiveJobsForUser(userId: string) {
   const rows = await db
@@ -135,28 +293,17 @@ export async function getActiveJobsForUser(userId: string) {
       type: backgroundJob.type,
       status: backgroundJob.status,
       progress: backgroundJob.progress,
-      createdAt: backgroundJob.createdAt,
     })
     .from(backgroundJob)
     .where(and(eq(backgroundJob.userId, userId), inArray(backgroundJob.status, ['pending', 'processing'])))
     .orderBy(desc(backgroundJob.createdAt))
 
-  const stale = rows.filter(
-    (row) => row.status === 'processing' && Date.now() - row.createdAt.getTime() > STALE_PROCESSING_MS,
-  )
-
-  if (stale.length > 0) {
-    await Promise.all(stale.map((row) => failJob(row.id, 'Job timed out')))
-  }
-
-  return rows
-    .filter((row) => !stale.some((s) => s.id === row.id))
-    .map((row) => ({
-      id: row.id,
-      type: row.type as JobType,
-      status: row.status as JobStatus,
-      progress: (row.progress ?? []) as JobProgress[],
-    }))
+  return rows.map((row) => ({
+    id: row.id,
+    type: row.type as JobType,
+    status: row.status as JobStatus,
+    progress: (row.progress ?? []) as JobProgress[],
+  }))
 }
 
 export async function getJob(jobId: number, userId: string) {
@@ -168,7 +315,6 @@ export async function getJob(jobId: number, userId: string) {
       progress: backgroundJob.progress,
       result: backgroundJob.result,
       errorMessage: backgroundJob.errorMessage,
-      createdAt: backgroundJob.createdAt,
     })
     .from(backgroundJob)
     .where(and(eq(backgroundJob.id, jobId), eq(backgroundJob.userId, userId)))
@@ -178,19 +324,6 @@ export async function getJob(jobId: number, userId: string) {
 
   if (!row) return null
 
-  // Auto-fail jobs stuck in 'processing' beyond the stale threshold.
-  if (row.status === 'processing' && Date.now() - row.createdAt.getTime() > STALE_PROCESSING_MS) {
-    await failJob(row.id, 'Job timed out')
-
-    return {
-      id: row.id,
-      status: 'failed',
-      progress: (row.progress ?? []) as JobProgress[],
-      result: null,
-      errorMessage: 'Job timed out',
-    }
-  }
-
   return {
     id: row.id,
     status: row.status,
@@ -198,4 +331,14 @@ export async function getJob(jobId: number, userId: string) {
     result: (row.result as Record<string, unknown>) ?? null,
     errorMessage: row.errorMessage,
   }
+}
+
+export async function getJobStatus(jobId: number, userId: string) {
+  const rows = await db
+    .select({ status: backgroundJob.status })
+    .from(backgroundJob)
+    .where(and(eq(backgroundJob.id, jobId), eq(backgroundJob.userId, userId)))
+    .limit(1)
+
+  return rows[0]?.status ?? null
 }

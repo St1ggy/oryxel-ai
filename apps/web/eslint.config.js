@@ -88,10 +88,17 @@ export default defineConfig([
       'prefer-const': 'off',
       // Shared TS config sets this only for `filesTypeAware` (no `.svelte`); align Svelte scripts with `type`.
       '@typescript-eslint/consistent-type-definitions': ['error', 'type'],
+      // Svelte subpath imports resolve to the same declaration file but distinct runtime modules.
+      'import/no-duplicates': 'off',
     },
   },
   {
     rules: {
+      'import/default': 'off',
+      'import/extensions': 'off',
+      'import/namespace': 'off',
+      'import/no-named-as-default-member': 'off',
+      'import/no-unresolved': 'off',
       'import-x/no-unresolved': 'off',
       'import-x/extensions': 'off',
       // We use [...arr].reverse() for Node <20 compatibility (worker shares packages/ai).
@@ -140,6 +147,20 @@ export default defineConfig([
     rules: {
       // `href` may be pre-localized via Paraglide (`localizeHref`).
       'svelte/no-navigation-without-resolve': 'off',
+    },
+  },
+  {
+    files: ['src/lib/components/app/diary-add-modal.svelte'],
+    rules: {
+      // The effect intentionally resets editable state when the bound default changes.
+      'svelte/prefer-writable-derived': 'off',
+    },
+  },
+  {
+    files: ['src/routes/api/profile/+server.ts'],
+    rules: {
+      // The flat patch-to-column mapping is easier to audit than extracted mutation helpers.
+      'sonarjs/cognitive-complexity': 'off',
     },
   },
   {

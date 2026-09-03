@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+env:
+  CI: true
+  DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/oryxel_ci
+  ORIGIN: http://127.0.0.1:4173
+  BETTER_AUTH_SECRET: ci-only-better-auth-secret-not-for-production
+  AI_KEYS_ENCRYPTION_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+  JOB_STREAM_JWT_SECRET: ci-only-job-stream-secret-not-for-production
+
+jobs:
+  migration-gate:
+    name: PostgreSQL migration gate
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: oryxel_ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_USER: ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d oryxel_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.12
+      - run: bun install --frozen-lockfile
+      - name: Apply migrations to a fresh database
+        run: bun run --cwd packages/db db:migrate
+      - name: Re-run migrations to verify idempotency
+        run: bun run --cwd packages/db db:migrate
+      - run: bun run --cwd packages/db db:check-history
+
+  static-analysis:
+    name: Static analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.12
+      - run: bun install --frozen-lockfile
+      - run: bun run lint
+      - run: bun run check
+
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.12
+      - run: bun install --frozen-lockfile
+      - run: bunx playwright install --with-deps chromium
+      - run: bun run test
+
+  production-build:
+    name: Production build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.12
+      - run: bun install --frozen-lockfile
+      - run: bun run build

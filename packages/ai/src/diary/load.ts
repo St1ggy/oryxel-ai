@@ -1,9 +1,10 @@
 import { aiRecommendationDismissed, brand, db as database, fragrance, userFragrance } from '@oryxel/db'
-import { asc, desc, eq } from 'drizzle-orm'
+import { logError } from '@oryxel/runtime'
+import { asc, desc, eq, sql } from 'drizzle-orm'
 
 import { extractEnglishKey, lookupTranslations, resolveCommaSeparated } from '../translation/service'
 
-import type { DiaryData, DiaryRow } from '../types/diary'
+import type { DiaryData } from '../types/diary'
 
 function parseNotes(raw: string | null) {
   if (!raw) return []
@@ -14,7 +15,9 @@ function parseNotes(raw: string | null) {
     .filter(Boolean)
 }
 
-/** Collects all individual term keys (split by comma) from a raw DB row for batch translation lookup. */
+//
+// Collects all individual term keys (split by comma) from a raw DB row for batch translation lookup.
+//
 function collectKeys(r: {
   notesSummary: string | null
   pyramidTop: string | null
@@ -102,10 +105,10 @@ export async function loadDiaryForUser(userId: string, locale = 'en') {
         gender: userFragrance.gender,
         fragName: fragrance.name,
         brandName: brand.name,
-        notesSummary: fragrance.notesSummary,
-        pyramidTop: fragrance.pyramidTop,
-        pyramidMid: fragrance.pyramidMid,
-        pyramidBase: fragrance.pyramidBase,
+        notesSummary: sql<string | null>`coalesce(${userFragrance.notesSummary}, ${fragrance.notesSummary})`,
+        pyramidTop: sql<string | null>`coalesce(${userFragrance.pyramidTop}, ${fragrance.pyramidTop})`,
+        pyramidMid: sql<string | null>`coalesce(${userFragrance.pyramidMid}, ${fragrance.pyramidMid})`,
+        pyramidBase: sql<string | null>`coalesce(${userFragrance.pyramidBase}, ${fragrance.pyramidBase})`,
       })
       .from(userFragrance)
       .innerJoin(fragrance, eq(userFragrance.fragranceId, fragrance.id))
@@ -141,7 +144,7 @@ export async function loadDiaryForUser(userId: string, locale = 'en') {
 
     return result
   } catch (error) {
-    console.error('[diary/load] Failed to load diary from database:', error)
+    logError('ai', 'diary.load_failed', error, { component: 'diary' })
 
     return { to_try: [], liked: [], neutral: [], disliked: [], owned: [] }
   }
@@ -168,7 +171,7 @@ export async function loadDismissedForUser(userId: string) {
 
     return rows
   } catch (error) {
-    console.error('[diary/load] Failed to load dismissed list:', error)
+    logError('ai', 'diary.dismissed_load_failed', error, { component: 'diary' })
 
     return []
   }

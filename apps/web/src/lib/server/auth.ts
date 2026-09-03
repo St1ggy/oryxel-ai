@@ -3,13 +3,18 @@ import { betterAuth } from 'better-auth/minimal'
 import { genericOAuth } from 'better-auth/plugins'
 import { sveltekitCookies } from 'better-auth/svelte-kit'
 
+import { SENSITIVE_ACTION_FRESH_AGE_SECONDS } from '$lib/server/auth/fresh-session'
 import { db } from '$lib/server/db'
 import * as schema from '$lib/server/db/schema'
+import { createRedisAuthRateLimitStorage } from '$lib/server/rate-limit'
+import { getRedisClient } from '$lib/server/redis'
 
+import { dev } from '$app/environment'
 import { getRequestEvent } from '$app/server'
 import { env } from '$env/dynamic/private'
 
 const socialProviders: Record<string, { clientId: string; clientSecret: string }> = {}
+const authRateLimitStorage = createRedisAuthRateLimitStorage(getRedisClient())
 
 if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
   socialProviders.google = { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET }
@@ -35,8 +40,20 @@ export const auth = betterAuth({
   baseURL: env.ORIGIN,
   secret: env.BETTER_AUTH_SECRET,
   database: drizzleAdapter(db, { provider: 'pg', schema }),
+  rateLimit: {
+    enabled: !dev,
+    window: 60,
+    max: 100,
+    customStorage: authRateLimitStorage,
+  },
   emailAndPassword: { enabled: false },
+  session: {
+    freshAge: SENSITIVE_ACTION_FRESH_AGE_SECONDS,
+    storeSessionInDatabase: true,
+  },
+  verification: { storeInDatabase: true },
   account: {
+    storeStateStrategy: 'cookie',
     accountLinking: {
       enabled: true,
       allowDifferentEmails: true,

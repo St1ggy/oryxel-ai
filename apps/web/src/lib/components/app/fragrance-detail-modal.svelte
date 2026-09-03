@@ -1,10 +1,8 @@
 <script lang="ts">
   import { Sparkles } from '@lucide/svelte'
-  /* eslint-disable import-x/no-duplicates -- easing vs transition are separate runtime modules */
   import { Dialog } from 'bits-ui'
   import { cubicOut } from 'svelte/easing'
   import { fly } from 'svelte/transition'
-  /* eslint-enable import-x/no-duplicates */
 
   import FragranceActionsMenu from '$lib/components/app/fragrance-actions-menu.svelte'
   import FragranceMetaChips from '$lib/components/app/fragrance-meta-chips.svelte'
@@ -191,8 +189,7 @@
                   onkeydown={onCommentKeydown}
                   rows="3"
                   class="w-full resize-none rounded-lg bg-muted/50 px-3 py-2.5 text-sm leading-relaxed text-foreground transition-colors outline-none placeholder:text-foreground-muted/30 focus:bg-muted/80"
-                  placeholder={m.oryxel_detail_your_note_placeholder()}
-                ></textarea>
+                  placeholder={m.oryxel_detail_your_note_placeholder()}></textarea>
                 {#if commentDirty}
                   <p class="mt-1.5 text-right text-[11px] text-foreground-muted/35">
                     {commentSaving ? '…' : '⌘↵'}

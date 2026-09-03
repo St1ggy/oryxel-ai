@@ -1,10 +1,8 @@
 <script lang="ts">
   import { ArrowRightLeft } from '@lucide/svelte'
-  /* eslint-disable import-x/no-duplicates -- svelte and svelte/transition resolve to the same .d.ts but are distinct runtime modules */
   import { onMount } from 'svelte'
   import { fade } from 'svelte/transition'
 
-  /* eslint-enable import-x/no-duplicates */
   import Button from '$lib/components/ui/button.svelte'
   import * as m from '$lib/paraglide/messages.js'
 

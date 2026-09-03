@@ -1,5 +1,7 @@
-import { createJob, followUser, getProfileByUsername, unfollowUser } from '@oryxel/ai/server'
+import { followUser, getProfileByUsername, unfollowUser } from '@oryxel/ai/server'
 import { error, json } from '@sveltejs/kit'
+
+import { createObservedJob } from '$lib/server/ai/jobs'
 
 import type { RequestHandler } from './$types'
 
@@ -13,7 +15,7 @@ export const POST: RequestHandler = async ({ params, locals }) => {
   const ok = await followUser(locals.user.id, profile.userId)
 
   if (ok) {
-    await createJob(profile.userId, 'notify_follow', {
+    await createObservedJob(locals.requestId, profile.userId, 'notify_follow', {
       followerId: locals.user.id,
       followingId: profile.userId,
     })

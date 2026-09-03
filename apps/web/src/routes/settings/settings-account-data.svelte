@@ -15,7 +15,11 @@
     try {
       const response = await fetch(`/api/account/export?format=${format}`)
 
-      if (!response.ok) throw new Error(`Failed with ${response.status}`)
+      if (!response.ok) {
+        errorText = response.status === 403 ? m.oryxel_settings_account_fresh_session() : exportErrorLabel
+
+        return
+      }
 
       const blob = await response.blob()
       const url = URL.createObjectURL(blob)
@@ -49,7 +53,12 @@
         body: JSON.stringify({ confirmText: 'DELETE' }),
       })
 
-      if (!response.ok) throw new Error(`Failed with ${response.status}`)
+      if (!response.ok) {
+        errorText =
+          response.status === 403 ? m.oryxel_settings_account_fresh_session() : m.oryxel_settings_error_delete_all()
+
+        return
+      }
 
       globalThis.location.href = '/login'
     } catch {

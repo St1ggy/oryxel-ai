@@ -3,13 +3,6 @@ import { and, eq } from 'drizzle-orm'
 
 import type { Visibility } from './types.js'
 
-const RANK: Record<Visibility, number> = {
-  private: 0,
-  followers: 1,
-  unlisted: 2,
-  public: 3,
-}
-
 export function isVisibility(value: string): value is Visibility {
   return value === 'private' || value === 'followers' || value === 'public' || value === 'unlisted'
 }
@@ -44,17 +37,34 @@ export async function canView(viewerId: string | null, ownerId: string, visibili
   return false
 }
 
-export function visibilityAtLeast(visibility: Visibility, minimum: Visibility) {
-  return RANK[visibility] >= RANK[minimum]
+export async function canDiscover(viewerId: string | null, ownerId: string, visibility: Visibility) {
+  if (viewerId === ownerId) return true
+
+  if (visibility === 'unlisted') return false
+
+  return canView(viewerId, ownerId, visibility)
+}
+
+export function shouldNotifyFollowers(visibility: Visibility) {
+  return visibility === 'followers' || visibility === 'public'
+}
+
+export function resolveVisibility(
+  requested: Visibility | undefined,
+  savedDefault: string | null | undefined,
+  fallback: Visibility,
+) {
+  if (requested) return requested
+
+  return savedDefault && isVisibility(savedDefault) ? savedDefault : fallback
 }
 
 export function slugifyTitle(title: string) {
-  const base = title
+  const normalized = title
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 48)
+    .replaceAll(/[^a-z0-9]+/g, '-')
+  const base = normalized.replaceAll(/^-|-$/g, '').slice(0, 48)
 
   return base.length > 0 ? base : 'list'
 }

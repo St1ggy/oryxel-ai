@@ -1,19 +1,19 @@
+import { normalizeLocale } from '@oryxel/ai/server'
 import { error, json } from '@sveltejs/kit'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
-import { applyPatchToDatabase, listAgentMemoryEntriesForUser } from '$lib/server/ai/apply'
+import { listAgentMemoryEntriesForUser } from '$lib/server/ai/apply'
 import { isCriticalPatch } from '$lib/server/ai/decision'
 import { getUserDefaultProvider } from '$lib/server/ai/keys/service'
 import { analyzePreferences } from '$lib/server/ai/router'
 import {
-  appendPatchAuditLog,
+  applyPendingPatch,
   createChatMessage,
   createPendingPatch,
   loadRecentChatMessages,
-  updatePatchStatus,
 } from '$lib/server/ai/storage'
-import { db } from '$lib/server/db'
+import { db, withUserDataLock } from '$lib/server/db'
 import { userAiPreferences } from '$lib/server/db/schema'
 import { loadDiaryForUser } from '$lib/server/diary/load'
 import { loadProfileForUser } from '$lib/server/profile/load'
@@ -239,172 +239,161 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   }
 
   const body = bodySchema.parse(await request.json())
-  const locale = body.locale ?? 'en'
+  const locale = normalizeLocale(body.locale ?? 'en')
   const scenario = body.scenario ?? inferScenarioFromMessage(body.message)
 
-  await createChatMessage({
-    userId: locals.user.id,
-    role: 'user',
-    content: body.message,
-    locale,
-    scenario,
-  })
+  return withUserDataLock(locals.user.id, async () => {
+    await createChatMessage({
+      userId: locals.user.id,
+      role: 'user',
+      content: body.message,
+      locale,
+      scenario,
+    })
 
-  const [profile, diary, defaultProvider, recentMessages, agentMemoryEntries, aiPrefs] = await Promise.all([
-    loadProfileForUser(locals.user.id, locals.user.name || 'User'),
-    loadDiaryForUser(locals.user.id, locale),
-    getUserDefaultProvider(locals.user.id),
-    loadRecentChatMessages(locals.user.id, 6),
-    listAgentMemoryEntriesForUser(locals.user.id),
-    db
-      .select({
-        minRecommendations: userAiPreferences.minRecommendations,
-        maxRecommendations: userAiPreferences.maxRecommendations,
-        minPyramidNotes: userAiPreferences.minPyramidNotes,
-        maxPyramidNotes: userAiPreferences.maxPyramidNotes,
-        tone: userAiPreferences.tone,
-        depth: userAiPreferences.depth,
-        systemPromptMode: userAiPreferences.systemPromptMode,
-        systemPromptAppend: userAiPreferences.systemPromptAppend,
-        systemPromptReplace: userAiPreferences.systemPromptReplace,
-      })
-      .from(userAiPreferences)
-      .where(eq(userAiPreferences.userId, locals.user.id))
-      .limit(1)
-      .then((rows) => rows[0]),
-  ])
+    const [profile, diary, defaultProvider, recentMessages, agentMemoryEntries, aiPrefs] = await Promise.all([
+      loadProfileForUser(locals.user.id, locals.user.name || 'User'),
+      loadDiaryForUser(locals.user.id, locale),
+      getUserDefaultProvider(locals.user.id),
+      loadRecentChatMessages(locals.user.id, 6),
+      listAgentMemoryEntriesForUser(locals.user.id),
+      db
+        .select({
+          minRecommendations: userAiPreferences.minRecommendations,
+          maxRecommendations: userAiPreferences.maxRecommendations,
+          minPyramidNotes: userAiPreferences.minPyramidNotes,
+          maxPyramidNotes: userAiPreferences.maxPyramidNotes,
+          tone: userAiPreferences.tone,
+          depth: userAiPreferences.depth,
+          systemPromptMode: userAiPreferences.systemPromptMode,
+          systemPromptAppend: userAiPreferences.systemPromptAppend,
+          systemPromptReplace: userAiPreferences.systemPromptReplace,
+        })
+        .from(userAiPreferences)
+        .where(eq(userAiPreferences.userId, locals.user.id))
+        .limit(1)
+        .then((rows) => rows[0]),
+    ])
 
-  const context = {
-    profile: {
-      displayName: profile.displayName,
-      bio: profile.bio,
-      preferences: profile.preferences || undefined,
-      archetype: profile.archetype ?? undefined,
-      favoriteNote: profile.favoriteNote ?? undefined,
-      radar: Object.fromEntries(profile.radarAxes.map(({ key, value }) => [key, value])),
-      gender: (profile.gender as 'male' | 'female' | null | undefined) ?? undefined,
-      noteRelationships: profile.noteRelationships.length > 0 ? profile.noteRelationships : undefined,
-    },
-    diary: {
-      // eslint-disable-next-line camelcase
-      to_try: diary.to_try.map(({ id, brand, fragrance, notes, pyramidTop, pyramidMid, pyramidBase }) => ({
-        id,
-        brand,
-        fragrance,
-        notes: notes.join(', ') || null,
-        pyramidTop,
-        pyramidMid,
-        pyramidBase,
-      })),
-      liked: diary.liked.map(({ id, brand, fragrance, notes, pyramidTop, pyramidMid, pyramidBase, rating }) => ({
-        id,
-        brand,
-        fragrance,
-        notes: notes.join(', ') || null,
-        pyramidTop,
-        pyramidMid,
-        pyramidBase,
-        rating: rating || null,
-      })),
-      disliked: diary.disliked.map(({ id, brand, fragrance, notes, pyramidTop, pyramidMid, pyramidBase }) => ({
-        id,
-        brand,
-        fragrance,
-        notes: notes.join(', ') || null,
-        pyramidTop,
-        pyramidMid,
-        pyramidBase,
-      })),
-      owned: diary.owned.map(({ id, brand, fragrance, notes, pyramidTop, pyramidMid, pyramidBase, rating }) => ({
-        id,
-        brand,
-        fragrance,
-        notes: notes.join(', ') || null,
-        pyramidTop,
-        pyramidMid,
-        pyramidBase,
-        rating: rating || null,
-      })),
-    },
-    budget: body.context?.budget,
-    recentMessages,
-    agentMemoryEntries: agentMemoryEntries.length > 0 ? agentMemoryEntries : undefined,
-  }
-
-  const router = await analyzePreferences({
-    userId: locals.user.id,
-    message: body.message,
-    locale,
-    scenario,
-    context,
-    preferredProvider: body.provider ?? defaultProvider ?? undefined,
-    minRecommendations: aiPrefs?.minRecommendations,
-    maxRecommendations: aiPrefs?.maxRecommendations,
-    minPyramidNotes: aiPrefs?.minPyramidNotes,
-    maxPyramidNotes: aiPrefs?.maxPyramidNotes,
-    tone: aiPrefs?.tone ?? undefined,
-    depth: aiPrefs?.depth ?? undefined,
-    systemPromptMode: (aiPrefs?.systemPromptMode as 'default' | 'append' | 'replace' | undefined) ?? undefined,
-    systemPromptAppend: aiPrefs?.systemPromptAppend ?? undefined,
-    systemPromptReplace: aiPrefs?.systemPromptReplace ?? undefined,
-  })
-
-  const patch = router.result.patch
-  const critical = isCriticalPatch(patch)
-  const pendingPatch = await createPendingPatch({
-    userId: locals.user.id,
-    patch,
-    patchType: critical ? 'critical' : 'minor',
-    attempts: router.attempts as unknown as Record<string, unknown>[],
-  })
-
-  if (!critical) {
-    try {
-      await applyPatchToDatabase(locals.user.id, patch)
-      void generateMissingTranslations(locals.user.id, locale)
-      await updatePatchStatus({
-        patchId: pendingPatch.id,
-        userId: locals.user.id,
-        action: 'applied',
-      })
-    } catch (error_) {
-      await updatePatchStatus({
-        patchId: pendingPatch.id,
-        userId: locals.user.id,
-        action: 'failed',
-        failureReason: error_ instanceof Error ? error_.message : 'Patch apply failed',
-      })
-      await appendPatchAuditLog({
-        userId: locals.user.id,
-        patchId: pendingPatch.id,
-        action: 'apply_failed',
-        details: {
-          attempts: router.attempts,
-        },
-      })
-
-      throw error(500, 'PATCH_APPLY_FAILED')
+    const context = {
+      profile: {
+        displayName: profile.displayName,
+        bio: profile.bio,
+        preferences: profile.preferences || undefined,
+        archetype: profile.archetype ?? undefined,
+        favoriteNote: profile.favoriteNote ?? undefined,
+        radar: Object.fromEntries(profile.radarAxes.map(({ key, value }) => [key, value])),
+        gender: (profile.gender as 'male' | 'female' | null | undefined) ?? undefined,
+        noteRelationships: profile.noteRelationships.length > 0 ? profile.noteRelationships : undefined,
+      },
+      diary: {
+        // eslint-disable-next-line camelcase
+        to_try: diary.to_try.map(({ id, brand, fragrance, notes, pyramidTop, pyramidMid, pyramidBase }) => ({
+          id,
+          brand,
+          fragrance,
+          notes: notes.join(', ') || null,
+          pyramidTop,
+          pyramidMid,
+          pyramidBase,
+        })),
+        liked: diary.liked.map(({ id, brand, fragrance, notes, pyramidTop, pyramidMid, pyramidBase, rating }) => ({
+          id,
+          brand,
+          fragrance,
+          notes: notes.join(', ') || null,
+          pyramidTop,
+          pyramidMid,
+          pyramidBase,
+          rating: rating || null,
+        })),
+        disliked: diary.disliked.map(({ id, brand, fragrance, notes, pyramidTop, pyramidMid, pyramidBase }) => ({
+          id,
+          brand,
+          fragrance,
+          notes: notes.join(', ') || null,
+          pyramidTop,
+          pyramidMid,
+          pyramidBase,
+        })),
+        owned: diary.owned.map(({ id, brand, fragrance, notes, pyramidTop, pyramidMid, pyramidBase, rating }) => ({
+          id,
+          brand,
+          fragrance,
+          notes: notes.join(', ') || null,
+          pyramidTop,
+          pyramidMid,
+          pyramidBase,
+          rating: rating || null,
+        })),
+      },
+      budget: body.context?.budget,
+      recentMessages,
+      agentMemoryEntries: agentMemoryEntries.length > 0 ? agentMemoryEntries : undefined,
     }
-  }
 
-  const assistantMessage =
-    patch.reply ?? (critical ? `CRITICAL_PENDING:${patch.summary}` : `PATCH_APPLIED:${patch.summary}`)
+    const router = await analyzePreferences({
+      userId: locals.user.id,
+      message: body.message,
+      locale,
+      scenario,
+      context,
+      preferredProvider: body.provider ?? defaultProvider ?? undefined,
+      minRecommendations: aiPrefs?.minRecommendations,
+      maxRecommendations: aiPrefs?.maxRecommendations,
+      minPyramidNotes: aiPrefs?.minPyramidNotes,
+      maxPyramidNotes: aiPrefs?.maxPyramidNotes,
+      tone: aiPrefs?.tone ?? undefined,
+      depth: aiPrefs?.depth ?? undefined,
+      systemPromptMode: (aiPrefs?.systemPromptMode as 'default' | 'append' | 'replace' | undefined) ?? undefined,
+      systemPromptAppend: aiPrefs?.systemPromptAppend ?? undefined,
+      systemPromptReplace: aiPrefs?.systemPromptReplace ?? undefined,
+    })
 
-  await createChatMessage({
-    userId: locals.user.id,
-    role: 'assistant',
-    content: assistantMessage,
-    locale,
-    scenario,
-  })
+    const patch = router.result.patch
+    const critical = isCriticalPatch(patch)
+    const pendingPatch = await createPendingPatch({
+      userId: locals.user.id,
+      patch,
+      patchType: critical ? 'critical' : 'minor',
+      attempts: router.attempts as unknown as Record<string, unknown>[],
+    })
 
-  return json({
-    ok: true,
-    requiresConfirmation: critical,
-    pendingPatchId: pendingPatch.id,
-    summary: patch.summary,
-    reply: patch.reply,
-    attempts: router.attempts,
-    ...(critical ? {} : { appliedPatch: patch as unknown as Record<string, unknown> }),
+    if (!critical) {
+      try {
+        const result = await applyPendingPatch({
+          patchId: pendingPatch.id,
+          userId: locals.user.id,
+          expectedStatus: 'created',
+        })
+
+        if (result.status !== 'applied') throw new Error(`Unexpected patch status: ${result.status}`)
+
+        await generateMissingTranslations(locals.user.id, locale)
+      } catch {
+        throw error(500, 'PATCH_APPLY_FAILED')
+      }
+    }
+
+    const assistantMessage =
+      patch.reply ?? (critical ? `CRITICAL_PENDING:${patch.summary}` : `PATCH_APPLIED:${patch.summary}`)
+
+    await createChatMessage({
+      userId: locals.user.id,
+      role: 'assistant',
+      content: assistantMessage,
+      locale,
+      scenario,
+    })
+
+    return json({
+      ok: true,
+      requiresConfirmation: critical,
+      pendingPatchId: pendingPatch.id,
+      summary: patch.summary,
+      reply: patch.reply,
+      attempts: router.attempts,
+      ...(critical ? {} : { appliedPatch: patch as unknown as Record<string, unknown> }),
+    })
   })
 }

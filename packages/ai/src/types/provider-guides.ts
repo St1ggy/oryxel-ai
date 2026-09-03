@@ -1,3 +1,5 @@
+import { normalizeLocale } from '../i18n/locale.js'
+
 export type ProviderGuideId = 'openai' | 'anthropic' | 'gemini' | 'qwen' | 'perplexity' | 'groq' | 'deepseek'
 
 export type ProviderGuide = {
@@ -40,7 +42,7 @@ export const PROVIDER_GUIDES: Record<ProviderGuideId, ProviderGuide> = {
         'Copiez la clé — elle est affichée une seule fois.',
         'Ajoutez la clé dans Oryxel (fournisseur Groq).',
       ],
-      jp: [
+      ja: [
         'Groq Consoleを開いて登録します（無料）。',
         'API Keysに移動してCreate API Keyをクリック。',
         'キーをコピー（一度だけ表示されます）。',
@@ -74,7 +76,7 @@ export const PROVIDER_GUIDES: Record<ProviderGuideId, ProviderGuide> = {
         'Groq utilise des accélérateurs LPU — réponses très rapides.',
         '429 signifie que la limite journalière du plan gratuit est dépassée.',
       ],
-      jp: [
+      ja: [
         '無料プラン：ほとんどのモデルで1日14,400リクエスト。',
         'GroqはLPUアクセラレーターを使用 — 応答が非常に速い。',
         '429は無料プランの1日制限を超えたことを意味します。',
@@ -116,7 +118,7 @@ export const PROVIDER_GUIDES: Record<ProviderGuideId, ProviderGuide> = {
         'Copiez la clé et conservez-la en lieu sûr.',
         'Ajoutez la clé dans Oryxel (fournisseur DeepSeek).',
       ],
-      jp: [
+      ja: [
         'DeepSeek Platformにアクセスしてアカウントを作成。',
         'API Keysに移動して新しいキーを作成。',
         'キーをコピーして安全な場所に保管。',
@@ -150,7 +152,7 @@ export const PROVIDER_GUIDES: Record<ProviderGuideId, ProviderGuide> = {
         'Les nouveaux comptes reçoivent des crédits de départ.',
         '401 — clé invalide ; 402 — crédits insuffisants.',
       ],
-      jp: [
+      ja: [
         'DeepSeek V3は非常に安価（1Mトークンあたり$0.27/$1.10）。',
         '新規アカウントにはスタータークレジットが付与されます。',
         '401 — 無効なキー；402 — クレジット不足。',
@@ -192,7 +194,7 @@ export const PROVIDER_GUIDES: Record<ProviderGuideId, ProviderGuide> = {
         'Copiez la clé immédiatement après la création — elle est affichée complète une seule fois.',
         'Ajoutez la clé dans Oryxel et définissez-la comme fournisseur par défaut si nécessaire.',
       ],
-      jp: [
+      ja: [
         'OpenAI PlatformでAPI Keysを開きます。',
         'Create new secret keyをクリックして名前を付けます（例：Oryxel Prod）。',
         '作成直後にキーをコピー——完全なキーは一度だけ表示されます。',
@@ -226,7 +228,7 @@ export const PROVIDER_GUIDES: Record<ProviderGuideId, ProviderGuide> = {
         '401 indique généralement une clé invalide ou révoquée.',
         '429 — limite RPM/TPM atteinte ou crédits épuisés.',
       ],
-      jp: [
+      ja: [
         'API呼び出しにはOpenAIアカウントの有効な課金/クレジットが必要です。',
         '401は通常、無効または取り消されたキーを意味します。',
         '429 — RPM/TPMレート制限またはクレジット枯渇。',
@@ -268,7 +270,7 @@ export const PROVIDER_GUIDES: Record<ProviderGuideId, ProviderGuide> = {
         'Copiez la clé et enregistrez-la dans un gestionnaire de mots de passe.',
         'Collez la clé dans Oryxel et testez-la avec une requête de chat.',
       ],
-      jp: [
+      ja: [
         'Anthropic ConsoleでSettings → API Keysを開きます。',
         '新しいキーを作成して名前を付けます（例：Oryxel）。',
         'キーをコピーしてパスワードマネージャーに保存。',
@@ -302,7 +304,7 @@ export const PROVIDER_GUIDES: Record<ProviderGuideId, ProviderGuide> = {
         '401 — clé invalide/supprimée ; 403 — restrictions workspace/organisation.',
         '429 — limites de requêtes ou quota de compte.',
       ],
-      jp: [
+      ja: [
         '必要なモデルがワークスペースで利用可能か確認してください。',
         '401 — 無効/削除済みキー；403 — ワークスペース/組織の制限。',
         '429 — リクエスト制限またはアカウントクォータ。',
@@ -344,7 +346,7 @@ export const PROVIDER_GUIDES: Record<ProviderGuideId, ProviderGuide> = {
         "Copiez la clé et assurez-vous d'utiliser le bon projet.",
         'Ajoutez la clé dans Oryxel (fournisseur Gemini) et sauvegardez.',
       ],
-      jp: [
+      ja: [
         'Google AI StudioでAPI keysセクションに移動。',
         '必要なGoogle CloudプロジェクトのキーをCreate。',
         'キーをコピーして正しいプロジェクトを使用しているか確認。',
@@ -378,7 +380,7 @@ export const PROVIDER_GUIDES: Record<ProviderGuideId, ProviderGuide> = {
         '403 est souvent lié aux autorisations du projet ou aux restrictions régionales.',
         "429 signifie que les limites d'utilisation sont dépassées.",
       ],
-      jp: [
+      ja: [
         'プロジェクトで必要なGemini API/クォータが有効になっているか確認してください。',
         '403はプロジェクトの権限や地域制限に関連することが多いです。',
         '429は使用制限を超えたことを意味します。',
@@ -416,7 +418,7 @@ export const PROVIDER_GUIDES: Record<ProviderGuideId, ProviderGuide> = {
         'Sélectionnez un workspace (généralement default), créez la clé et copiez-la immédiatement.',
         "Ajoutez la clé dans Oryxel comme Qwen. En cas de 401/403, vérifiez que la région et l'endpoint correspondent.",
       ],
-      jp: [
+      ja: [
         'Alibaba Cloud Model Studioにログインして右上で必要なリージョンを選択。',
         'API KeyページでCreate API Keyをクリック。',
         'ワークスペース（通常はdefault）を選択してキーを作成し、すぐにコピー。',
@@ -450,7 +452,7 @@ export const PROVIDER_GUIDES: Record<ProviderGuideId, ProviderGuide> = {
         '401 — clé invalide ou non-correspondance région/endpoint.',
         '429 — limites/quotas. Vérifiez Free Trial et Billing dans Alibaba Cloud.',
       ],
-      jp: [
+      ja: [
         'キーのリージョンはエンドポイントのリージョンと一致している必要があります（エラーのよくある原因）。',
         '401 — 無効なキーまたはリージョン/エンドポイントの不一致。',
         '429 — 制限/クォータ。Alibaba CloudのFree TrialとBillingを確認。',
@@ -492,7 +494,7 @@ export const PROVIDER_GUIDES: Record<ProviderGuideId, ProviderGuide> = {
         'Ajoutez la clé dans Oryxel (fournisseur Perplexity).',
         "Vérifiez qu'un modèle pris en charge est sélectionné pour votre cas d'usage (ex. famille sonar).",
       ],
-      jp: [
+      ja: [
         'Perplexity API settingsを開いて新しいAPIキーを作成。',
         'キーをコピーして安全な場所に保管。',
         'OryxelにキーをPerplexityプロバイダーとして追加。',
@@ -526,7 +528,7 @@ export const PROVIDER_GUIDES: Record<ProviderGuideId, ProviderGuide> = {
         '401 — clé invalide ou révoquée.',
         '429 — limite de requêtes ou quota de compte atteint.',
       ],
-      jp: [
+      ja: [
         'Perplexity APIの課金は通常のPerplexity Proサブスクリプションとは別です。',
         '401 — 無効または取り消されたキー。',
         '429 — リクエスト制限またはアカウントクォータに達しました。',
@@ -552,7 +554,8 @@ export const PROVIDER_DISPLAY_NAME: Record<ProviderGuideId, string> = {
 
 export function getProviderGuideLocalized(id: ProviderGuideId, locale: string) {
   const guide = PROVIDER_GUIDES[id]
-  const lang = locale in guide.steps ? locale : 'en'
+  const normalizedLocale = normalizeLocale(locale)
+  const lang = normalizedLocale in guide.steps ? normalizedLocale : 'en'
 
   return { steps: guide.steps[lang] ?? guide.steps['en'], notes: guide.notes[lang] ?? guide.notes['en'] }
 }

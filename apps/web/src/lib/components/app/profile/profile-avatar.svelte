@@ -29,7 +29,7 @@
   style="background: linear-gradient(135deg, var(--oryx-accent-a), var(--oryx-accent-b)); box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);"
 >
   {#if src}
-    <img {src} alt={alt} class="size-full object-cover" />
+    <img {src} {alt} class="size-full object-cover" />
   {:else}
     {initials}
   {/if}

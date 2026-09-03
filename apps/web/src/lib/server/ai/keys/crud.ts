@@ -5,13 +5,7 @@ import { userAiPreferences, userAiProviderKey } from '$lib/server/db/schema'
 
 import { decryptSecret, encryptSecret } from '../crypto/secret-box'
 
-import {
-  DEFAULT_LABEL_BY_PROVIDER,
-  type ProviderId,
-  type ProviderKeyListItem,
-  assertProvider,
-  toKeyHint,
-} from './types'
+import { DEFAULT_LABEL_BY_PROVIDER, type ProviderId, assertProvider, toKeyHint } from './types'
 
 export async function listUserProviderKeys(userId: string) {
   const rows = await db

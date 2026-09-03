@@ -2,17 +2,21 @@
   "name": "oryxel-ai",
   "private": true,
   "packageManager": "bun@1.2.12",
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "start:worker": "bun run --cwd apps/worker start",
     "start:job-stream-gateway": "bun run --cwd apps/job-stream-gateway start",
     "dev": "bun run --cwd apps/web dev",
-    "build": "bun run --cwd apps/web build",
-    "check": "bun run --cwd apps/web check",
-    "lint": "bun run --cwd apps/web lint && bun run --cwd apps/worker lint && bun run --cwd apps/job-stream-gateway lint && bun run --cwd packages/ai lint && bun run --cwd packages/db lint",
-    "format": "bun run --cwd apps/web format && bun run --cwd apps/worker format && bun run --cwd apps/job-stream-gateway format && bun run --cwd packages/ai format && bun run --cwd packages/db format",
+    "build": "bun run --cwd apps/web build && bun run --cwd apps/worker build && bun run --cwd apps/job-stream-gateway build",
+    "check": "bun run --cwd apps/web check && bun run --cwd apps/worker check && bun run --cwd apps/job-stream-gateway check && bun run --cwd packages/runtime typecheck && bun run --cwd packages/db typecheck && bun run --cwd packages/db db:check && bun run --cwd packages/db db:check-history && bun run --cwd packages/catalog-db typecheck && bun run --cwd packages/catalog-db db:check && bun run --cwd packages/catalog-db db:check-history",
+    "test": "bun run --cwd packages/ai test && bun run --cwd packages/runtime test && bun run --cwd packages/db test && bun run --cwd apps/worker test && bun run --cwd apps/job-stream-gateway test && bun run --cwd apps/web test",
+    "verify": "bun run lint && bun run check && bun run test && bun run build",
+    "lint": "bun run --cwd apps/web lint && bun run --cwd apps/worker lint && bun run --cwd apps/job-stream-gateway lint && bun run --cwd packages/ai lint && bun run --cwd packages/runtime lint && bun run --cwd packages/db lint && bun run --cwd packages/catalog-db lint",
+    "format": "bun run --cwd apps/web format && bun run --cwd apps/worker format && bun run --cwd apps/job-stream-gateway format && bun run --cwd packages/ai format && bun run --cwd packages/runtime format && bun run --cwd packages/db format && bun run --cwd packages/catalog-db format",
     "db:push": "bun run --cwd packages/db db:push",
-    "db:push:prod": "bun run --cwd packages/db db:push:prod",
     "db:generate": "bun run --cwd packages/db db:generate",
     "db:migrate": "bun run --cwd packages/db db:migrate",
     "db:migrate:prod": "bun run --cwd packages/db db:migrate:prod",
@@ -20,15 +24,17 @@
   },
   "dependencies": {
     "drizzle-orm": "^0.45.2",
-    "zod": "^4.4.3"
+    "zod": "^4.5.1"
   },
   "overrides": {
-    "@better-auth/core": "1.6.9",
+    "@better-auth/core": "1.7.2",
     "drizzle-orm": "0.45.2",
-    "vite": "8.0.11",
-    "zod": "4.4.3"
+    "eslint": "9.39.4",
+    "typescript": "5.9.3",
+    "vite": "8.2.2",
+    "zod": "4.5.1"
   },
   "devDependencies": {
-    "@st1ggy/linter-config": "6.3.2"
+    "@st1ggy/linter-config": "^2.1.7"
   }
 }

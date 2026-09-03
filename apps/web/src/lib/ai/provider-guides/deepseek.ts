@@ -30,7 +30,7 @@ export const deepseek: ProviderGuide = {
       'Copiez la clé et conservez-la en lieu sûr.',
       'Ajoutez la clé dans Oryxel (fournisseur DeepSeek).',
     ],
-    jp: [
+    ja: [
       'DeepSeek Platformにアクセスしてアカウントを作成。',
       'API Keysに移動して新しいキーを作成。',
       'キーをコピーして安全な場所に保管。',
@@ -64,7 +64,7 @@ export const deepseek: ProviderGuide = {
       'Les nouveaux comptes reçoivent des crédits de départ.',
       '401 — clé invalide ; 402 — crédits insuffisants.',
     ],
-    jp: [
+    ja: [
       'DeepSeek V3は非常に安価（1Mトークンあたり$0.27/$1.10）。',
       '新規アカウントにはスタータークレジットが付与されます。',
       '401 — 無効なキー；402 — クレジット不足。',

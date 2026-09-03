@@ -1,3 +1,5 @@
+import { logEvent } from '@oryxel/runtime'
+
 import type { StructuredPreferencePatch } from './contracts'
 
 export type PatchDisplayLimits = {
@@ -18,7 +20,9 @@ function countTierNotes(value: string | null | undefined) {
     .filter(Boolean).length
 }
 
-/** Returns human-readable violation messages (empty if patch is within limits). */
+//
+// Returns human-readable violation messages (empty if patch is within limits).
+//
 /* eslint-disable sonarjs/cognitive-complexity -- branchy validation kept explicit for auditability */
 export function getPatchDisplayLimitViolations(
   patch: StructuredPreferencePatch,
@@ -85,9 +89,10 @@ export function warnIfPatchViolatesDisplayLimits(
     return
   }
 
-  console.warn('[ai-display-limits] Patch outside user display limits', {
-    userId: input.userId,
-    scenario: input.scenario,
-    violations,
-  })
+  logEvent(
+    'ai',
+    'display_limits.violation',
+    { component: 'display-limits', mode: input.scenario, count: violations.length },
+    'warn',
+  )
 }

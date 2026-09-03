@@ -19,10 +19,12 @@ export default defineConfig([
     },
   },
   {
-    files: ['src/migrate.ts'],
+    files: ['src/check-migrations.ts', 'src/migrate.ts', 'src/migrations.ts', 'src/verify-migration.ts'],
     rules: {
-      // Migration runner is a CLI script — console output and process.exit() are intentional.
+      // CLI scripts — console output and process.exit() are intentional.
       'no-console': 'off',
+      // The package targets ES2022, which does not provide Array.prototype.toSorted().
+      'unicorn/no-array-sort': 'off',
       'unicorn/no-process-exit': 'off',
     },
   },

@@ -1,5 +1,5 @@
 import { hsl } from 'd3-color'
-import { type Simulation, forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY } from 'd3-force'
+import { forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY } from 'd3-force'
 import { select } from 'd3-selection'
 
 import { lightenHex, linkDistanceFactor, linkOpacity, linkThickness, truncateLabel } from '../common'

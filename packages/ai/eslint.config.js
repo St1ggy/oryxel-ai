@@ -11,6 +11,8 @@ export default defineConfig([
       'import/extensions': 'off',
       // Server-side package — console logging is expected.
       'no-console': 'off',
+      // Parsers and mode sanitizers intentionally return discriminated unions.
+      'sonarjs/function-return-type': 'off',
       // Node <20 compat: uses [...arr].reverse() instead of toReversed().
       'unicorn/no-array-reverse': 'off',
     },
@@ -30,7 +32,7 @@ export default defineConfig([
     },
   },
   {
-    files: ['src/diary/load.ts'],
+    files: ['src/diary/load.ts', 'src/social/apply-list-ops.ts'],
     rules: {
       // Parsing logic has inherent branching; complexity is acceptable here.
       'sonarjs/cognitive-complexity': 'off',

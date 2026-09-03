@@ -76,20 +76,14 @@ function asRecord(v: unknown) {
 
 function number_(v: unknown) {
   if (typeof v === 'number' && !Number.isNaN(v)) return v
-
-  return
 }
 
 function string_(v: unknown) {
   if (typeof v === 'string' && v.length > 0) return v
-
-  return
 }
 
 function bool(v: unknown) {
   if (typeof v === 'boolean') return v
-
-  return
 }
 
 function parseTableOps(raw: unknown) {

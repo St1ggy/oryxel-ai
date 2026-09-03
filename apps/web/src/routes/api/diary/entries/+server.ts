@@ -1,7 +1,7 @@
 import { error, json } from '@sveltejs/kit'
 import { z } from 'zod'
 
-import { db } from '$lib/server/db'
+import { db, withUserDataLock } from '$lib/server/db'
 import { userFragrance } from '$lib/server/db/schema'
 import { findOrCreateBrand, findOrCreateFragrance } from '$lib/server/diary/find-or-create'
 import { listTypeToFlags } from '$lib/server/diary/flags'
@@ -20,27 +20,31 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
   const body = postBodySchema.parse(await request.json())
   const flags = listTypeToFlags(body.listType)
+  const notesSummary = body.notes?.trim() || null
 
-  const entry = await db.transaction(async (tx) => {
-    const brandId = await findOrCreateBrand(tx, body.brand)
-    const fragranceId = await findOrCreateFragrance(tx, brandId, body.fragrance, body.notes || null)
+  const entry = await withUserDataLock(locals.user.id, () =>
+    db.transaction(async (tx) => {
+      const brandId = await findOrCreateBrand(tx, body.brand, locals.user!.id)
+      const fragranceId = await findOrCreateFragrance(tx, brandId, body.fragrance, locals.user!.id)
 
-    const [inserted] = await tx
-      .insert(userFragrance)
-      .values({
-        userId: locals.user!.id,
-        fragranceId,
-        rating: 0,
-        ...flags,
-      })
-      .onConflictDoUpdate({
-        target: [userFragrance.userId, userFragrance.fragranceId],
-        set: flags,
-      })
-      .returning({ id: userFragrance.id })
+      const [inserted] = await tx
+        .insert(userFragrance)
+        .values({
+          userId: locals.user!.id,
+          fragranceId,
+          rating: 0,
+          notesSummary,
+          ...flags,
+        })
+        .onConflictDoUpdate({
+          target: [userFragrance.userId, userFragrance.fragranceId],
+          set: { ...flags, ...(notesSummary && { notesSummary }) },
+        })
+        .returning({ id: userFragrance.id })
 
-    return inserted
-  })
+      return inserted
+    }),
+  )
 
   return json({ id: entry.id })
 }
