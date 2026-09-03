@@ -7,7 +7,12 @@ import { cookieMaxAge, cookieName, getTextDirection } from '$lib/paraglide/runti
 import { paraglideMiddleware } from '$lib/paraglide/server'
 import { auth } from '$lib/server/auth'
 import { getLegacyLocaleRedirect, rewriteLegacyLocaleCookieHeader } from '$lib/server/i18n/compatibility'
-import { consumeRateLimit, createRateLimitKey, resolveRateLimitPolicy } from '$lib/server/rate-limit'
+import {
+  consumeRateLimit,
+  createRateLimitKey,
+  requiresRateLimitStore,
+  resolveRateLimitPolicy,
+} from '$lib/server/rate-limit'
 import { getRedisClient } from '$lib/server/redis'
 
 import type { RateLimitPolicy } from '$lib/server/rate-limit'
@@ -200,7 +205,15 @@ function rateLimitUnavailableResponse(policy: RateLimitPolicy, error: unknown, c
 const handleRateLimit: Handle = async ({ event, resolve }) => {
   const policy = resolveRateLimitPolicy(event.url.pathname, event.request.method)
 
-  if (!policy || !redis) return resolve(event)
+  if (!policy) return resolve(event)
+
+  if (!redis) {
+    if (requiresRateLimitStore(policy)) {
+      return rateLimitUnavailableResponse(policy, new Error('Redis client is not configured'), 'redis_config')!
+    }
+
+    return resolve(event)
+  }
 
   let identity: string
 

@@ -1,4 +1,3 @@
-import { logError } from '@oryxel/runtime'
 import { createHash } from 'node:crypto'
 
 import type Redis from 'ioredis'
@@ -25,14 +24,6 @@ end
 return { current, ttl }
 `
 
-const GET_AND_DELETE_SCRIPT = `
-local value = redis.call('GET', KEYS[1])
-if value then
-  redis.call('DEL', KEYS[1])
-end
-return value
-`
-
 const POLICIES = {
   account: { scope: 'account', windowSeconds: 60 * 60, max: 5, failClosed: true },
   admin: { scope: 'admin', windowSeconds: 60, max: 10, failClosed: true },
@@ -45,7 +36,7 @@ const AI_PATHS = new Set(['/api/agent/preferences', '/api/agent/preferences/stre
 
 const ACCOUNT_PATHS = new Set(['/api/account/delete', '/api/account/export'])
 
-const getAuthStorageKey = (key: string) => `oryxel:auth:${key}`
+const getAuthRateLimitKey = (key: string) => `oryxel:auth-rate-limit:${key}`
 
 export function resolveRateLimitPolicy(pathname: string, method: string): RateLimitPolicy | null {
   const path = pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname
@@ -69,6 +60,10 @@ export function createRateLimitKey(scope: RateLimitPolicy['scope'], identity: st
   const identityHash = createHash('sha256').update(identity).digest('base64url')
 
   return `oryxel:rate-limit:v1:${scope}:${identityHash}`
+}
+
+export function requiresRateLimitStore(policy: RateLimitPolicy) {
+  return policy.failClosed
 }
 
 async function incrementWithTtl(redis: Redis, key: string, ttlSeconds: number) {
@@ -98,36 +93,18 @@ export async function consumeRateLimit(redis: Redis, key: string, policy: RateLi
   }
 }
 
-export function createRedisSecondaryStorage(redis: Redis | null) {
+export function createRedisAuthRateLimitStorage(redis: Redis | null) {
   if (!redis) return
 
   return {
-    get: async (key: string) => {
-      try {
-        return await redis.get(getAuthStorageKey(key))
-      } catch (error) {
-        logError('web', 'auth.cache.read_failed', error, { component: 'redis' })
+    consume: async (key: string, rule: { window: number; max: number }) => {
+      const result = await incrementWithTtl(redis, getAuthRateLimitKey(key), rule.window)
+      const allowed = result.count <= rule.max
 
-        return null
+      return {
+        allowed,
+        retryAfter: allowed ? null : result.remainingTtl,
       }
-    },
-    getAndDelete: async (key: string) => {
-      const value = await redis.eval(GET_AND_DELETE_SCRIPT, 1, getAuthStorageKey(key))
-
-      return typeof value === 'string' ? value : null
-    },
-    set: async (key: string, value: string, ttl?: number) => {
-      await (ttl === undefined
-        ? redis.set(getAuthStorageKey(key), value)
-        : redis.set(getAuthStorageKey(key), value, 'EX', Math.max(1, Math.ceil(ttl))))
-    },
-    delete: async (key: string) => {
-      await redis.del(getAuthStorageKey(key))
-    },
-    increment: async (key: string, ttl?: number) => {
-      const result = await incrementWithTtl(redis, getAuthStorageKey(key), ttl ?? 60)
-
-      return result.count
     },
   }
 }

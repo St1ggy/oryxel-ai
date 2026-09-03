@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { consumeRateLimit, createRateLimitKey, createRedisSecondaryStorage, resolveRateLimitPolicy } from './rate-limit'
+import {
+  consumeRateLimit,
+  createRateLimitKey,
+  createRedisAuthRateLimitStorage,
+  requiresRateLimitStore,
+  resolveRateLimitPolicy,
+} from './rate-limit'
 
 import type Redis from 'ioredis'
 
@@ -55,6 +61,16 @@ describe('createRateLimitKey', () => {
   })
 })
 
+describe('requiresRateLimitStore', () => {
+  it('fails closed without Redis only for sensitive policies', () => {
+    const sensitive = resolveRateLimitPolicy('/api/account/export', 'GET')
+    const ordinary = resolveRateLimitPolicy('/api/search/fragrances', 'GET')
+
+    expect(sensitive && requiresRateLimitStore(sensitive)).toBe(true)
+    expect(ordinary && requiresRateLimitStore(ordinary)).toBe(false)
+  })
+})
+
 describe('consumeRateLimit', () => {
   it('allows requests through the configured maximum', async () => {
     const redis = mockRedis({ eval: vi.fn().mockResolvedValue([10, 41]) })
@@ -96,49 +112,30 @@ describe('consumeRateLimit', () => {
   })
 })
 
-describe('createRedisSecondaryStorage', () => {
-  it('uses the shared atomic counter and namespaces Better Auth keys', async () => {
-    const evalMock = vi.fn().mockResolvedValue([2, 60])
+describe('createRedisAuthRateLimitStorage', () => {
+  it('atomically allows requests and namespaces Better Auth keys', async () => {
+    const evalMock = vi.fn().mockResolvedValue([2, 27])
     const redis = mockRedis({ eval: evalMock })
-    const storage = createRedisSecondaryStorage(redis)
+    const storage = createRedisAuthRateLimitStorage(redis)
 
-    await expect(storage?.increment('rate-limit:ip', 30)).resolves.toBe(2)
-    expect(evalMock).toHaveBeenCalledWith(expect.any(String), 1, 'oryxel:auth:rate-limit:ip', 30)
-  })
-
-  it('supports expiring values and deletion', async () => {
-    const setMock = vi.fn()
-    const delMock = vi.fn()
-    const redis = mockRedis({ del: delMock, set: setMock })
-    const storage = createRedisSecondaryStorage(redis)
-
-    await storage?.set('session', 'value', 12.2)
-    await storage?.delete('session')
-
-    expect(setMock).toHaveBeenCalledWith('oryxel:auth:session', 'value', 'EX', 13)
-    expect(delMock).toHaveBeenCalledWith('oryxel:auth:session')
-  })
-
-  it('lets database-backed sessions fall back when Redis reads fail', async () => {
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => false)
-    const redis = mockRedis({ get: vi.fn().mockRejectedValue(new Error('unavailable')) })
-    const storage = createRedisSecondaryStorage(redis)
-
-    await expect(storage?.get('session')).resolves.toBeNull()
-    expect(errorSpy).toHaveBeenCalledTimes(1)
-    expect(JSON.parse(String(errorSpy.mock.calls[0]?.[0]))).toMatchObject({
-      service: 'web',
-      level: 'error',
-      event: 'auth.cache.read_failed',
-      component: 'redis',
-      errorName: 'Error',
+    await expect(storage?.consume('rate-limit:ip', { window: 30, max: 2 })).resolves.toEqual({
+      allowed: true,
+      retryAfter: null,
     })
-    expect(String(errorSpy.mock.calls[0]?.[0])).not.toContain('unavailable')
+    expect(evalMock).toHaveBeenCalledWith(expect.any(String), 1, 'oryxel:auth-rate-limit:rate-limit:ip', 30)
+  })
 
-    errorSpy.mockRestore()
+  it('reports the remaining Redis window after the limit is exceeded', async () => {
+    const redis = mockRedis({ eval: vi.fn().mockResolvedValue([3, 19]) })
+    const storage = createRedisAuthRateLimitStorage(redis)
+
+    await expect(storage?.consume('rate-limit:ip', { window: 30, max: 2 })).resolves.toEqual({
+      allowed: false,
+      retryAfter: 19,
+    })
   })
 
   it('is disabled when Redis is not configured', () => {
-    expect(createRedisSecondaryStorage(null)).toBeUndefined()
+    expect(createRedisAuthRateLimitStorage(null)).toBeUndefined()
   })
 })
