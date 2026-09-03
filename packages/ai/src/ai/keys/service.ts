@@ -102,6 +102,16 @@ function assertProvider(provider: string): asserts provider is ProviderId {
   }
 }
 
+async function hasPlatformAccess(userId: string) {
+  const [preferences] = await db
+    .select({ platformAccess: userAiPreferences.platformAccess })
+    .from(userAiPreferences)
+    .where(eq(userAiPreferences.userId, userId))
+    .limit(1)
+
+  return preferences?.platformAccess === true
+}
+
 export async function listUserProviderKeys(userId: string) {
   const rows = await db
     .select()
@@ -330,7 +340,7 @@ export async function listProviderApiKeyCandidates(userId: string, provider: Pro
 
   const platformConfig = getPlatformKeyConfig()
 
-  if (platformConfig && platformConfig.provider === provider) {
+  if (platformConfig && platformConfig.provider === provider && (await hasPlatformAccess(userId))) {
     candidates.push({
       key: platformConfig.key,
       source: 'platform',
@@ -407,7 +417,7 @@ export async function hasEffectiveProviderAccess(userId: string) {
 
   if (hasUserKeys || hasAnyFallbackKey()) return true
 
-  return Boolean(getPlatformKeyConfig())
+  return Boolean(getPlatformKeyConfig()) && (await hasPlatformAccess(userId))
 }
 
 export async function grantPlatformAccess(userId: string) {
