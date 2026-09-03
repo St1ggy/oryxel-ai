@@ -1,34 +1,60 @@
-// Verify parity between Neon (old) and Railway (new) Postgres before deleting Neon.
+// Verify parity between source and destination PostgreSQL databases before retiring the source.
 //
 // Checks:
-//   1. Schemas and content fingerprints match for every public table.
-//   2. Worker activity on Railway in the last hour (background_job).
-//   3. Prod endpoint reachability (if PROD_URL is set).
+//   1. Source and destination are different PostgreSQL databases.
+//   2. Migration ledgers and sequence state match.
+//   3. Schemas and content fingerprints match for every public table.
+//   4. Worker activity on the destination in the last hour (background_job).
+//   5. Production readiness is exact and required.
 //
 // Usage:
-//   NEON_URL=... RAILWAY_URL=... PROD_URL=https://oryxel.ai \
+//   SOURCE_DATABASE_URL=... DESTINATION_DATABASE_URL=... PROD_URL=https://oryxel.ai \
 //     bun run --cwd packages/db db:verify-migration
 //
-// Or with an env file (put NEON_URL, RAILWAY_URL, PROD_URL there):
+// Or with an env file (put SOURCE_DATABASE_URL, DESTINATION_DATABASE_URL, PROD_URL there):
 //   bun --env-file=../../.env.verify src/verify-migration.ts
 //
 // Exit codes: 0 = pass, 1 = failures, 2 = missing env.
 import postgres from 'postgres'
 
-const NEON_URL = process.env.NEON_URL
-const RAILWAY_URL = process.env.RAILWAY_URL
-const PROD_URL = process.env.PROD_URL // optional
-const WORKER_WINDOW_HOURS = Number(process.env.WORKER_WINDOW_HOURS ?? '1')
+import {
+  areDatabaseTargetsDistinct,
+  compareMigrationLedgers,
+  compareSequenceStates,
+  compareTableSets,
+  isExactProductionReadiness,
+} from './cutover-verification'
 
-if (!NEON_URL || !RAILWAY_URL) {
-  console.error('Missing required env: NEON_URL and RAILWAY_URL')
-  console.error('Usage: NEON_URL=... RAILWAY_URL=... [PROD_URL=...] bun src/verify-migration.ts')
+import type { DatabaseIdentity, MigrationLedgerRow, SequenceState } from './cutover-verification'
+
+const SOURCE_DATABASE_URL = process.env.SOURCE_DATABASE_URL
+const DESTINATION_DATABASE_URL = process.env.DESTINATION_DATABASE_URL
+const PROD_URL = process.env.PROD_URL
+const WORKER_WINDOW_HOURS = Number(process.env.WORKER_WINDOW_HOURS ?? '1')
+const DESTINATION_EXTRA_TABLE_ALLOWLIST = new Set(
+  (process.env.DESTINATION_EXTRA_TABLE_ALLOWLIST ?? '')
+    .split(',')
+    .map((table) => table.trim())
+    .filter(Boolean),
+)
+
+if (!SOURCE_DATABASE_URL || !DESTINATION_DATABASE_URL || !PROD_URL) {
+  console.error('Missing required env: SOURCE_DATABASE_URL, DESTINATION_DATABASE_URL, and PROD_URL')
+  console.error('Usage: SOURCE_DATABASE_URL=... DESTINATION_DATABASE_URL=... PROD_URL=... bun src/verify-migration.ts')
+  process.exit(2)
+}
+
+const verifiedSourceDatabaseUrl: string = SOURCE_DATABASE_URL
+const verifiedDestinationDatabaseUrl: string = DESTINATION_DATABASE_URL
+
+if (SOURCE_DATABASE_URL === DESTINATION_DATABASE_URL) {
+  console.error('SOURCE_DATABASE_URL and DESTINATION_DATABASE_URL must point to different databases')
   process.exit(2)
 }
 
 for (const [name, url] of [
-  ['NEON_URL', NEON_URL],
-  ['RAILWAY_URL', RAILWAY_URL],
+  ['SOURCE_DATABASE_URL', SOURCE_DATABASE_URL],
+  ['DESTINATION_DATABASE_URL', DESTINATION_DATABASE_URL],
 ] as const) {
   if (!url.includes('.railway.internal')) {
     continue
@@ -43,7 +69,7 @@ for (const [name, url] of [
 
 const EXCLUDE_TABLES = new Set(['__drizzle_migrations'])
 // Tables that legitimately drift after cutover (Better Auth writes to them during normal use):
-//   - `session`   — new logins after cutover add rows in Railway
+//   - `session`   — new logins after cutover add rows in the destination
 //   - `verification` — OAuth state tokens get consumed and deleted after use
 const VOLATILE_TABLES = new Set(['session', 'verification'])
 
@@ -80,8 +106,8 @@ const heading = (message: string) => {
 // eslint-disable-next-line camelcase -- postgres.js option names are snake_case
 const clientOptions = { ssl: 'verify-full' as const, max: 3, idle_timeout: 5, connect_timeout: 15 } as const
 
-const neon = postgres(NEON_URL, clientOptions)
-const railway = postgres(RAILWAY_URL, clientOptions)
+const source = postgres(SOURCE_DATABASE_URL, clientOptions)
+const destination = postgres(DESTINATION_DATABASE_URL, clientOptions)
 
 function describeError(error: unknown): string {
   if (error === undefined || error === null) return String(error)
@@ -125,6 +151,139 @@ async function safeListTables(name: string, sql: postgres.Sql): Promise<string[]
 
     return []
   }
+}
+
+async function getDatabaseIdentity(sql: postgres.Sql) {
+  const [identity] = await sql<DatabaseIdentity[]>`
+    SELECT
+      current_database() AS "databaseName",
+      (SELECT oid::text FROM pg_database WHERE datname = current_database()) AS "databaseOid",
+      system_identifier::text AS "systemIdentifier"
+    FROM pg_control_system()
+  `
+
+  if (!identity) throw new Error('PostgreSQL database identity is unavailable')
+
+  return identity
+}
+
+async function checkDatabaseIdentity() {
+  heading('1. Database identity')
+
+  const [sourceIdentity, destinationIdentity] = await Promise.all([
+    getDatabaseIdentity(source),
+    getDatabaseIdentity(destination),
+  ])
+
+  if (
+    !areDatabaseTargetsDistinct(
+      verifiedSourceDatabaseUrl,
+      verifiedDestinationDatabaseUrl,
+      sourceIdentity,
+      destinationIdentity,
+    )
+  ) {
+    fail('Source and destination resolve to the same PostgreSQL database')
+
+    return
+  }
+
+  pass(`Distinct database identities (${sourceIdentity.databaseName} -> ${destinationIdentity.databaseName})`)
+}
+
+async function getMigrationLedger(sql: postgres.Sql) {
+  return sql<MigrationLedgerRow[]>`
+    SELECT hash, checksum
+    FROM "__drizzle_migrations"
+    ORDER BY id
+  `
+}
+
+async function checkMigrationLedgers() {
+  heading('2. Migration ledger parity')
+
+  const [sourceLedger, destinationLedger] = await Promise.all([
+    getMigrationLedger(source),
+    getMigrationLedger(destination),
+  ])
+  const { missingInDestination, missingInSource, checksumMismatches } = compareMigrationLedgers(
+    sourceLedger,
+    destinationLedger,
+  )
+
+  if (missingInDestination.length > 0) {
+    fail(`Migrations missing in destination: ${missingInDestination.join(', ')}`)
+  }
+
+  if (missingInSource.length > 0) {
+    fail(`Migrations missing in source: ${missingInSource.join(', ')}`)
+  }
+
+  if (checksumMismatches.length > 0) {
+    fail(`Migration checksum mismatch: ${checksumMismatches.join(', ')}`)
+  }
+
+  if (missingInDestination.length === 0 && missingInSource.length === 0 && checksumMismatches.length === 0) {
+    pass(`All ${sourceLedger.length} migration tags and checksums match`)
+  }
+}
+
+async function getSequenceState(sql: postgres.Sql) {
+  const sequences = await sql<Omit<SequenceState, 'isCalled' | 'lastValue'>[]>`
+    SELECT
+      sequence.relname AS "sequenceName",
+      owner_table.relname AS "ownerTable",
+      owner_column.attname AS "ownerColumn"
+    FROM pg_class AS sequence
+    INNER JOIN pg_namespace AS sequence_namespace ON sequence_namespace.oid = sequence.relnamespace
+    LEFT JOIN pg_depend AS dependency
+      ON dependency.classid = 'pg_class'::regclass
+      AND dependency.objid = sequence.oid
+      AND dependency.refclassid = 'pg_class'::regclass
+      AND dependency.deptype IN ('a', 'i')
+    LEFT JOIN pg_class AS owner_table ON owner_table.oid = dependency.refobjid
+    LEFT JOIN pg_attribute AS owner_column
+      ON owner_column.attrelid = dependency.refobjid
+      AND owner_column.attnum = dependency.refobjsubid
+    WHERE sequence.relkind = 'S' AND sequence_namespace.nspname = 'public'
+    ORDER BY sequence.relname
+  `
+
+  return Promise.all(
+    sequences.map(async (sequence) => {
+      const [state] = await sql<{ isCalled: boolean; lastValue: string }[]>`
+        SELECT last_value::text AS "lastValue", is_called AS "isCalled"
+        FROM ${sql(sequence.sequenceName)}
+      `
+
+      if (!state) throw new Error(`Sequence state is unavailable: ${sequence.sequenceName}`)
+
+      return { ...sequence, ...state }
+    }),
+  )
+}
+
+async function checkSequences() {
+  heading('3. Sequence ownership and value parity')
+
+  const [sourceSequences, destinationSequences] = await Promise.all([
+    getSequenceState(source),
+    getSequenceState(destination),
+  ])
+  const { missingInDestination, missingInSource, mismatches } = compareSequenceStates(
+    sourceSequences,
+    destinationSequences,
+  )
+
+  if (missingInDestination.length > 0 || missingInSource.length > 0 || mismatches.length > 0) {
+    fail(
+      `Sequence state differs: missing destination=${missingInDestination.length}, missing source=${missingInSource.length}, mismatched=${mismatches.length}`,
+    )
+
+    return
+  }
+
+  pass(`All ${sourceSequences.length} sequence ownership and value records match`)
 }
 
 async function describeTable(sql: postgres.Sql, table: string) {
@@ -183,20 +342,23 @@ async function fingerprintTable(sql: postgres.Sql, table: string): Promise<Table
   return row ?? { checksum: '0:0', n: 0 }
 }
 
-type Mismatch = { table: string; neon: number; railway: number }
+type Mismatch = { table: string; source: number; destination: number }
 
-function reportTableRow(table: string, neonFingerprint: TableFingerprint, railwayFingerprint: TableFingerprint) {
+function reportTableRow(table: string, sourceFingerprint: TableFingerprint, destinationFingerprint: TableFingerprint) {
   const label = table.padEnd(32)
-  const neonString = String(neonFingerprint.n).padStart(7)
-  const railwayString = String(railwayFingerprint.n).padStart(7)
+  const sourceString = String(sourceFingerprint.n).padStart(7)
+  const destinationString = String(destinationFingerprint.n).padStart(7)
 
-  if (neonFingerprint.n === railwayFingerprint.n && neonFingerprint.checksum === railwayFingerprint.checksum) {
-    info(`  ${label} neon=${neonString} railway=${railwayString}`)
+  if (
+    sourceFingerprint.n === destinationFingerprint.n &&
+    sourceFingerprint.checksum === destinationFingerprint.checksum
+  ) {
+    info(`  ${label} source=${sourceString} destination=${destinationString}`)
 
     return { changed: false, isVolatile: false }
   }
 
-  const diff = railwayFingerprint.n - neonFingerprint.n
+  const diff = destinationFingerprint.n - sourceFingerprint.n
   const sign = diff > 0 ? '+' : ''
   const isVolatile = VOLATILE_TABLES.has(table)
   const bucketColor = isVolatile ? color.yellow : color.red
@@ -204,7 +366,7 @@ function reportTableRow(table: string, neonFingerprint: TableFingerprint, railwa
   const difference = diff === 0 ? ' content differs' : ` diff=${sign}${diff}`
 
   console.log(
-    `  ${bucketColor}${label} neon=${neonString} railway=${railwayString}${difference}${suffix}${color.reset}`,
+    `  ${bucketColor}${label} source=${sourceString} destination=${destinationString}${difference}${suffix}${color.reset}`,
   )
 
   return { changed: true, isVolatile }
@@ -214,9 +376,12 @@ async function checkSchemas(shared: string[]) {
   let mismatches = 0
 
   for (const table of shared) {
-    const [neonSchema, railwaySchema] = await Promise.all([describeTable(neon, table), describeTable(railway, table)])
+    const [sourceSchema, destinationSchema] = await Promise.all([
+      describeTable(source, table),
+      describeTable(destination, table),
+    ])
 
-    if (neonSchema !== railwaySchema) {
+    if (sourceSchema !== destinationSchema) {
       fail(`Schema mismatch for table ${table}`)
       mismatches++
     }
@@ -230,54 +395,65 @@ async function collectMismatches(shared: string[]) {
   const volatileMismatches: Mismatch[] = []
 
   for (const table of shared) {
-    const [neonFingerprint, railwayFingerprint] = await Promise.all([
-      fingerprintTable(neon, table),
-      fingerprintTable(railway, table),
+    const [sourceFingerprint, destinationFingerprint] = await Promise.all([
+      fingerprintTable(source, table),
+      fingerprintTable(destination, table),
     ])
-    const { changed, isVolatile } = reportTableRow(table, neonFingerprint, railwayFingerprint)
+    const { changed, isVolatile } = reportTableRow(table, sourceFingerprint, destinationFingerprint)
 
     if (!changed) continue
 
     const bucket = isVolatile ? volatileMismatches : hardMismatches
 
-    bucket.push({ table, neon: neonFingerprint.n, railway: railwayFingerprint.n })
+    bucket.push({ table, source: sourceFingerprint.n, destination: destinationFingerprint.n })
   }
 
   return { hardMismatches, volatileMismatches }
 }
 
 async function checkParity() {
-  heading('1. Schema and content parity (Neon <> Railway)')
+  heading('4. Schema and content parity (source <> destination)')
 
-  const [neonTables, railwayTables] = await Promise.all([
-    safeListTables('Neon', neon),
-    safeListTables('Railway', railway),
+  const [sourceTables, destinationTables] = await Promise.all([
+    safeListTables('source', source),
+    safeListTables('destination', destination),
   ])
 
-  if (neonTables.length === 0 && railwayTables.length === 0) {
+  if (sourceTables.length === 0 && destinationTables.length === 0) {
     fail('Both DBs returned zero tables — check connection URLs above')
 
     return
   }
 
-  const neonTableSet = new Set(neonTables)
-  const railwayTableSet = new Set(railwayTables)
-  const missingInRailway = neonTables.filter((table) => !railwayTableSet.has(table))
-  const extraInRailway = railwayTables.filter((table) => !neonTableSet.has(table))
+  const destinationTableSet = new Set(destinationTables)
+  const { missingInDestination, unexpectedInDestination, allowlistedInDestination } = compareTableSets(
+    sourceTables,
+    destinationTables,
+    DESTINATION_EXTRA_TABLE_ALLOWLIST,
+  )
 
-  if (missingInRailway.length > 0) {
-    fail(`Tables present in Neon but missing in Railway: ${missingInRailway.join(', ')}`)
+  if (missingInDestination.length > 0) {
+    fail(`Tables present in source but missing in destination: ${missingInDestination.join(', ')}`)
   }
 
-  if (extraInRailway.length > 0) {
-    warn(`Extra tables in Railway (ok if a newer migration added them): ${extraInRailway.join(', ')}`)
+  if (unexpectedInDestination.length > 0) {
+    fail(`Unexpected tables present only in destination: ${unexpectedInDestination.join(', ')}`)
   }
 
-  const shared = neonTables.filter((table) => railwayTableSet.has(table))
+  if (allowlistedInDestination.length > 0) {
+    warn(`Allowlisted tables present only in destination: ${allowlistedInDestination.join(', ')}`)
+  }
+
+  const shared = sourceTables.filter((table) => destinationTableSet.has(table))
   const schemaMismatches = await checkSchemas(shared)
   const { hardMismatches, volatileMismatches } = await collectMismatches(shared)
 
-  if (schemaMismatches === 0 && hardMismatches.length === 0 && missingInRailway.length === 0) {
+  if (
+    schemaMismatches === 0 &&
+    hardMismatches.length === 0 &&
+    missingInDestination.length === 0 &&
+    unexpectedInDestination.length === 0
+  ) {
     pass(`All ${shared.length - volatileMismatches.length} non-volatile tables match schema and content`)
   }
 
@@ -295,11 +471,11 @@ async function checkParity() {
 }
 
 async function checkWorkerActivity() {
-  heading(`2. Worker activity on Railway (last ${WORKER_WINDOW_HOURS} hour(s))`)
+  heading(`5. Worker activity on destination (last ${WORKER_WINDOW_HOURS} hour(s))`)
 
   // background_job columns: created_at, completed_at (no updated_at).
   // status: 'pending' | 'processing' | 'done' | 'failed' | 'cancelled'
-  const [row] = await railway<
+  const [row] = await destination<
     {
       done: number
       processing: number
@@ -343,47 +519,71 @@ async function checkWorkerActivity() {
   }
 
   if (row.failed > 0) {
-    warn(`${row.failed} job(s) failed in window — inspect Railway logs`)
+    warn(`${row.failed} job(s) failed in window — inspect worker logs`)
+  }
+}
+
+async function checkProductionReadiness() {
+  const readinessUrl = new URL('/readyz', PROD_URL).href
+
+  try {
+    const response = await fetch(readinessUrl, {
+      headers: { accept: 'application/json' },
+      redirect: 'manual',
+    })
+    const payload = (await response.json().catch(() => null)) as {
+      checks?: Record<string, { status?: string }>
+      status?: string
+    } | null
+    const ready = isExactProductionReadiness(response.status, payload)
+
+    if (ready) pass('GET /readyz -> exact ready status with database and Redis checks')
+    else fail('GET /readyz did not return HTTP 200 with status=ready and database/Redis checks=ok')
+  } catch (error) {
+    fail(`GET /readyz -> network error: ${error instanceof Error ? error.message : String(error)}`)
+  }
+}
+
+async function checkReachabilityEndpoint(path: string) {
+  const url = new URL(path, PROD_URL).href
+
+  try {
+    const response = await fetch(url, {
+      headers: { accept: 'application/json' },
+      redirect: 'manual',
+    })
+    const status = response.status
+
+    if (status >= 500) {
+      fail(`GET ${path} -> ${status} (server error — DB reachable from the web runtime?)`)
+    } else if (status === 404) {
+      warn(`GET ${path} -> 404 (endpoint may not exist in this version)`)
+    } else {
+      pass(`GET ${path} -> ${status}`)
+    }
+  } catch (error) {
+    fail(`GET ${path} -> network error: ${error instanceof Error ? error.message : String(error)}`)
   }
 }
 
 async function checkProd() {
-  heading('3. Prod endpoint reachability')
+  heading('6. Production readiness')
 
-  if (!PROD_URL) {
-    info('  PROD_URL not set — skipping (set to https://your-app.example.com to enable)')
-
-    return
-  }
+  await checkProductionReadiness()
 
   // GET /api/auth/get-session exercises Better Auth + DB read.
   // Anonymous request returns 200 + `null` body. 5xx = DB unreachable.
   const endpoints = ['/api/auth/get-session', '/']
 
   for (const path of endpoints) {
-    const url = new URL(path, PROD_URL).href
-
-    try {
-      const response = await fetch(url, {
-        headers: { accept: 'application/json' },
-        redirect: 'manual',
-      })
-      const status = response.status
-
-      if (status >= 500) {
-        fail(`GET ${path} -> ${status} (server error — DB reachable from Vercel?)`)
-      } else if (status === 404) {
-        warn(`GET ${path} -> 404 (endpoint may not exist in this version)`)
-      } else {
-        pass(`GET ${path} -> ${status}`)
-      }
-    } catch (error) {
-      fail(`GET ${path} -> network error: ${error instanceof Error ? error.message : String(error)}`)
-    }
+    await checkReachabilityEndpoint(path)
   }
 }
 
 try {
+  await checkDatabaseIdentity()
+  await checkMigrationLedgers()
+  await checkSequences()
   await checkParity()
   await checkWorkerActivity()
   await checkProd()
@@ -391,14 +591,14 @@ try {
   fail(`Unhandled error: ${describeError(error)}`)
   console.error(error)
 } finally {
-  await Promise.allSettled([neon.end({ timeout: 5 }), railway.end({ timeout: 5 })])
+  await Promise.allSettled([source.end({ timeout: 5 }), destination.end({ timeout: 5 })])
 }
 
 console.log()
 
 if (failures > 0) {
   console.log(`${color.red}${color.bold}RESULT: FAIL${color.reset} — ${failures} failure(s), ${warnings} warning(s)`)
-  console.log(`${color.yellow}Do NOT delete Neon yet.${color.reset}`)
+  console.log(`${color.yellow}Do NOT retire the source database yet.${color.reset}`)
   process.exit(1)
 }
 
@@ -407,7 +607,7 @@ if (warnings > 0) {
   console.log('Inspect warnings, then decide.')
 } else {
   console.log(`${color.green}${color.bold}RESULT: PASS${color.reset} — all checks green`)
-  console.log('Keep Neon read-only through the 24-48h safety window and confirm backups before deletion.')
+  console.log('Keep the source read-only through the 24-48h safety window and confirm backups before deletion.')
 }
 
 process.exit(0)
