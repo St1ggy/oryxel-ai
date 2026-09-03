@@ -4,6 +4,7 @@ import {
   JobLeaseLostError,
   claimNextJob,
   completeJob,
+  createJob,
   failJob,
   getJobStatus,
   recoverExpiredJobs,
@@ -22,11 +23,16 @@ const state = vi.hoisted(() => ({
     status?: string
   },
   lock: null as null | { strength: string; config: Record<string, unknown> },
+  inserts: [] as Record<string, unknown>[],
+  insertReturning: [] as { id: number }[][],
+  insertError: null as Error | null,
+  transactionCalls: 0,
   updates: [] as Record<string, unknown>[],
   returning: [] as { id: number }[][],
 }))
 
 const emitJobUpdated = vi.hoisted(() => vi.fn())
+const emitJobCreated = vi.hoisted(() => vi.fn())
 
 function createExecutor() {
   return {
@@ -70,6 +76,22 @@ function createExecutor() {
 
       return builder
     },
+    insert() {
+      const builder = {
+        values(values: Record<string, unknown>) {
+          state.inserts.push(values)
+
+          return builder
+        },
+        async returning() {
+          if (state.insertError) throw state.insertError
+
+          return state.insertReturning.shift() ?? []
+        },
+      }
+
+      return builder
+    },
   }
 }
 
@@ -78,6 +100,8 @@ vi.mock('@oryxel/db', async (importOriginal) => {
   const database = {
     ...createExecutor(),
     transaction<T>(callback: (tx: ReturnType<typeof createExecutor>) => Promise<T>) {
+      state.transactionCalls++
+
       return callback(createExecutor())
     },
   }
@@ -86,16 +110,57 @@ vi.mock('@oryxel/db', async (importOriginal) => {
 })
 
 vi.mock('./job-notify', () => ({
-  emitJobCreated: vi.fn(),
+  emitJobCreated,
   emitJobUpdated,
 }))
 
 beforeEach(() => {
   state.pending = null
   state.lock = null
+  state.inserts = []
+  state.insertReturning = []
+  state.insertError = null
+  state.transactionCalls = 0
   state.updates = []
   state.returning = []
   emitJobUpdated.mockClear()
+  emitJobCreated.mockClear()
+})
+
+describe('background job enqueue', () => {
+  it('keeps distinct notification events pending', async () => {
+    state.insertReturning = [[{ id: 10 }], [{ id: 11 }]]
+
+    await expect(createJob('user-1', 'notify_post', { postId: 1 })).resolves.toBe(10)
+    await expect(createJob('user-1', 'notify_post', { postId: 2 })).resolves.toBe(11)
+
+    expect(state.updates).toEqual([])
+    expect(state.inserts).toEqual([
+      { userId: 'user-1', type: 'notify_post', status: 'pending', params: { postId: 1 } },
+      { userId: 'user-1', type: 'notify_post', status: 'pending', params: { postId: 2 } },
+    ])
+    expect(emitJobCreated.mock.calls).toEqual([[10], [11]])
+  })
+
+  it('cancels and replaces refresh work in one transaction', async () => {
+    state.insertReturning = [[{ id: 12 }]]
+
+    await expect(createJob('user-1', 'profile_sync')).resolves.toBe(12)
+
+    expect(state.transactionCalls).toBe(1)
+    expect(state.updates[0]).toMatchObject({ status: 'cancelled' })
+    expect(state.inserts[0]).toMatchObject({ userId: 'user-1', type: 'profile_sync', status: 'pending' })
+    expect(emitJobCreated).toHaveBeenCalledWith(12)
+  })
+
+  it('does not publish a replacement when its transaction fails', async () => {
+    state.insertError = new Error('insert failed')
+
+    await expect(createJob('user-1', 'list_slice_sync')).rejects.toThrow('insert failed')
+    expect(state.transactionCalls).toBe(1)
+    expect(state.updates[0]).toMatchObject({ status: 'cancelled' })
+    expect(emitJobCreated).not.toHaveBeenCalled()
+  })
 })
 
 describe('background job leases', () => {

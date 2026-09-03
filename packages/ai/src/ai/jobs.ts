@@ -83,6 +83,7 @@ export type JobProgress = {
 //
 export const MAX_PROGRESS_EVENTS = 50
 export const JOB_LEASE_MS = 5 * 60 * 1000
+const COALESCED_JOB_TYPES = new Set<JobType>(['profile_sync', 'list_slice_sync'])
 
 const leaseExpiry = sql<Date>`now() + (${JOB_LEASE_MS} * interval '1 millisecond')`
 
@@ -106,10 +107,18 @@ export async function createJob(
   type: JobType,
   params?: Record<string, unknown>,
   executor: DatabaseExecutor = db,
-) {
-  // For non-chat types, cancel any pending jobs of the same type so the
-  // user always gets a fresh run without queue buildup.
-  if (type !== 'agent_chat') {
+): Promise<number> {
+  if (executor === db) {
+    const jobId: number = await db.transaction((tx) => createJob(userId, type, params, tx))
+
+    emitJobCreated(jobId)
+
+    return jobId
+  }
+
+  // Refresh work supersedes an older pending refresh. Event jobs represent
+  // distinct business events and must never cancel each other.
+  if (COALESCED_JOB_TYPES.has(type)) {
     await executor
       .update(backgroundJob)
       .set({ status: 'cancelled', completedAt: new Date() })
@@ -120,8 +129,6 @@ export async function createJob(
     .insert(backgroundJob)
     .values({ userId, type, status: 'pending', params })
     .returning({ id: backgroundJob.id })
-
-  if (executor === db) emitJobCreated(row.id)
 
   return row.id
 }
