@@ -19,11 +19,10 @@
     "test:unit": "vitest",
     "test": "npm run test:unit -- --run && npm run test:e2e",
     "test:e2e": "playwright test",
-    "auth:schema": "bun --env-file=../../.env.development better-auth generate --config src/lib/server/auth.ts --output src/lib/server/db/auth.schema.ts --yes",
-    "auth:schema:prod": "bun --env-file=../../.env.production better-auth generate --config src/lib/server/auth.ts --output src/lib/server/db/auth.schema.ts --yes"
+    "auth:schema": "bun --env-file=../../.env.development auth generate --config src/lib/server/auth.ts --output ../../packages/db/src/auth.schema.ts --yes",
+    "auth:schema:prod": "bun --env-file=../../.env.production auth generate --config src/lib/server/auth.ts --output ../../packages/db/src/auth.schema.ts --yes"
   },
   "devDependencies": {
-    "@better-auth/cli": "~1.4.21",
     "@better-auth/utils": "0.4.2",
     "@eslint/compat": "^2.1.0",
     "@eslint/js": "9.39.4",
@@ -41,6 +40,7 @@
     "@types/sanitize-html": "^2.16.1",
     "@vitest/browser-playwright": "^4.1.11",
     "better-auth": "~1.7.2",
+    "auth": "~1.7.2",
     "drizzle-kit": "^0.31.10",
     "eslint": "9.39.4",
     "eslint-config-prettier": "^10.1.8",
