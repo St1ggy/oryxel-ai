@@ -29,12 +29,18 @@ export const brand = pgTable(
   'brand',
   {
     id: serial('id').primaryKey(),
-    name: text('name').notNull().unique(),
+    name: text('name').notNull(),
     origin: text('origin').$type<CatalogEntityOrigin>().notNull().default('legacy'),
     createdByUserId: text('created_by_user_id').references(() => user.id, { onDelete: 'set null' }),
   },
   (table) => [
     check('brand_origin_check', sql`${table.origin} IN ('legacy', 'catalog', 'user')`),
+    uniqueIndex('brand_canonical_name_idx')
+      .on(table.name)
+      .where(sql`${table.origin} <> 'user'`),
+    uniqueIndex('brand_user_owner_name_idx')
+      .on(table.createdByUserId, table.name)
+      .where(sql`${table.origin} = 'user' AND ${table.createdByUserId} IS NOT NULL`),
     index('brand_origin_idx').on(table.origin),
     index('brand_created_by_user_id_idx').on(table.createdByUserId),
   ],
@@ -57,6 +63,12 @@ export const fragrance = pgTable(
   },
   (table) => [
     check('fragrance_origin_check', sql`${table.origin} IN ('legacy', 'catalog', 'user')`),
+    uniqueIndex('fragrance_canonical_brand_name_idx')
+      .on(table.brandId, table.name)
+      .where(sql`${table.origin} <> 'user'`),
+    uniqueIndex('fragrance_user_owner_brand_name_idx')
+      .on(table.createdByUserId, table.brandId, table.name)
+      .where(sql`${table.origin} = 'user' AND ${table.createdByUserId} IS NOT NULL`),
     index('fragrance_origin_idx').on(table.origin),
     index('fragrance_brand_id_idx').on(table.brandId),
     index('fragrance_created_by_user_id_idx').on(table.createdByUserId),

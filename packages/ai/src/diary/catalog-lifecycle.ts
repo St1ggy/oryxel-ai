@@ -52,3 +52,16 @@ export async function deleteOrphanedUserCatalogEntities(executor: DatabaseOrTx) 
     ),
   )
 }
+
+export async function prepareUserCatalogForAccountDeletion(executor: DatabaseOrTx, userId: string) {
+  await deleteOrphanedUserCatalogEntities(executor)
+
+  await executor
+    .update(fragrance)
+    .set({ createdByUserId: null })
+    .where(and(eq(fragrance.origin, 'user'), eq(fragrance.createdByUserId, userId)))
+  await executor
+    .update(brand)
+    .set({ createdByUserId: null })
+    .where(and(eq(brand.origin, 'user'), eq(brand.createdByUserId, userId)))
+}

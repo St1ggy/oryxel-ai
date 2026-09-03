@@ -7,9 +7,22 @@ import type * as OryxelDatabaseModule from '@oryxel/db'
 const state = vi.hoisted(() => ({
   deletedTables: [] as string[],
   lockUserIds: [] as string[],
+  operations: [] as string[],
   selectedRows: {} as Record<string, unknown[]>,
   transactionConfig: undefined as unknown,
+  updatedTables: [] as { table: string; values: unknown }[],
 }))
+
+function createUpdateBuilder(tableName: string) {
+  return {
+    set(values: unknown) {
+      state.updatedTables.push({ table: tableName, values })
+      state.operations.push(`update:${tableName}`)
+
+      return { where: () => Promise.resolve() }
+    },
+  }
+}
 
 vi.mock('../ai/crypto/secret-box', () => ({
   decryptSecret: ({ encryptedKey }: { encryptedKey: string }) => encryptedKey,
@@ -69,6 +82,7 @@ vi.mock('@oryxel/db', async (importOriginal) => {
         callback: (tx: {
           delete(table: unknown): { where(): Promise<void> }
           select(): ReturnType<typeof createSelectBuilder>
+          update(table: unknown): { set(values: unknown): { where(): Promise<void> } }
         }) => Promise<T>,
         config?: unknown,
       ) {
@@ -76,11 +90,19 @@ vi.mock('@oryxel/db', async (importOriginal) => {
 
         return callback({
           delete(table) {
-            state.deletedTables.push(tableNames.get(table) ?? 'unknown')
+            const tableName = tableNames.get(table) ?? 'unknown'
+
+            state.deletedTables.push(tableName)
+            state.operations.push(`delete:${tableName}`)
 
             return { where: () => Promise.resolve() }
           },
           select: createSelectBuilder,
+          update(table) {
+            const tableName = tableNames.get(table) ?? 'unknown'
+
+            return createUpdateBuilder(tableName)
+          },
         })
       },
     },
@@ -95,8 +117,10 @@ vi.mock('@oryxel/db', async (importOriginal) => {
 beforeEach(() => {
   state.deletedTables = []
   state.lockUserIds = []
+  state.operations = []
   state.selectedRows = {}
   state.transactionConfig = undefined
+  state.updatedTables = []
 })
 
 describe('deleteUserDataCompletely', () => {
@@ -129,6 +153,12 @@ describe('deleteUserDataCompletely', () => {
         'verification',
         'user',
       ])
+      expect(state.updatedTables).toEqual([
+        { table: 'fragrance', values: { createdByUserId: null } },
+        { table: 'brand', values: { createdByUserId: null } },
+      ])
+      expect(state.operations.indexOf('update:fragrance')).toBeLessThan(state.operations.indexOf('delete:user'))
+      expect(state.operations.indexOf('update:brand')).toBeLessThan(state.operations.indexOf('delete:user'))
     },
   )
 })

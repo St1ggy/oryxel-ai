@@ -51,7 +51,7 @@ export async function applyListOps(userId: string, ops: ListOp[], executor: Data
         let fragranceId = op.fragranceId
 
         if (!fragranceId && op.fragranceQuery) {
-          const hits = await searchFragrancesByQuery(op.fragranceQuery, 1, executor)
+          const hits = await searchFragrancesByQuery(op.fragranceQuery, userId, 1, executor)
 
           fragranceId = hits[0]?.fragranceId
         }

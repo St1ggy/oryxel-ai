@@ -4,7 +4,7 @@ import { PgDialect } from 'drizzle-orm/pg-core'
 import { drizzle } from 'drizzle-orm/postgres-js'
 import { describe, expect, it } from 'vitest'
 
-import { deleteOrphanedUserCatalogEntities } from './catalog-lifecycle'
+import { deleteOrphanedUserCatalogEntities, prepareUserCatalogForAccountDeletion } from './catalog-lifecycle'
 
 describe('deleteOrphanedUserCatalogEntities', () => {
   it('deletes only user-origin identities without remaining references', async () => {
@@ -42,5 +42,46 @@ describe('deleteOrphanedUserCatalogEntities', () => {
     expect(queries[1]?.sql).toContain('from "fragrance"')
     expect(queries[1]?.sql).toContain('from "post_attachment"')
     expect(queries[1]?.params).toEqual(['user', 'brand'])
+  })
+
+  it('detaches the deleted owner only after orphan cleanup', async () => {
+    const queryBuilder = drizzle.mock()
+    const operations: string[] = []
+    const updateConditions: { getSQL(): SQL }[] = []
+    const executor = {
+      select: queryBuilder.select.bind(queryBuilder),
+      delete(table: unknown) {
+        operations.push(table === fragrance ? 'delete:fragrance' : 'delete:brand')
+
+        return { where: () => Promise.resolve() }
+      },
+      update(table: unknown) {
+        const tableName = table === fragrance ? 'fragrance' : 'brand'
+
+        return {
+          set() {
+            operations.push(`update:${tableName}`)
+
+            return {
+              where(condition: { getSQL(): SQL }) {
+                updateConditions.push(condition)
+
+                return Promise.resolve()
+              },
+            }
+          },
+        }
+      },
+    }
+
+    await prepareUserCatalogForAccountDeletion(executor as never, 'user-1')
+
+    expect(operations).toEqual(['delete:fragrance', 'delete:brand', 'update:fragrance', 'update:brand'])
+
+    const dialect = new PgDialect()
+    const queries = updateConditions.map((condition) => dialect.sqlToQuery(condition.getSQL()))
+
+    expect(queries[0]?.params).toEqual(['user', 'user-1'])
+    expect(queries[1]?.params).toEqual(['user', 'user-1'])
   })
 })

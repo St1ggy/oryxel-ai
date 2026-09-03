@@ -10,7 +10,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 
   const q = url.searchParams.get('q') ?? ''
   const limit = Number(url.searchParams.get('limit') ?? '20')
-  const results = await searchFragrances(q, Number.isFinite(limit) ? limit : 20)
+  const results = await searchFragrances(q, locals.user.id, Number.isFinite(limit) ? limit : 20)
 
   return json({ results })
 }
