@@ -3,6 +3,8 @@ import { readFileSync, readdirSync } from 'node:fs'
 import nodePath from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+export { migrationManifest } from './migration-manifest'
+
 const currentDirectory = nodePath.dirname(fileURLToPath(import.meta.url))
 
 export const migrationsDirectory = nodePath.join(currentDirectory, '../drizzle')

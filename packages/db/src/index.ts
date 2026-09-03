@@ -1,6 +1,7 @@
 import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
 
+import { assertMigrationHistoryReady } from './migration-readiness'
 import * as schema from './schema'
 
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
@@ -97,8 +98,18 @@ export async function closeDatabase() {
   await Promise.all([activeClient?.end({ timeout: 5 }), activeAdvisoryLockClient?.end({ timeout: 5 })])
 }
 
-export async function checkDatabaseConnection() {
-  await getClient()`SELECT 1`
+export async function checkDatabaseReadiness() {
+  try {
+    const appliedMigrations = await getClient()<{ checksum: string | null; hash: string }[]>`
+      SELECT hash, checksum
+      FROM "__drizzle_migrations"
+      ORDER BY id
+    `
+
+    assertMigrationHistoryReady(appliedMigrations)
+  } catch {
+    throw new Error('Database is not ready')
+  }
 }
 
 export async function withUserDataLock<T>(userId: string, callback: () => Promise<T>): Promise<T> {

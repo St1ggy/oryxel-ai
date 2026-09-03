@@ -1,19 +1,25 @@
 // SSE gateway on Railway: JWT auth, Redis SUBSCRIBE job:{id}, snapshots via getJob.
 
 import { getJob } from '@oryxel/ai/server'
-import { checkDatabaseConnection, closeDatabase } from '@oryxel/db'
+import { checkDatabaseReadiness, closeDatabase } from '@oryxel/db'
 import { logError, logEvent, parseHealthCheckTimeout, resolveRequestId, runReadinessChecks } from '@oryxel/runtime'
 import Redis from 'ioredis'
 import { jwtVerify } from 'jose'
 import { createServer } from 'node:http'
 import { URL } from 'node:url'
 
+import { startReconciliation } from './reconciliation'
+import { resolveGatewayRuntimeConfig } from './runtime-config'
+import { StreamLimiter } from './stream-limiter'
+
 import type { LogLevel } from '@oryxel/runtime'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 
 const PORT = Number.parseInt(process.env.PORT ?? '3333', 10)
-const CORS_ORIGIN = process.env.STREAM_CORS_ORIGIN?.trim() || '*'
+const runtimeConfig = resolveGatewayRuntimeConfig()
+const CORS_ORIGIN = runtimeConfig.corsOrigin
 const HEALTHCHECK_TIMEOUT_MS = parseHealthCheckTimeout(process.env.HEALTHCHECK_TIMEOUT_MS)
+const streamLimiter = new StreamLimiter(runtimeConfig.maxActiveStreams, runtimeConfig.maxActiveStreamsPerUser)
 
 function requiredEnv(name: 'JOB_STREAM_JWT_SECRET' | 'REDIS_URL') {
   const value = process.env[name]?.trim()
@@ -109,8 +115,36 @@ function sendSse(serverResponse: ServerResponse, data: unknown) {
   serverResponse.write(`data: ${JSON.stringify(data)}\n\n`)
 }
 
+function isResponseClosed(serverResponse: ServerResponse) {
+  return serverResponse.writableEnded || serverResponse.destroyed
+}
+
+function isStreamClosed(serverResponse: ServerResponse, streamClosed: boolean) {
+  return streamClosed || isResponseClosed(serverResponse)
+}
+
+function schedulePendingSnapshot(snapshotRequested: boolean, scheduleSnapshot: () => void) {
+  if (snapshotRequested) scheduleSnapshot()
+}
+
 function isTerminal(status: string) {
   return status === 'done' || status === 'failed' || status === 'cancelled'
+}
+
+function acquireStreamResources(userId: string) {
+  const release = streamLimiter.tryAcquire(userId)
+
+  if (!release) return null
+
+  try {
+    return {
+      redis: new Redis(REDIS_URL, { maxRetriesPerRequest: 3, protocol: 2 }),
+      release,
+    }
+  } catch (error) {
+    release()
+    throw error
+  }
 }
 
 async function authorizeStream(requestUrl: URL) {
@@ -214,22 +248,34 @@ async function handleStream(
     return
   }
 
-  const redisSub = new Redis(REDIS_URL, { maxRetriesPerRequest: 3, protocol: 2 })
+  const streamResources = acquireStreamResources(userId)
+
+  if (!streamResources) {
+    sendJson(serverResponse, 429, { error: 'too_many_streams' })
+
+    return
+  }
+
+  const redisSub = streamResources.redis
   const channel = `job:${jobId}`
   let cleanupPromise: Promise<void> | undefined
   let streamClosed = false
   let initialized = false
   let snapshotRequested = false
   let snapshotRunner: Promise<void> | undefined
+  const reconciliation = { stop: undefined as (() => void) | undefined }
 
   const cleanup = () => {
     cleanupPromise ??= (async () => {
       try {
+        reconciliation.stop?.()
+
         redisSub.removeAllListeners()
         redisSub.disconnect()
       } catch {
         // The Redis connection may already be closed.
       } finally {
+        streamResources.release()
         activeStreamCleanups.delete(cleanup)
       }
     })()
@@ -262,7 +308,7 @@ async function handleStream(
     logStreamClosed('redis_error', 'error')
     void cleanup()
 
-    if (serverResponse.headersSent && !serverResponse.writableEnded && !serverResponse.destroyed) {
+    if (serverResponse.headersSent && !isResponseClosed(serverResponse)) {
       serverResponse.end()
     }
   })
@@ -280,12 +326,12 @@ async function handleStream(
       await cleanup()
       logStreamClosed('missing', 'warn')
 
-      if (!serverResponse.writableEnded && !serverResponse.destroyed) serverResponse.end()
+      if (!isResponseClosed(serverResponse)) serverResponse.end()
 
       return
     }
 
-    if (streamClosed || serverResponse.writableEnded || serverResponse.destroyed) return
+    if (isStreamClosed(serverResponse, streamClosed)) return
 
     sendSse(serverResponse, next)
 
@@ -293,7 +339,7 @@ async function handleStream(
       await cleanup()
       logStreamClosed(next.status)
 
-      if (!serverResponse.writableEnded && !serverResponse.destroyed) serverResponse.end()
+      if (!isResponseClosed(serverResponse)) serverResponse.end()
     }
   }
 
@@ -302,7 +348,7 @@ async function handleStream(
     logStreamClosed('snapshot_error', 'error')
     await cleanup()
 
-    if (!serverResponse.writableEnded && !serverResponse.destroyed) serverResponse.end()
+    if (!isResponseClosed(serverResponse)) serverResponse.end()
   }
 
   const scheduleSnapshot = () => {
@@ -340,7 +386,7 @@ async function handleStream(
     throw error
   }
 
-  if (streamClosed || serverResponse.destroyed) {
+  if (isStreamClosed(serverResponse, streamClosed)) {
     await cleanup()
 
     return
@@ -355,7 +401,7 @@ async function handleStream(
     throw error
   }
 
-  if (streamClosed || serverResponse.writableEnded || serverResponse.destroyed) {
+  if (isStreamClosed(serverResponse, streamClosed)) {
     await cleanup()
 
     return
@@ -392,8 +438,9 @@ async function handleStream(
   }
 
   initialized = true
+  reconciliation.stop = startReconciliation(scheduleSnapshot, runtimeConfig.reconcileIntervalMs)
 
-  if (snapshotRequested) scheduleSnapshot()
+  schedulePendingSnapshot(snapshotRequested, scheduleSnapshot)
 }
 
 const server = createServer((request, serverResponse) => {
@@ -416,7 +463,7 @@ const server = createServer((request, serverResponse) => {
   if (request.method === 'GET' && requestUrl.pathname === '/readyz') {
     void runReadinessChecks(
       [
-        { name: 'database', check: checkDatabaseConnection },
+        { name: 'database', check: checkDatabaseReadiness },
         { name: 'redis', check: () => healthRedis.ping() },
       ],
       HEALTHCHECK_TIMEOUT_MS,

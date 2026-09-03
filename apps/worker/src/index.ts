@@ -10,7 +10,7 @@ import {
   renewJobLease,
   setJobUpdatedHandler,
 } from '@oryxel/ai/server'
-import { checkDatabaseConnection, closeDatabase, db, user, withUserDataLock } from '@oryxel/db'
+import { checkDatabaseReadiness, closeDatabase, db, user, withUserDataLock } from '@oryxel/db'
 import {
   configureLogService,
   logError,
@@ -28,6 +28,7 @@ import { handleAgentChat } from './handlers/agent-chat'
 import { handleListSliceSync } from './handlers/list-slice-sync'
 import { handleProfileSync } from './handlers/profile-sync'
 import { handleNotifyFollow, handleNotifyList, handleNotifyPost } from './handlers/social-notify'
+import { validateWorkerRedisUrl } from './runtime-config'
 
 import type { ClaimedJob } from '@oryxel/ai/server'
 
@@ -43,7 +44,8 @@ const HEALTHCHECK_TIMEOUT_MS = parseHealthCheckTimeout(process.env.HEALTHCHECK_T
 
 configureLogService('worker')
 
-const redisUrl = process.env.REDIS_URL?.trim()
+const redisUrl = validateWorkerRedisUrl(process.env.REDIS_URL?.trim())
+
 let publisher: Redis | null = null
 let jobSubscriber: Redis | null = null
 
@@ -242,8 +244,8 @@ const healthServer = createServer((request, response) => {
             if (!isStartupComplete || isShuttingDown) throw new Error('Worker runtime is not ready')
           },
         },
-        { name: 'database', check: checkDatabaseConnection },
-        ...(publisher ? [{ name: 'redis', required: false, check: () => publisher.ping() }] : []),
+        { name: 'database', check: checkDatabaseReadiness },
+        ...(publisher ? [{ name: 'redis', check: () => publisher.ping() }] : []),
       ],
       HEALTHCHECK_TIMEOUT_MS,
     ).then((result) => {
