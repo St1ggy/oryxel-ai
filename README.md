@@ -4,16 +4,18 @@ Oryxel AI is an AI-assisted fragrance diary, recommendation workspace, and socia
 
 ## Architecture
 
-| Component                 | Runtime                                               | Production target | Health                                                       |
-| ------------------------- | ----------------------------------------------------- | ----------------- | ------------------------------------------------------------ |
-| `apps/web`                | SvelteKit on Vercel Functions                         | Vercel            | `/healthz`, `/readyz`                                        |
-| `apps/worker`             | Bun/Node background worker                            | Railway           | `/healthz`, `/readyz`                                        |
-| `apps/job-stream-gateway` | Bun/Node SSE service                                  | Railway           | `/healthz`, `/readyz`                                        |
-| `packages/db`             | App and authentication schema                         | PostgreSQL        | Checked by service readiness                                 |
-| `packages/catalog-db`     | Canonical fragrance catalog schema                    | PostgreSQL        | Used by catalog-backed features                              |
-| Redis                     | Rate limits, auth cache, worker wake-ups, SSE updates | Railway Redis     | Production required; gateway readiness treats it as required |
+| Component                 | Runtime                                            | Production target  | Health                                                    |
+| ------------------------- | -------------------------------------------------- | ------------------ | --------------------------------------------------------- |
+| `apps/web`                | SvelteKit on Vercel Functions                      | Vercel             | `/healthz`, `/readyz`                                     |
+| `apps/worker`             | Bun/Node background worker                         | Railway            | `/healthz`, `/readyz`                                     |
+| `apps/job-stream-gateway` | Bun/Node SSE service                               | Railway            | `/healthz`, `/readyz`                                     |
+| `packages/db`             | App and authentication schema via postgres.js      | Railway PostgreSQL | Full migration ledger checked by service readiness        |
+| `packages/catalog-db`     | Canonical fragrance catalog schema                 | PostgreSQL         | Used by catalog-backed features                           |
+| Redis                     | Auth/API rate limits, worker wake-ups, SSE updates | Railway Redis      | Production required by web, worker, and gateway readiness |
 
-PostgreSQL is authoritative for application state, authentication, and background jobs. Redis is an acceleration and notification layer; it is not the source of truth for sessions or jobs.
+PostgreSQL is authoritative for application state, Better Auth sessions, and background jobs. Redis provides atomic distributed limits, worker wake-ups, and SSE notifications; it stores no authoritative session or job state. Every production readiness check validates the complete app migration ledger, not only database connectivity.
+
+Canonical catalog identities are globally unique. User-created brand and fragrance identities are owner-scoped and are visible only to their owner unless promoted through a separate catalog process.
 
 ## Local Development
 
@@ -48,7 +50,7 @@ bun --env-file=.env.development run start:worker
 bun --env-file=.env.development run start:job-stream-gateway
 ```
 
-The gateway requires `REDIS_URL` and `JOB_STREAM_JWT_SECRET`. The worker can poll PostgreSQL without Redis, but production should configure Redis for prompt wake-ups and live updates.
+The gateway requires `REDIS_URL` and `JOB_STREAM_JWT_SECRET`. Local workers can poll PostgreSQL without Redis, but production worker startup rejects a missing `REDIS_URL`; a runtime Redis outage makes readiness fail while PostgreSQL polling continues.
 
 ## Verification
 

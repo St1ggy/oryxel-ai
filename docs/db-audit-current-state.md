@@ -1,38 +1,26 @@
-# DB Audit: current state vs schema
+# Database Audit State
 
-## Scope
+## Current Architecture
 
-- Compared runtime schema in `src/lib/server/db/schema.ts` with generated migration `drizzle/0000_normal_jean_grey.sql`.
-- Attempted schema generation and migration from the current workspace environment.
+- `packages/db/src/schema.ts` and `packages/db/src/auth.schema.ts` are the authoritative app and Better Auth schemas.
+- `packages/db/src/index.ts` uses postgres.js and serves web, worker, and gateway through `@oryxel/db`.
+- Railway PostgreSQL is the production app database. PostgreSQL is authoritative for sessions, jobs, user data, and migration state.
+- `packages/catalog-db` owns the separate canonical catalog ingestion schema; its URL is not a general runtime dependency.
 
-## Result
+## Migration Contract
 
-- Missing tables were identified and added to schema:
-  - `ai_pending_patch`
-  - `ai_patch_audit_log`
-- Existing domain tables included in migration:
-  - `task`, `brand`, `fragrance`, `user_profile`, `user_ai_preferences`, `user_fragrance`
+- App migrations are append-only under `packages/db/drizzle`; `checksums.json` and `_journal.json` define the immutable manifest.
+- Migration `0011_user_catalog_owner_scope` replaces global user-identity uniqueness with partial global-canonical and per-owner indexes.
+- Production services require the complete contiguous migration history with matching checksums before `/readyz` succeeds.
+- CI applies the app migration history twice to a fresh PostgreSQL service and validates both migration manifests.
+- `db:push` is local-development tooling only. Production changes use `db:migrate`.
 
-## Local verification run
+## Privacy And Ownership
 
-- Started local PostgreSQL (Docker/Colima) at `postgresql://oryxel:oryxel@127.0.0.1:54329/oryxel`.
-- Applied migration with `DATABASE_URL=... bun run db:migrate` successfully.
-- Verified physical tables in `information_schema.tables`:
-  - `ai_patch_audit_log`
-  - `ai_pending_patch`
-  - `brand`
-  - `fragrance`
-  - `task`
-  - `user_ai_preferences`
-  - `user_fragrance`
-  - `user_profile`
-- Seeded minimal data with `DATABASE_URL=... SEED_USER_ID=dev-user bun run db:seed:minimal`.
+- Canonical `legacy/catalog` brands and fragrances are globally visible and unique.
+- `user` identities are unique per owner. Lookup and search include only canonical rows or rows owned by the current viewer.
+- Account deletion removes unreferenced user identities, then clears ownership on referenced survivors while preserving `origin='user'`; detached rows are not exposed by search.
 
-## Environment caveat
+## Cutover Gate
 
-- `bun run auth:schema` failed because the configured `DATABASE_URL` is a placeholder and not a valid Neon URL.
-- `bun run db:migrate` failed in the same environment because DB connectivity is not available.
-
-## Notes
-
-- `bun run auth:schema` still depends on a valid Better Auth runtime DB context and can fail when env points to placeholder values.
+`packages/db/src/verify-migration.ts` rejects a cutover unless source and destination have distinct PostgreSQL identity, matching migration tags/checksums, matching sequence ownership/value, expected table sets, non-volatile content parity, and exact production readiness. See [Database Cutover](db-cutover.md) for the write-boundary rollback procedure.

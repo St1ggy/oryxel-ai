@@ -4,15 +4,47 @@ This runbook covers routine deploys and first response for the Oryxel web, worke
 
 ## Service Model
 
-| Service            | Platform | Required dependencies    | Degraded behavior                                                                                                                               |
-| ------------------ | -------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| Web                | Vercel   | App PostgreSQL and Redis | With Redis configured, failures fail closed for sensitive limits, fail open for ordinary API policies, and fall back to PostgreSQL for sessions |
-| Worker             | Railway  | App PostgreSQL           | Continues interval polling when Redis wake-ups or publishes fail                                                                                |
-| Job-stream gateway | Railway  | App PostgreSQL and Redis | Returns unavailable readiness; browsers fall back to job-status polling when SSE fails                                                          |
+| Service            | Platform | Required dependencies    | Degraded behavior                                                                                                            |
+| ------------------ | -------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| Web                | Vercel   | App PostgreSQL and Redis | PostgreSQL sessions continue; sensitive limits fail closed and ordinary API policies fail open during a runtime Redis outage |
+| Worker             | Railway  | App PostgreSQL and Redis | Readiness fails while interval polling can continue when Redis wake-ups or publishes fail                                    |
+| Job-stream gateway | Railway  | App PostgreSQL and Redis | Returns unavailable readiness; browsers fall back to job-status polling when SSE fails                                       |
 
-`/healthz` confirms that a process can serve HTTP. `/readyz` confirms that it may receive production traffic. Do not use a healthy liveness response as evidence that dependencies are ready.
+`/healthz` confirms that a process can serve HTTP. `/readyz` confirms required Redis access and the complete PostgreSQL migration ledger before a service may receive production traffic. Do not use a healthy liveness response as evidence that dependencies are ready.
 
 ## Deployment
+
+### Initial Railway/Vercel Provisioning
+
+Use Railway PostgreSQL as the only app database. Provision Redis, the worker, and the job-stream gateway in the same Railway project and region. Deploy the web application on Vercel in a function region close to Railway.
+
+| Component          | Platform | Repository settings                                                                                                         | Network configuration                                                               |
+| ------------------ | -------- | --------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| PostgreSQL         | Railway  | Managed PostgreSQL                                                                                                          | Private URL for Railway services; public URL for Vercel and operator-run migrations |
+| Redis              | Railway  | Managed Redis                                                                                                               | Private URL for Railway services; public URL for Vercel                             |
+| Worker             | Railway  | Repository root; config file `/apps/worker/railway.toml`                                                                    | No public domain required                                                           |
+| Job-stream gateway | Railway  | Repository root; config file `/apps/job-stream-gateway/railway.toml`                                                        | Public HTTPS domain required                                                        |
+| Web                | Vercel   | Root `apps/web`; include outside-root sources; install `cd ../.. && bun install --frozen-lockfile`; build `bunx vite build` | Custom or Vercel domain; configure the final domain before OAuth callbacks          |
+
+Configure Railway service references instead of copying private credentials:
+
+| Variable       | Worker and gateway           | Vercel web                    |
+| -------------- | ---------------------------- | ----------------------------- |
+| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` | Railway `DATABASE_PUBLIC_URL` |
+| `REDIS_URL`    | `${{Redis.REDIS_URL}}`       | Railway `REDIS_PUBLIC_URL`    |
+
+Addresses ending in `.railway.internal` resolve only inside Railway and must not be supplied to Vercel or local migration commands. Apply the app migration history to a new Railway database before starting application services; do not run `db:push` or set `DATABASE_MIGRATION_BASELINE` for a new database.
+
+Provision services in this order:
+
+1. Create Railway PostgreSQL and Redis, enable PostgreSQL backups, and record their public endpoints outside the repository.
+2. Generate independent production values for `BETTER_AUTH_SECRET`, `AI_KEYS_ENCRYPTION_KEY`, `JOB_STREAM_JWT_SECRET`, and `ADMIN_SECRET`.
+3. Run `DATABASE_URL="postgresql://..." bun packages/db/src/migrate.ts` against Railway `DATABASE_PUBLIC_URL`.
+4. Configure and deploy the worker and gateway with Railway private service references.
+5. Generate the gateway public domain and set it as Vercel `PUBLIC_JOB_STREAM_URL`.
+6. Set gateway `STREAM_CORS_ORIGIN` and web `ORIGIN` to the exact final web origin.
+7. Configure at least one OAuth callback at `https://<web-origin>/api/auth/callback/<provider>`.
+8. Deploy web, run readiness and authenticated product smoke checks, then switch production DNS or promote the deployment.
 
 ### Preflight
 
@@ -21,27 +53,31 @@ This runbook covers routine deploys and first response for the Oryxel web, worke
 3. Verify current backups and restore capability before a release that changes either database.
 4. Confirm environment parity across Vercel and Railway without copying secret values into tickets or logs.
 5. Record the currently successful Vercel deployment and Railway deployments as rollback targets.
-6. Treat a missing production `REDIS_URL` as a deployment-blocking configuration error: it disables the custom web rate limiter rather than exercising its fail-closed policy.
+6. Treat a missing production `REDIS_URL` as a deployment-blocking configuration error: web readiness fails, worker startup rejects it, and gateway startup already requires it.
 
 ### Environment Contract
 
-| Variable                 | Web                               | Worker               | Gateway  | Notes                                                        |
-| ------------------------ | --------------------------------- | -------------------- | -------- | ------------------------------------------------------------ |
-| `DATABASE_URL`           | Required                          | Required             | Required | All services must use the same app database during a release |
-| `CATALOG_DATABASE_URL`   | Not used                          | Not used             | Not used | Supply only to catalog migration and ingestion tooling       |
-| `REDIS_URL`              | Production required               | Production required  | Required | Shared rate-limit, wake-up, and stream infrastructure        |
-| `JOB_STREAM_JWT_SECRET`  | Required                          | Not used             | Required | Values must be identical; rotate both sides together         |
-| `PUBLIC_JOB_STREAM_URL`  | Required at build time            | Not used             | Not used | Redeploy web after changing it                               |
-| `STREAM_CORS_ORIGIN`     | Not used                          | Not used             | Required | Set to the exact web origin in production                    |
-| `BETTER_AUTH_SECRET`     | Required                          | Not used             | Not used | Use a high-entropy production secret                         |
-| `AI_KEYS_ENCRYPTION_KEY` | Required for stored provider keys | Required for AI jobs | Not used | Rotate only with an explicit data migration plan             |
+| Variable                 | Web                               | Worker               | Gateway  | Notes                                                             |
+| ------------------------ | --------------------------------- | -------------------- | -------- | ----------------------------------------------------------------- |
+| `DATABASE_URL`           | Required                          | Required             | Required | All services must use the same app database during a release      |
+| `CATALOG_DATABASE_URL`   | Not used                          | Not used             | Not used | Supply only to catalog migration and ingestion tooling            |
+| `REDIS_URL`              | Production required               | Production required  | Required | Shared rate-limit, wake-up, and stream infrastructure             |
+| `JOB_STREAM_JWT_SECRET`  | Required                          | Not used             | Required | Values must be identical; rotate both sides together              |
+| `PUBLIC_JOB_STREAM_URL`  | Required at build time            | Not used             | Not used | Redeploy web after changing it                                    |
+| `STREAM_CORS_ORIGIN`     | Not used                          | Not used             | Required | Set to the exact web origin in production                         |
+| `BETTER_AUTH_SECRET`     | Required                          | Not used             | Not used | Use a high-entropy production secret                              |
+| `AI_KEYS_ENCRYPTION_KEY` | Required for stored provider keys | Required for AI jobs | Not used | Rotate only with an explicit data migration plan                  |
+| `PLATFORM_AI_PROVIDER`   | Optional                          | Optional             | Not used | Used only together with `PLATFORM_AI_KEY`                         |
+| `PLATFORM_AI_KEY`        | Optional                          | Optional             | Not used | Requires per-user `platform_access=true`; revocation is immediate |
+| OAuth client variables   | Per enabled provider              | Not used             | Not used | Configure matching callback URLs on the final web origin          |
+| `ADMIN_SECRET`           | Required for grant administration | Not used             | Not used | Protects platform-access changes                                  |
 
 ### Release Without Migrations
 
 1. Deploy the gateway and worker revisions on Railway.
 2. Wait for both Railway `/readyz` checks to pass.
 3. Deploy the web revision on Vercel.
-4. Inspect web `/readyz` and require both `checks.database.status` and `checks.redis.status` to be `ok`; a top-level `ready` response alone does not make the optional Redis probe a release gate.
+4. Inspect web `/readyz` and require top-level `status=ready` plus both `checks.database.status` and `checks.redis.status` equal to `ok`.
 5. Verify authentication, one ordinary API read, and one background job through completion.
 6. Confirm `job.enqueued`, `job.processing.started`, `job.processing.finished`, `stream.opened`, and `stream.closed` events for the smoke job by `jobId`.
 
@@ -100,19 +136,19 @@ Structured production logs intentionally omit stack traces, arbitrary exception 
 
 Expected behavior during a Redis outage:
 
-- A missing `REDIS_URL` disables the custom web limiter entirely and is not a supported production degradation mode.
+- A missing `REDIS_URL` is rejected by production startup/readiness and is not a supported degradation mode.
 - Web account, admin, and AI rate-limit policies return `503` when they cannot enforce a sensitive limit.
 - Ordinary read and mutation policies continue in fail-open mode and emit `rate_limit.unavailable`.
-- Better Auth session-cache reads fall back to PostgreSQL.
+- Better Auth sessions always read and revoke through PostgreSQL; Redis is used only by its custom rate-limit storage.
 - Worker jobs continue through the one-second PostgreSQL polling fallback, but wake-ups and live publishes are delayed or absent.
-- Gateway readiness returns `503`; existing or new SSE streams can close, and clients use HTTP polling fallback.
+- Gateway readiness returns `503`; active streams also reconcile PostgreSQL every five seconds, while clients retain HTTP polling fallback.
 
 Recovery procedure:
 
 1. Verify PostgreSQL readiness before attributing all symptoms to Redis.
 2. Confirm the Redis service, credentials, TLS mode, and `REDIS_URL` parity across all three services.
 3. Restore Redis or roll back the configuration change; do not flush keys as a generic repair.
-4. Verify gateway `/readyz`; inspect web `/readyz` and require `checks.redis.status` to be `ok` even though that probe is marked optional.
+4. Verify gateway `/readyz`; inspect web `/readyz` and require its required Redis check to be `ok`.
 5. Enqueue one job and confirm worker wake-up and SSE delivery.
 
 Redis contains no authoritative job or session state, so a normal Redis restore does not require replaying jobs or copying session records.

@@ -11,29 +11,28 @@ alwaysApply: false
 Use the shared client and schema:
 
 ```typescript
-import { db } from '$lib/server/db';
-import { task } from '$lib/server/db/schema';
+import { db, task } from "@oryxel/db";
 ```
 
-Prefer typed queries. If routes grow, add modules under `src/lib/server/` (e.g. `repositories/`) and keep `+server.ts` / `+page.server.ts` thin.
+Prefer typed queries. Keep `+server.ts` / `+page.server.ts` thin; put web-only adapters under `apps/web/src/lib/server/` and reusable domain/database logic in packages.
 
 ## API routes — structure
 
 ```typescript
-import { json, error } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import { z } from 'zod';
+import { json, error } from "@sveltejs/kit";
+import type { RequestHandler } from "./$types";
+import { z } from "zod";
 
 const bodySchema = z.object({
-	title: z.string().min(1)
+  title: z.string().min(1),
 });
 
 export const POST: RequestHandler = async ({ request, locals }) => {
-	if (!locals.user) throw error(401, 'Unauthorized');
+  if (!locals.user) throw error(401, "Unauthorized");
 
-	const body = bodySchema.parse(await request.json());
-	// use db ...
-	return json({ ok: true });
+  const body = bodySchema.parse(await request.json());
+  // use db ...
+  return json({ ok: true });
 };
 ```
 
@@ -43,11 +42,11 @@ Validate request bodies and search params where inputs are non-trivial. In Zod v
 
 ## Auth
 
-Rely on `event.locals.user` / `event.locals.session` populated in `hooks.server.ts`. Do not skip session checks on protected endpoints.
+Rely on `event.locals.user` / `event.locals.session` populated in `apps/web/src/hooks.server.ts`. Do not skip session checks on protected endpoints.
 
 ## Schema and migrations
 
-1. Edit `src/lib/server/db/schema.ts` (and run `bun run auth:schema` when Better Auth tables change).
-2. `bun run db:generate` then `bun run db:migrate`, or `bun run db:push` during early prototyping.
+1. Edit `packages/db/src/schema.ts` (and run `bun run --cwd apps/web auth:schema` when Better Auth tables change).
+2. Run `bun run db:generate` then `bun run db:migrate`. Use `bun run db:push` only for local prototyping, never shared or production databases.
 
-Drizzle config: `drizzle.config.ts`. Connection: `DATABASE_URL`.
+Drizzle config: `packages/db/drizzle.config.ts`. Connection: `DATABASE_URL`.
